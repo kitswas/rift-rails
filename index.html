@@ -358,12 +358,22 @@
           ORC_WPN_BONUS: 1,
 
           // Encounter Balance Values
-          HUNT_ENERGY_COST: 1,
-          HUNT_BASE_WIN_RATE: 0.5,
           HUNT_WPN_MULT: 0.2,
-          HUNT_FLUX_YIELD: 45,
-          HUNT_FUEL_YIELD: 15,
-          HUNT_HULL_DMG: 20,
+
+          HUNT_SOLITARY_ENERGY: 1,
+          HUNT_SOLITARY_WIN_RATE: 0.6,
+          HUNT_SOLITARY_FLUX: 35,
+          HUNT_SOLITARY_HULL_DMG: 20,
+
+          HUNT_PACK_ENERGY: 2,
+          HUNT_PACK_WIN_RATE: 0.5,
+          HUNT_PACK_FLUX: 55,
+
+          HUNT_DEEP_ENERGY: 3,
+          HUNT_DEEP_WIN_RATE: 0.3,
+          HUNT_DEEP_FLUX: 90,
+          HUNT_DEEP_FUEL: 25,
+          HUNT_DEEP_HULL_DMG: 40,
 
           RES_SIPHON_ENERGY: 1,
           RES_SIPHON_FUEL: 25,
@@ -400,8 +410,8 @@
           energy: "EN",
           flux: "Flux",
           rep: "Rep",
-          engineTier: "engineTier",
-          weaponTier: "weaponTier",
+          engineTier: "Eng Tier",
+          weaponTier: "Wpn Tier",
           module: "module",
           carriage: "carriage",
           crew: "crew",
@@ -550,7 +560,7 @@
             id: "hub",
             label: "Mission Hub",
             desc: "A trading post on the edge of reality. Open the bay to negotiate.",
-            exploreCost: 1,
+            exploreCost: 1, // Hub exploration now costs energy to initiate interactions
             prob: 20,
             isHub: true,
             actions: [
@@ -567,7 +577,7 @@
             exploreCost: 1,
             prob: 30,
             isHub: false,
-            actions: ["hunt"],
+            actions: ["hunt_solitary", "hunt_pack", "hunt_deep"],
           },
           res: {
             id: "res",
@@ -691,25 +701,66 @@
           logSuccess:
             "Safely navigated anomalies to extract an Eldritch Artifact.",
         },
-        hunt: {
-          label: "Hunt It",
+
+        // HUNT ACTIONS
+        hunt_solitary: {
+          label: "Hunt Solitary Beast",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
           requires: {},
           probability: (s, c) =>
-            c.HUNT_BASE_WIN_RATE +
+            c.HUNT_SOLITARY_WIN_RATE +
             (s.weaponTier +
               (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
               c.HUNT_WPN_MULT,
-          consumes: [{ res: "energy", amount: (s, c) => c.HUNT_ENERGY_COST }],
-          produces: [
-            { res: "flux", amount: (s, c) => c.HUNT_FLUX_YIELD },
-            { res: "fuel", amount: (s, c) => c.HUNT_FUEL_YIELD },
+          consumes: [
+            { res: "energy", amount: (s, c) => c.HUNT_SOLITARY_ENERGY },
           ],
-          failConsumes: [{ res: "hull", amount: (s, c) => c.HUNT_HULL_DMG }],
-          logSuccess:
-            "Beast slain! Harvested organic Flux and salvageable Fuel.",
-          logFail: "Your weapons failed! Took heavy Hull damage.",
+          produces: [{ res: "flux", amount: (s, c) => c.HUNT_SOLITARY_FLUX }],
+          failConsumes: [
+            { res: "hull", amount: (s, c) => c.HUNT_SOLITARY_HULL_DMG },
+          ],
+          logSuccess: "The beast fell swiftly! Harvested organic Flux.",
+          logFail: "The beast breached your defenses! Took Hull damage.",
         },
+        hunt_pack: {
+          label: "Ambush Wild Pack",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: {},
+          probability: (s, c) =>
+            c.HUNT_PACK_WIN_RATE +
+            (s.weaponTier +
+              (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
+              c.HUNT_WPN_MULT,
+          consumes: [{ res: "energy", amount: (s, c) => c.HUNT_PACK_ENERGY }],
+          produces: [{ res: "flux", amount: (s, c) => c.HUNT_PACK_FLUX }],
+          logSuccess: "Scattered the pack and claimed their hoard of Flux.",
+          logFail:
+            "The pack overwhelmed your targeting, but you closed the doors in time. No damage taken.",
+        },
+        hunt_deep: {
+          label: "Hunt Apex Predators",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: { weaponTier: 2 },
+          probability: (s, c) =>
+            c.HUNT_DEEP_WIN_RATE +
+            (s.weaponTier +
+              (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
+              c.HUNT_WPN_MULT,
+          consumes: [{ res: "energy", amount: (s, c) => c.HUNT_DEEP_ENERGY }],
+          produces: [
+            { res: "flux", amount: (s, c) => c.HUNT_DEEP_FLUX },
+            { res: "fuel", amount: (s, c) => c.HUNT_DEEP_FUEL },
+          ],
+          failConsumes: [
+            { res: "hull", amount: (s, c) => c.HUNT_DEEP_HULL_DMG },
+          ],
+          logSuccess:
+            "A titan falls! Harvested massive amounts of Flux and rich biofuel.",
+          logFail:
+            "The apex predators breached the hull! Heavy damage sustained.",
+        },
+
+        // HUB ACTIONS
         hub_rest: {
           label: "Dock Repairs",
           isHub: true,
