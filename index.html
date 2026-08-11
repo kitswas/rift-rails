@@ -12,7 +12,7 @@
         --accent: #ff3333;
         --success: #33ff55;
         --action: #ffb800;
-        --energy: #bb55ff;
+        --energy: #b6f;
         --info: #33aaff;
         --panel-bg: #111;
       }
@@ -326,6 +326,9 @@
     </div>
 
     <script>
+      // Global DOM Cache to prevent constant repaints/lookups
+      let DOM = {};
+
       // ==========================================
       // SEMANTIC GAME DATA
       // ==========================================
@@ -335,7 +338,6 @@
           MAX_HULL: 100,
           START_FUEL: 40,
           START_ENERGY: 2,
-          EXPLORE_ENERGY_COST: 1,
           MAX_TIER: 3,
           DEATH_HULL_THRESHOLD: 0,
           CRITICAL_HULL_THRESHOLD: 30,
@@ -379,7 +381,6 @@
           MAZE_MAP_FUEL_YIELD: 30,
           MAZE_MAP_FLUX_YIELD: 50,
 
-          HUB_ENERGY_COST: 0,
           HUB_REST_FLUX_COST: 20,
           HUB_REST_HULL_YIELD: 30,
           HUB_FUEL_FLUX_COST: 20,
@@ -485,7 +486,7 @@
           formatDimType: (type) => `Type: ${type}`,
 
           btnExploreClosed: (cost) => `Explore (-${cost} EN)`,
-          btnExploreHub: (cost) => `Open Docking Bay (${cost} EN)`,
+          btnExploreHub: (cost) => `Open Docking Bay (-${cost} EN)`,
           btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
           btnDesperate: (cost, yieldAmount) =>
             `Strip Hull for Fuel (-${cost} Hull, +${yieldAmount} Fuel)`,
@@ -493,7 +494,6 @@
           btnForgeWeapon: (cost) => `Mutate Weapon (${cost} Flux)`,
           btnApexEngine: "Apex Engine",
           btnApexWeapon: "Apex Weapon",
-          btnCompleted: "Completed",
 
           yardItemLabel: (name, desc) => `${name} (${desc})`,
           yardItemCost: (cost) => `${cost} Flux`,
@@ -544,11 +544,13 @@
           ],
         },
 
-        locations: {
+        // Node Types mapping
+        nodes: {
           hub: {
             id: "hub",
             label: "Mission Hub",
-            desc: "A trading post on the edge of reality. Actions here cost 0 Energy.",
+            desc: "A trading post on the edge of reality. Open the bay to negotiate.",
+            exploreCost: 1,
             prob: 20,
             isHub: true,
             actions: [
@@ -561,7 +563,8 @@
           hunt: {
             id: "hunt",
             label: "Hunting Lodge",
-            desc: "A Void-Beast stalks the tracks. You may engage it.",
+            desc: "Hints of life abound. Fertile hunting grounds. Who is the hunter?",
+            exploreCost: 1,
             prob: 30,
             isHub: false,
             actions: ["hunt"],
@@ -570,6 +573,7 @@
             id: "res",
             label: "Resource Node",
             desc: "Unrefined elements detected in the atmosphere and crust.",
+            exploreCost: 1,
             prob: 40,
             isHub: false,
             actions: ["res_siphon", "res_harvest", "res_drill"],
@@ -578,6 +582,7 @@
             id: "maze",
             label: "Maze / Escape Zone",
             desc: "You spot derelict tech trapped in a spatial anomaly.",
+            exploreCost: 1,
             prob: 10,
             isHub: false,
             actions: ["maze_blast", "maze_map_fuel", "maze_map_flux"],
@@ -757,7 +762,7 @@
         module: GAME_DATA.text.noneState,
         carriage: GAME_DATA.text.noneState,
         crew: GAME_DATA.text.noneState,
-        dimId: GAME_DATA.locations.hub.id,
+        dimId: GAME_DATA.nodes.hub.id,
       };
 
       // ==========================================
@@ -782,12 +787,53 @@
         },
 
         log: (msg, styleClass) => {
-          const box = document.getElementById(GAME_DATA.dom.ids.storyLog);
           const div = document.createElement(GAME_DATA.dom.tags.div);
           div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
           div.innerHTML = msg;
-          box.appendChild(div);
-          box.scrollTop = box.scrollHeight;
+          DOM.storyLog.appendChild(div);
+          DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+        },
+
+        // Heuristic to check if the player still has a viable path forward
+        canSurvive: () => {
+          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) return false;
+          if (state.fuel >= Engine.getTravelCost()) return true;
+          if (state.hull > GAME_DATA.config.DESPERATE_HULL_COST) return true;
+
+          const node = GAME_DATA.nodes[state.dimId];
+
+          // If we have energy to explore, there's still a chance
+          if (state.energy >= node.exploreCost) {
+            return true;
+          }
+
+          // If we are currently IN an encounter, check active choices
+          if (state.phase === GAME_DATA.phases.encounter) {
+            for (const actId of node.actions) {
+              const act = GAME_DATA.actions[actId];
+              let canAfford = true;
+              for (const [rKey, rVal] of Object.entries(act.requires || {})) {
+                if (
+                  state[rKey] < rVal ||
+                  (typeof rVal === "string" && state[rKey] !== rVal)
+                )
+                  canAfford = false;
+              }
+              for (const rule of act.consumes) {
+                if (
+                  state[rule.res] <
+                  Engine.applyMitigation(
+                    rule.res,
+                    rule.amount(state, GAME_DATA.config),
+                  )
+                )
+                  canAfford = false;
+              }
+              if (canAfford) return true;
+            }
+          }
+
+          return false;
         },
 
         executeAction: (actId, btnRef) => {
@@ -833,105 +879,39 @@
               : GAME_DATA.dom.classes.logDamage,
           );
 
-          // Phase routing
-          if (act.isHub && btnRef) {
-            btnRef.dataset.completed = "true";
-            btnRef.disabled = true;
-            btnRef.innerText = GAME_DATA.text.btnCompleted;
-            btnRef.style.color = GAME_DATA.dom.styles.colorBorder;
-            btnRef.style.borderColor = GAME_DATA.dom.styles.colorBorder;
-          } else {
-            document.getElementById(
-              GAME_DATA.dom.ids.encounterChoices,
-            ).innerHTML = "";
-            if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD)
-              state.phase = GAME_DATA.phases.idle;
+          // State Machine: action complete -> checks and updates -> idle node
+          DOM.encounterChoices.innerHTML = "";
+          if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+            state.phase = GAME_DATA.phases.idle;
           }
+
           Engine.updateUI();
         },
 
         exploreNode: () => {
-          const loc = GAME_DATA.locations[state.dimId];
-          const choicesBox = document.getElementById(
-            GAME_DATA.dom.ids.encounterChoices,
-          );
-          choicesBox.innerHTML = "";
+          const node = GAME_DATA.nodes[state.dimId];
 
-          if (!loc.isHub) {
-            if (state.energy < GAME_DATA.config.EXPLORE_ENERGY_COST) return;
-            state.energy -= GAME_DATA.config.EXPLORE_ENERGY_COST;
-          }
+          if (state.energy < node.exploreCost) return;
+          state.energy -= node.exploreCost;
 
+          DOM.encounterChoices.innerHTML = "";
           state.phase = GAME_DATA.phases.encounter;
+
           Engine.log(
-            GAME_DATA.text.logEncounterTitle(loc.label, loc.desc),
+            GAME_DATA.text.logEncounterTitle(node.label, node.desc),
             GAME_DATA.dom.classes.logEvent,
           );
 
-          for (const actId of loc.actions) {
+          // Generate DOM Elements purely for linking ID - dynamic text occurs in updateUI
+          for (const actId of node.actions) {
             const act = GAME_DATA.actions[actId];
-            // Validate Requirements
-            let meetsReqs = true,
-              reqStrs = [];
-            for (const [reqKey, reqVal] of Object.entries(act.requires || {})) {
-              if (
-                state[reqKey] < reqVal ||
-                (typeof reqVal === "string" && state[reqKey] !== reqVal)
-              )
-                meetsReqs = false;
-              if (typeof reqVal === "number")
-                reqStrs.push(`Req: ${reqVal} ${GAME_DATA.resources[reqKey]}`);
-              else reqStrs.push(`Req: ${reqVal}`);
-            }
-            if (!meetsReqs && !act.isHub) continue;
-
-            // Compute formatted costs/yields for UI button
-            let costStrs = [],
-              prodStrs = [],
-              canAfford = true;
-
-            for (const rule of act.consumes) {
-              const amount = Engine.applyMitigation(
-                rule.res,
-                rule.amount(state, GAME_DATA.config),
-              );
-              if (state[rule.res] < amount) canAfford = false;
-              costStrs.push(
-                GAME_DATA.text.formatResVal(
-                  amount,
-                  GAME_DATA.resources[rule.res],
-                ),
-              );
-            }
-            if (act.probability) {
-              const winPct = Math.floor(
-                act.probability(state, GAME_DATA.config) * 100,
-              );
-              costStrs.push(GAME_DATA.text.formatChance(winPct));
-            }
-            for (const rule of act.produces || []) {
-              prodStrs.push(
-                GAME_DATA.text.formatResVal(
-                  rule.amount(state, GAME_DATA.config),
-                  GAME_DATA.resources[rule.res],
-                ),
-              );
-            }
-
             const btn = document.createElement(GAME_DATA.dom.tags.button);
-            btn.dataset.actId = actId; // Link button to action for dynamic re-evaluation
+            btn.dataset.actId = actId;
             if (act.uiClass) btn.className = act.uiClass;
-            btn.innerText = GAME_DATA.text.formatActionBtn(
-              act.label,
-              costStrs,
-              prodStrs,
-              reqStrs,
-            );
-            btn.disabled = !meetsReqs || !canAfford;
             btn.addEventListener(GAME_DATA.dom.events.click, () =>
               Engine.executeAction(actId, btn),
             );
-            choicesBox.appendChild(btn);
+            DOM.encounterChoices.appendChild(btn);
           }
           Engine.updateUI();
         },
@@ -980,24 +960,21 @@
 
           let roll = Math.random() * 100,
             cum = 0;
-          for (const key of Object.keys(GAME_DATA.locations)) {
-            cum += GAME_DATA.locations[key].prob;
+          for (const key of Object.keys(GAME_DATA.nodes)) {
+            cum += GAME_DATA.nodes[key].prob;
             if (roll < cum) {
-              state.dimId = GAME_DATA.locations[key].id;
+              state.dimId = GAME_DATA.nodes[key].id;
               break;
             }
           }
 
           state.phase = GAME_DATA.phases.idle;
-          document.getElementById(GAME_DATA.dom.ids.locationName).innerText =
-            GAME_DATA.text.formatDimName(genName);
-          document.getElementById(
-            GAME_DATA.dom.ids.encounterChoices,
-          ).innerHTML = "";
+          DOM.locationName.innerText = GAME_DATA.text.formatDimName(genName);
+          DOM.encounterChoices.innerHTML = "";
           Engine.log(
             GAME_DATA.text.logLocEnter(
               genName,
-              GAME_DATA.locations[state.dimId].label,
+              GAME_DATA.nodes[state.dimId].label,
             ),
             GAME_DATA.dom.classes.logSystem,
           );
@@ -1023,59 +1000,48 @@
 
           const travelCost = Engine.getTravelCost();
 
-          // Phase Checks
+          // Phase Checks (Abstracted into canSurvive heuristic)
           if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
             state.phase = GAME_DATA.phases.dead;
           } else if (
-            state.fuel < travelCost &&
-            state.energy < GAME_DATA.config.EXPLORE_ENERGY_COST &&
-            state.hull <= GAME_DATA.config.DESPERATE_HULL_COST
+            state.phase !== GAME_DATA.phases.dead &&
+            state.phase !== GAME_DATA.phases.start &&
+            !Engine.canSurvive()
           ) {
-            if (
-              state.dimId !== GAME_DATA.locations.hub.id ||
-              state.flux < GAME_DATA.config.MIN_FLUX_TO_BUY_FUEL
-            ) {
-              state.phase = GAME_DATA.phases.stranded;
-            }
+            state.phase = GAME_DATA.phases.stranded;
           }
 
           // Update Vitals Text
-          document.getElementById(GAME_DATA.dom.ids.statHull).innerText =
-            GAME_DATA.text.formatPct(Math.floor(state.hull));
-          document.getElementById(GAME_DATA.dom.ids.statFuel).innerText =
-            Math.floor(state.fuel);
-          document.getElementById(GAME_DATA.dom.ids.statEnergy).innerText =
-            GAME_DATA.text.formatStatPair(state.energy, Engine.getMaxEnergy());
-          document.getElementById(GAME_DATA.dom.ids.statFlux).innerText =
-            Math.floor(state.flux);
-          document.getElementById(GAME_DATA.dom.ids.statRep).innerText =
-            state.rep;
+          DOM.statHull.innerText = GAME_DATA.text.formatPct(
+            Math.floor(state.hull),
+          );
+          DOM.statFuel.innerText = Math.floor(state.fuel);
+          DOM.statEnergy.innerText = GAME_DATA.text.formatStatPair(
+            state.energy,
+            Engine.getMaxEnergy(),
+          );
+          DOM.statFlux.innerText = Math.floor(state.flux);
+          DOM.statRep.innerText = state.rep;
 
-          document.getElementById(GAME_DATA.dom.ids.eqEngine).innerText =
-            GAME_DATA.text.formatTier(state.engineTier);
-          document.getElementById(GAME_DATA.dom.ids.eqWeapon).innerText =
-            GAME_DATA.text.formatTier(state.weaponTier);
-          document.getElementById(GAME_DATA.dom.ids.eqModule).innerText =
-            state.module;
-          document.getElementById(GAME_DATA.dom.ids.eqCarriage).innerText =
-            state.carriage;
-          document.getElementById(GAME_DATA.dom.ids.eqCrew).innerText =
-            state.crew;
-          document.getElementById(GAME_DATA.dom.ids.locationType).innerText =
-            GAME_DATA.text.formatDimType(
-              GAME_DATA.locations[state.dimId].label,
-            );
+          DOM.eqEngine.innerText = GAME_DATA.text.formatTier(state.engineTier);
+          DOM.eqWeapon.innerText = GAME_DATA.text.formatTier(state.weaponTier);
+          DOM.eqModule.innerText = state.module;
+          DOM.eqCarriage.innerText = state.carriage;
+          DOM.eqCrew.innerText = state.crew;
+          DOM.locationType.innerText = GAME_DATA.text.formatDimType(
+            GAME_DATA.nodes[state.dimId].label,
+          );
 
           // Color Alerts
-          document.getElementById(GAME_DATA.dom.ids.statHull).style.color =
+          DOM.statHull.style.color =
             state.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
               ? GAME_DATA.dom.styles.colorAccent
               : GAME_DATA.dom.styles.colorSuccess;
-          document.getElementById(GAME_DATA.dom.ids.statFuel).style.color =
+          DOM.statFuel.style.color =
             state.fuel < travelCost
               ? GAME_DATA.dom.styles.colorAccent
               : GAME_DATA.dom.styles.colorAction;
-          document.getElementById(GAME_DATA.dom.ids.statEnergy).style.color =
+          DOM.statEnergy.style.color =
             state.energy === 0
               ? GAME_DATA.dom.styles.colorAccent
               : GAME_DATA.dom.styles.colorEnergy;
@@ -1088,9 +1054,7 @@
             document
               .querySelectorAll(GAME_DATA.dom.tags.button)
               .forEach((b) => (b.disabled = true));
-            document
-              .getElementById(GAME_DATA.dom.ids.rightPanel)
-              .classList.add(GAME_DATA.dom.classes.lockedUI);
+            DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
             Engine.log(
               state.phase === GAME_DATA.phases.dead
                 ? GAME_DATA.text.logDead
@@ -1101,47 +1065,41 @@
           }
 
           // Interactive Controls
-          const isHub = GAME_DATA.locations[state.dimId].isHub;
-          const btnExp = document.getElementById(GAME_DATA.dom.ids.btnExplore);
-          btnExp.innerText = isHub
-            ? GAME_DATA.text.btnExploreHub(GAME_DATA.config.HUB_ENERGY_COST)
-            : GAME_DATA.text.btnExploreClosed(
-                GAME_DATA.config.EXPLORE_ENERGY_COST,
-              );
-          btnExp.disabled =
-            (state.energy < GAME_DATA.config.EXPLORE_ENERGY_COST && !isHub) ||
+          const node = GAME_DATA.nodes[state.dimId];
+          DOM.btnExplore.innerText = node.isHub
+            ? GAME_DATA.text.btnExploreHub(node.exploreCost)
+            : GAME_DATA.text.btnExploreClosed(node.exploreCost);
+
+          DOM.btnExplore.disabled =
+            state.energy < node.exploreCost ||
             state.phase === GAME_DATA.phases.encounter;
 
-          const btnJmp = document.getElementById(GAME_DATA.dom.ids.btnTravel);
-          btnJmp.innerText = GAME_DATA.text.btnJump(travelCost);
-          btnJmp.disabled = state.fuel < travelCost;
+          DOM.btnTravel.innerText = GAME_DATA.text.btnJump(travelCost);
+          DOM.btnTravel.disabled = state.fuel < travelCost;
 
-          const btnDesp = document.getElementById(
-            GAME_DATA.dom.ids.btnDesperate,
-          );
-          btnDesp.innerText = GAME_DATA.text.btnDesperate(
+          DOM.btnDesperate.innerText = GAME_DATA.text.btnDesperate(
             GAME_DATA.config.DESPERATE_HULL_COST,
             GAME_DATA.config.DESPERATE_FUEL_YIELD,
           );
-          btnDesp.style.display =
+          DOM.btnDesperate.style.display =
             state.fuel < travelCost &&
             state.hull > GAME_DATA.config.DESPERATE_HULL_COST
               ? GAME_DATA.dom.styles.displayBlock
               : GAME_DATA.dom.styles.displayNone;
 
-          // Dynamically re-evaluate active encounter choices (fixes Hub actions locking up)
+          // True Reactive Rendering for Encounter Choices
           if (state.phase === GAME_DATA.phases.encounter) {
-            const choicesBox = document.getElementById(
-              GAME_DATA.dom.ids.encounterChoices,
-            );
-            Array.from(choicesBox.children).forEach((btn) => {
-              if (btn.dataset.completed === "true" || !btn.dataset.actId)
-                return;
+            Array.from(DOM.encounterChoices.children).forEach((btn) => {
+              if (!btn.dataset.actId) return;
 
               const act = GAME_DATA.actions[btn.dataset.actId];
               let meetsReqs = true,
                 canAfford = true;
+              let costStrs = [],
+                prodStrs = [],
+                reqStrs = [];
 
+              // Calculate Reqs & Consumes dynamically for accurate UI
               for (const [reqKey, reqVal] of Object.entries(
                 act.requires || {},
               )) {
@@ -1150,6 +1108,9 @@
                   (typeof reqVal === "string" && state[reqKey] !== reqVal)
                 )
                   meetsReqs = false;
+                if (typeof reqVal === "number")
+                  reqStrs.push(`Req: ${reqVal} ${GAME_DATA.resources[reqKey]}`);
+                else reqStrs.push(`Req: ${reqVal}`);
               }
               for (const rule of act.consumes) {
                 const amount = Engine.applyMitigation(
@@ -1157,40 +1118,59 @@
                   rule.amount(state, GAME_DATA.config),
                 );
                 if (state[rule.res] < amount) canAfford = false;
+                costStrs.push(
+                  GAME_DATA.text.formatResVal(
+                    amount,
+                    GAME_DATA.resources[rule.res],
+                  ),
+                );
               }
+              if (act.probability) {
+                const winPct = Math.floor(
+                  act.probability(state, GAME_DATA.config) * 100,
+                );
+                costStrs.push(GAME_DATA.text.formatChance(winPct));
+              }
+              for (const rule of act.produces || []) {
+                prodStrs.push(
+                  GAME_DATA.text.formatResVal(
+                    rule.amount(state, GAME_DATA.config),
+                    GAME_DATA.resources[rule.res],
+                  ),
+                );
+              }
+
+              btn.innerText = GAME_DATA.text.formatActionBtn(
+                act.label,
+                costStrs,
+                prodStrs,
+                reqStrs,
+              );
               btn.disabled = !meetsReqs || !canAfford;
             });
           }
 
           // Forge UI
           const fEngCost = Engine.getForgeCost(state.engineTier);
-          const btnFEng = document.getElementById(
-            GAME_DATA.dom.ids.btnForgeEng,
-          );
-          btnFEng.innerText =
+          DOM.btnForgeEng.innerText =
             state.engineTier >= GAME_DATA.config.MAX_TIER
               ? GAME_DATA.text.btnApexEngine
               : GAME_DATA.text.btnForgeEngine(fEngCost);
-          btnFEng.disabled =
+          DOM.btnForgeEng.disabled =
             state.flux < fEngCost ||
             state.engineTier >= GAME_DATA.config.MAX_TIER;
 
           const fWpnCost = Engine.getForgeCost(state.weaponTier);
-          const btnFWpn = document.getElementById(
-            GAME_DATA.dom.ids.btnForgeWpn,
-          );
-          btnFWpn.innerText =
+          DOM.btnForgeWpn.innerText =
             state.weaponTier >= GAME_DATA.config.MAX_TIER
               ? GAME_DATA.text.btnApexWeapon
               : GAME_DATA.text.btnForgeWeapon(fWpnCost);
-          btnFWpn.disabled =
+          DOM.btnForgeWpn.disabled =
             state.flux < fWpnCost ||
             state.weaponTier >= GAME_DATA.config.MAX_TIER;
 
           // Yard UI
-          document.getElementById(
-            GAME_DATA.dom.ids.yardItems,
-          ).parentElement.style.display = isHub
+          DOM.yardItems.parentElement.style.display = node.isHub
             ? GAME_DATA.dom.styles.displayBlock
             : GAME_DATA.dom.styles.displayNone;
           for (const k of Object.keys(GAME_DATA.yard)) {
@@ -1200,16 +1180,52 @@
         },
 
         init: () => {
-          document.getElementById(GAME_DATA.dom.ids.btnIgnite).innerText =
-            GAME_DATA.text.btnIgnite;
-          document.getElementById(GAME_DATA.dom.ids.lblForge).innerText =
-            GAME_DATA.text.lblForge;
-          document.getElementById(GAME_DATA.dom.ids.lblYard).innerText =
-            GAME_DATA.text.lblYard;
+          // Cache DOM selectively
+          DOM = {
+            storyLog: document.getElementById(GAME_DATA.dom.ids.storyLog),
+            locationName: document.getElementById(
+              GAME_DATA.dom.ids.locationName,
+            ),
+            locationType: document.getElementById(
+              GAME_DATA.dom.ids.locationType,
+            ),
+            encounterChoices: document.getElementById(
+              GAME_DATA.dom.ids.encounterChoices,
+            ),
+            statHull: document.getElementById(GAME_DATA.dom.ids.statHull),
+            statFuel: document.getElementById(GAME_DATA.dom.ids.statFuel),
+            statEnergy: document.getElementById(GAME_DATA.dom.ids.statEnergy),
+            statFlux: document.getElementById(GAME_DATA.dom.ids.statFlux),
+            statRep: document.getElementById(GAME_DATA.dom.ids.statRep),
+            eqEngine: document.getElementById(GAME_DATA.dom.ids.eqEngine),
+            eqWeapon: document.getElementById(GAME_DATA.dom.ids.eqWeapon),
+            eqModule: document.getElementById(GAME_DATA.dom.ids.eqModule),
+            eqCarriage: document.getElementById(GAME_DATA.dom.ids.eqCarriage),
+            eqCrew: document.getElementById(GAME_DATA.dom.ids.eqCrew),
+            btnExplore: document.getElementById(GAME_DATA.dom.ids.btnExplore),
+            btnTravel: document.getElementById(GAME_DATA.dom.ids.btnTravel),
+            btnDesperate: document.getElementById(
+              GAME_DATA.dom.ids.btnDesperate,
+            ),
+            btnIgnite: document.getElementById(GAME_DATA.dom.ids.btnIgnite),
+            btnForgeEng: document.getElementById(GAME_DATA.dom.ids.btnForgeEng),
+            btnForgeWpn: document.getElementById(GAME_DATA.dom.ids.btnForgeWpn),
+            yardItems: document.getElementById(GAME_DATA.dom.ids.yardItems),
+            lblForge: document.getElementById(GAME_DATA.dom.ids.lblForge),
+            lblYard: document.getElementById(GAME_DATA.dom.ids.lblYard),
+            rightPanel: document.getElementById(GAME_DATA.dom.ids.rightPanel),
+            startScreen: document.getElementById(GAME_DATA.dom.ids.startScreen),
+            gameContainer: document.getElementById(
+              GAME_DATA.dom.ids.gameContainer,
+            ),
+          };
+
+          DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
+          DOM.lblForge.innerText = GAME_DATA.text.lblForge;
+          DOM.lblYard.innerText = GAME_DATA.text.lblYard;
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
 
           // Generate Yard HTML dynamically
-          const yardBox = document.getElementById(GAME_DATA.dom.ids.yardItems);
           for (const [key, obj] of Object.entries(GAME_DATA.yard)) {
             const d = document.createElement(GAME_DATA.dom.tags.div);
             d.className = GAME_DATA.dom.classes.yardItem;
@@ -1227,56 +1243,48 @@
             });
             d.appendChild(s);
             d.appendChild(b);
-            yardBox.appendChild(d);
+            DOM.yardItems.appendChild(d);
           }
 
           // Binds
-          document
-            .getElementById(GAME_DATA.dom.ids.btnExplore)
-            .addEventListener(GAME_DATA.dom.events.click, Engine.exploreNode);
-          document
-            .getElementById(GAME_DATA.dom.ids.btnTravel)
-            .addEventListener(GAME_DATA.dom.events.click, Engine.jumpTravel);
-          document
-            .getElementById(GAME_DATA.dom.ids.btnDesperate)
-            .addEventListener(
-              GAME_DATA.dom.events.click,
-              Engine.desperateScavenge,
-            );
+          DOM.btnExplore.addEventListener(
+            GAME_DATA.dom.events.click,
+            Engine.exploreNode,
+          );
+          DOM.btnTravel.addEventListener(
+            GAME_DATA.dom.events.click,
+            Engine.jumpTravel,
+          );
+          DOM.btnDesperate.addEventListener(
+            GAME_DATA.dom.events.click,
+            Engine.desperateScavenge,
+          );
 
-          document
-            .getElementById(GAME_DATA.dom.ids.btnForgeEng)
-            .addEventListener(GAME_DATA.dom.events.click, () => {
-              const c = Engine.getForgeCost(state.engineTier);
-              if (state.flux >= c) {
-                state.flux -= c;
-                state.engineTier++;
-                Engine.updateUI();
-              }
-            });
-          document
-            .getElementById(GAME_DATA.dom.ids.btnForgeWpn)
-            .addEventListener(GAME_DATA.dom.events.click, () => {
-              const c = Engine.getForgeCost(state.weaponTier);
-              if (state.flux >= c) {
-                state.flux -= c;
-                state.weaponTier++;
-                Engine.updateUI();
-              }
-            });
-
-          document
-            .getElementById(GAME_DATA.dom.ids.btnIgnite)
-            .addEventListener(GAME_DATA.dom.events.click, () => {
-              document.getElementById(
-                GAME_DATA.dom.ids.startScreen,
-              ).style.display = GAME_DATA.dom.styles.displayNone;
-              document.getElementById(
-                GAME_DATA.dom.ids.gameContainer,
-              ).style.display = GAME_DATA.dom.styles.displayGrid;
-              state.phase = GAME_DATA.phases.idle;
+          DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
+            const c = Engine.getForgeCost(state.engineTier);
+            if (state.flux >= c) {
+              state.flux -= c;
+              state.engineTier++;
+              state.energy++; // Immediately grant the energy cap to prevent softlocks
               Engine.updateUI();
-            });
+            }
+          });
+
+          DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
+            const c = Engine.getForgeCost(state.weaponTier);
+            if (state.flux >= c) {
+              state.flux -= c;
+              state.weaponTier++;
+              Engine.updateUI();
+            }
+          });
+
+          DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
+            DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
+            DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayGrid;
+            state.phase = GAME_DATA.phases.idle;
+            Engine.updateUI();
+          });
         },
       };
 
