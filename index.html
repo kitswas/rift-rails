@@ -25,7 +25,6 @@
         display: flex;
         justify-content: center;
       }
-
       #start-screen {
         max-width: 800px;
         margin: 50px auto;
@@ -45,7 +44,6 @@
         text-align: left;
         margin-bottom: 20px;
       }
-
       #game-container {
         width: 100%;
         max-width: 1200px;
@@ -53,7 +51,6 @@
         grid-template-columns: 2fr 1fr;
         gap: 20px;
       }
-
       .panel {
         border: 1px solid var(--border);
         padding: 20px;
@@ -70,7 +67,6 @@
         padding-bottom: 5px;
         color: var(--text);
       }
-
       #story-log {
         height: 350px;
         overflow-y: auto;
@@ -102,7 +98,6 @@
         color: var(--success);
         font-weight: bold;
       }
-
       .stats {
         font-size: 1.05em;
         background: #000;
@@ -149,7 +144,6 @@
       .btn-start:hover {
         background-color: #e6a600;
       }
-
       .btn-travel {
         border-color: var(--action);
         color: var(--action);
@@ -158,12 +152,10 @@
         background-color: var(--action);
         color: var(--bg);
       }
-
       .btn-desperate {
         border-color: var(--accent);
         color: var(--accent);
       }
-
       .btn-success {
         border-color: var(--success);
         color: var(--success);
@@ -172,7 +164,6 @@
         background-color: var(--success);
         color: var(--bg);
       }
-
       .btn-energy {
         border-color: var(--energy);
         color: var(--energy);
@@ -207,7 +198,6 @@
         padding: 5px 10px;
         margin: 0;
       }
-
       .locked-ui {
         pointer-events: none;
         opacity: 0.4;
@@ -229,7 +219,7 @@
 
     2. INFINITE PLAYABILITY BALANCE
        - All numerical values (costs, yields, damage, probabilities) are extracted 
-         into a central GAME_CONFIG object for easy tweaking. No magic literals.
+         into a central GAME_DATA object for easy tweaking. No magic literals.
        - To prevent soft-locks and guarantee a mathematically infinite run (with 
          good play), resource yields have been buffed and damage slightly nerfed. 
        - Players can chain resource nodes to bank fuel, while Hubs provide critical 
@@ -259,663 +249,997 @@
         jump. Spend it wisely to scavenge fuel, forge upgrades, and survive the
         journey.
       </p>
-      <button class="btn-start" onclick="startGame()">
-        Ignite the Crucible Engine
-      </button>
+      <button class="btn-start" id="btn-ignite"></button>
     </div>
 
     <div id="game-container">
-      <!-- Left Column: Story and Encounters -->
       <div class="panel">
-        <h2 id="location-name">Dimension: The Void Tracks</h2>
-        <h3 id="location-type" style="color: var(--info); font-size: 0.9em">
-          Type: Mission Hub
-        </h3>
+        <h2 id="location-name"></h2>
+        <h3
+          id="location-type"
+          style="color: var(--info); font-size: 0.9em"
+        ></h3>
 
-        <div id="story-log">
-          <div class="log-entry log-system">
-            The Crucible Engine hums to life. The tracks stretch into infinity.
-          </div>
-        </div>
-
+        <div id="story-log"></div>
         <div id="action-buttons">
-          <button onclick="exploreNode()" id="btn-explore" class="btn-energy">
-            Explore
-          </button>
-          <button onclick="travel()" id="btn-travel" class="btn-travel">
-            Rift Jump
-          </button>
+          <button id="btn-explore" class="btn-energy"></button>
+          <button id="btn-travel" class="btn-travel"></button>
         </div>
-
         <button
-          onclick="desperateScavenge()"
           id="btn-desperate"
           class="btn-desperate"
           style="display: none"
-        >
-          Strip Hull for Fuel
-        </button>
-
+        ></button>
         <div id="encounter-choices"></div>
       </div>
 
-      <!-- Right Column: Stats and Upgrades -->
       <div class="panel" id="right-panel">
         <h2>Vitals</h2>
         <div class="stats">
           <div class="stat-row">
-            <span>Hull Integrity:</span>
-            <span id="stat-hull" style="color: var(--success)">100%</span>
+            <span>Hull Integrity:</span><span id="stat-hull"></span>
           </div>
           <div class="stat-row">
-            <span>Fuel:</span>
-            <span id="stat-fuel" style="color: var(--action)">0</span>
+            <span>Fuel:</span><span id="stat-fuel"></span>
           </div>
           <div class="stat-row">
-            <span>Energy:</span>
-            <span id="stat-energy" style="color: var(--energy)">0</span>
+            <span>Energy:</span><span id="stat-energy"></span>
           </div>
           <div class="stat-row">
-            <span>Dim. Flux:</span>
-            <span id="stat-flux" style="color: var(--info)">0</span>
+            <span>Dim. Flux:</span><span id="stat-flux"></span>
           </div>
           <div class="stat-row">
-            <span>Reputation:</span>
-            <span id="stat-rep" style="color: var(--action)">0</span>
+            <span>Reputation:</span><span id="stat-rep"></span>
           </div>
         </div>
 
         <h2>Train Setup</h2>
         <div class="stats">
           <div class="stat-row">
-            <span>Engine:</span> <span id="equip-engine">Tier 0</span>
+            <span>Engine:</span><span id="equip-engine"></span>
           </div>
           <div class="stat-row">
-            <span>Weapon:</span> <span id="equip-weapon">Tier 0</span>
+            <span>Weapon:</span><span id="equip-weapon"></span>
           </div>
           <div class="stat-row">
-            <span>Module:</span> <span id="equip-module">None</span>
+            <span>Module:</span><span id="equip-module"></span>
           </div>
           <div class="stat-row">
-            <span>Carriage:</span> <span id="equip-carriage">None</span>
+            <span>Carriage:</span><span id="equip-carriage"></span>
           </div>
           <div class="stat-row">
-            <span>Crew:</span> <span id="equip-crew">None</span>
+            <span>Crew:</span><span id="equip-crew"></span>
           </div>
         </div>
 
         <div id="crucible-container">
-          <h4 style="margin-top: 15px">Crucible Forge (Anywhere)</h4>
-          <button onclick="forge('engine')" id="btn-forge-engine">
-            Mutate Engine
-          </button>
-          <button onclick="forge('weapon')" id="btn-forge-weapon">
-            Mutate Weapon
-          </button>
+          <h4 style="margin-top: 15px" id="lbl-forge"></h4>
+          <button id="btn-forge-engine"></button>
+          <button id="btn-forge-weapon"></button>
         </div>
 
         <div id="train-yard-container" style="display: block">
-          <h4 style="margin-top: 15px; color: var(--action)">
-            Station Train Yard
-          </h4>
-          <div id="train-yard-items">
-            <!-- Populated via Javascript to avoid magic HTML literals -->
-          </div>
+          <h4 style="margin-top: 15px; color: var(--action)" id="lbl-yard"></h4>
+          <div id="train-yard-items"></div>
         </div>
       </div>
     </div>
 
     <script>
       // ==========================================
-      // GAME CONFIGURATION (ALL CONSTANTS)
+      // SEMANTIC GAME DATA
       // ==========================================
-      const GAME_CONFIG = {
-        start: {
-          maxHull: 100,
-          initFuel: 40,
-          initEnergyBase: 2,
-          exploreCost: 1,
-        },
-        travel: { baseCost: 15, tierMult: 10 },
-        desperate: { hullCost: 10, fuelYield: 20 },
-        probs: {
-          "Resource Node": 40,
-          "Hunting Lodge": 30,
-          "Mission Hub": 20,
-          "Maze / Escape Zone": 10,
+      const GAME_DATA = {
+        config: {
+          // System Thresholds & Base Values
+          MAX_HULL: 100,
+          START_FUEL: 40,
+          START_ENERGY: 2,
+          EXPLORE_ENERGY_COST: 1,
+          MAX_TIER: 3,
+          DEATH_HULL_THRESHOLD: 0,
+          CRITICAL_HULL_THRESHOLD: 30,
+          STRANDED_HULL_THRESHOLD: 15,
+          MIN_FLUX_TO_BUY_FUEL: 20,
+
+          // Travel & Forging Mechanics
+          TRAVEL_BASE_FUEL_COST: 15,
+          TRAVEL_TIER_MULT: 10,
+          FORGE_BASE_FLUX_COST: 75,
+          DESPERATE_HULL_COST: 10,
+          DESPERATE_FUEL_YIELD: 20,
+
+          // Passive Modifiers
+          EXO_DMG_MULT: 0.7,
+          GREENHOUSE_FUEL_YIELD: 8,
+          GOBLIN_HULL_YIELD: 5,
+          ORC_WPN_BONUS: 1,
+
+          // Encounter Balance Values
+          HUNT_ENERGY_COST: 1,
+          HUNT_BASE_WIN_RATE: 0.5,
+          HUNT_WPN_MULT: 0.2,
+          HUNT_FLUX_YIELD: 45,
+          HUNT_FUEL_YIELD: 15,
+          HUNT_HULL_DMG: 20,
+
+          RES_SIPHON_ENERGY: 1,
+          RES_SIPHON_FUEL: 25,
+          RES_HARVEST_ENERGY: 1,
+          RES_HARVEST_FLUX: 30,
+          RES_DRILL_ENERGY: 2,
+          RES_DRILL_HULL_DMG: 15,
+          RES_DRILL_FLUX: 60,
+
+          MAZE_BLAST_ENERGY: 1,
+          MAZE_BLAST_BASE_DMG: 30,
+          MAZE_BLAST_TIER_REDUC: 5,
+          MAZE_BLAST_FLUX: 40,
+          MAZE_MAP_ENERGY: 1,
+          MAZE_MAP_FUEL_YIELD: 30,
+          MAZE_MAP_FLUX_YIELD: 50,
+
+          HUB_ENERGY_COST: 0,
+          HUB_REST_FLUX_COST: 20,
+          HUB_REST_HULL_YIELD: 30,
+          HUB_FUEL_FLUX_COST: 20,
+          HUB_FUEL_YIELD: 25,
+          HUB_EASY_FUEL_COST: 10,
+          HUB_EASY_FLUX_YIELD: 35,
+          HUB_EASY_REP_YIELD: 1,
+          HUB_HARD_REP_REQ: 2,
+          HUB_HARD_FUEL_COST: 25,
+          HUB_HARD_FLUX_YIELD: 100,
         },
 
-        hunt: {
-          enCost: 1,
-          baseWinRate: 0.5,
-          wpnMult: 0.2,
-          fluxYield: 45,
-          fuelYield: 15,
-          hullDmg: 20,
+        // Keys map to string representations
+        resources: {
+          hull: "Hull",
+          fuel: "Fuel",
+          energy: "EN",
+          flux: "Flux",
+          rep: "Rep",
+          engineTier: "engineTier",
+          weaponTier: "weaponTier",
+          module: "module",
+          carriage: "carriage",
+          crew: "crew",
         },
-        res: {
-          siphonEn: 1,
-          siphonFuel: 25,
-          harvestEn: 1,
-          harvestFlux: 30,
-          drillEn: 2,
-          drillDmg: 15,
-          drillFlux: 60,
+
+        phases: {
+          start: "START",
+          idle: "IDLE",
+          encounter: "ENCOUNTER",
+          dead: "DEAD",
+          stranded: "STRANDED",
         },
-        maze: {
-          blastEn: 1,
-          blastDmgBase: 30,
-          blastDmgTierReduc: 5,
-          blastFlux: 40,
-          mapFuelEn: 1,
-          mapFuelYield: 30,
-          mapFluxEn: 1,
-          mapFluxYield: 50,
+
+        dom: {
+          classes: {
+            logEntry: "log-entry",
+            logSystem: "log-system",
+            logEvent: "log-event",
+            logSuccess: "log-success",
+            logDamage: "log-damage",
+            lockedUI: "locked-ui",
+            yardItem: "yard-item",
+            btnEnergy: "btn-energy",
+            btnSuccess: "btn-success",
+            btnAction: "btn-action",
+          },
+          ids: {
+            startScreen: "start-screen",
+            gameContainer: "game-container",
+            storyLog: "story-log",
+            locationName: "location-name",
+            locationType: "location-type",
+            encounterChoices: "encounter-choices",
+            statHull: "stat-hull",
+            statFuel: "stat-fuel",
+            statEnergy: "stat-energy",
+            statFlux: "stat-flux",
+            statRep: "stat-rep",
+            eqEngine: "equip-engine",
+            eqWeapon: "equip-weapon",
+            eqModule: "equip-module",
+            eqCarriage: "equip-carriage",
+            eqCrew: "equip-crew",
+            btnExplore: "btn-explore",
+            btnTravel: "btn-travel",
+            btnDesperate: "btn-desperate",
+            btnIgnite: "btn-ignite",
+            btnForgeEng: "btn-forge-engine",
+            btnForgeWpn: "btn-forge-weapon",
+            yardItems: "train-yard-items",
+            lblForge: "lbl-forge",
+            lblYard: "lbl-yard",
+            rightPanel: "right-panel",
+          },
+          styles: {
+            displayNone: "none",
+            displayBlock: "block",
+            displayGrid: "grid",
+            colorAccent: "var(--accent)",
+            colorSuccess: "var(--success)",
+            colorAction: "var(--action)",
+            colorEnergy: "var(--energy)",
+            colorBorder: "var(--border)",
+          },
+          events: { click: "click" },
+          tags: { div: "div", span: "span", button: "button" },
         },
-        hub: {
-          enCost: 0,
-          restFluxCost: 20,
-          restHullYield: 30,
-          fuelFluxCost: 20,
-          fuelYield: 25,
-          easyFuelCost: 10,
-          easyFluxYield: 35,
-          easyRepYield: 1,
-          hardReqRep: 2,
-          hardFuelCost: 25,
-          hardFluxYield: 100,
+
+        // Formatters handle all string interpolation
+        text: {
+          initLog:
+            "The Crucible Engine hums to life. The tracks stretch into infinity.",
+          lblForge: "Crucible Forge (Anywhere)",
+          lblYard: "Station Train Yard",
+          btnIgnite: "Ignite the Crucible Engine",
+          noneState: "None",
+
+          formatTier: (val) => `Tier ${val}`,
+          formatPct: (val) => `${val}%`,
+          formatStatPair: (val, max) => `${val} / ${max}`,
+          formatDimName: (name) => `Dimension: The ${name}`,
+          formatDimType: (type) => `Type: ${type}`,
+
+          btnExploreClosed: (cost) => `Explore (-${cost} EN)`,
+          btnExploreHub: (cost) => `Open Docking Bay (${cost} EN)`,
+          btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
+          btnDesperate: (cost, yieldAmount) =>
+            `Strip Hull for Fuel (-${cost} Hull, +${yieldAmount} Fuel)`,
+          btnForgeEngine: (cost) => `Mutate Engine (${cost} Flux)`,
+          btnForgeWeapon: (cost) => `Mutate Weapon (${cost} Flux)`,
+          btnApexEngine: "Apex Engine",
+          btnApexWeapon: "Apex Weapon",
+          btnCompleted: "Completed",
+
+          yardItemLabel: (name, desc) => `${name} (${desc})`,
+          yardItemCost: (cost) => `${cost} Flux`,
+
+          logLocEnter: (name, label) =>
+            `Rift Jump complete. Arrived at The ${name}: ${label}`,
+          logEncounterTitle: (label, desc) => `<b>${label}:</b> ${desc}`,
+          logGreenhouse: (yieldAmount) =>
+            `Greenhouse passively generated +${yieldAmount} Fuel.`,
+          logGoblin: (yieldAmount) =>
+            `Goblin Engineer repaired +${yieldAmount}% Hull.`,
+          logDesperate:
+            "DESPERATE MEASURE: Ripped plating to feed the Crucible.",
+          logDead:
+            "CRITICAL BREACH. The train is destroyed. Refresh to restart.",
+          logStranded:
+            "STRANDED IN THE VOID. No fuel, no salvageable hull, and the engine is dead. Refresh to restart.",
+          logInsuffEnergy: "Insufficient Energy to perform this action.",
+
+          formatActionBtn: (label, costStrs, prodStrs) => {
+            const costs = costStrs.length ? `-${costStrs.join(", -")}` : "";
+            const prods = prodStrs.length ? `+${prodStrs.join(", +")}` : "";
+            const contents = [costs, prods].filter(Boolean).join(", ");
+            return contents ? `${label} (${contents})` : label;
+          },
+          formatResVal: (val, resName) => `${val} ${resName}`,
+          formatChance: (pct) => `${pct}% Win Chance`,
         },
-        passives: {
-          exoDmgMult: 0.7,
-          greenhouseFuel: 8,
-          goblinHull: 5,
+
+        procedural: {
+          adjectives: [
+            "Crimson",
+            "Fractured",
+            "Clockwork",
+            "Overgrown",
+            "Frozen",
+            "Neon",
+          ],
+          nouns: [
+            "Wastes",
+            "Catacombs",
+            "Tundra",
+            "Expanse",
+            "Nebula",
+            "Spire",
+          ],
         },
-        forge: { baseCost: 75, maxTier: 3 },
+
+        locations: {
+          hub: {
+            id: "hub",
+            label: "Mission Hub",
+            desc: "A trading post on the edge of reality. Actions here cost 0 Energy.",
+            prob: 20,
+            isHub: true,
+            actions: [
+              "hub_rest",
+              "hub_fuel",
+              "hub_quest_easy",
+              "hub_quest_hard",
+            ],
+          },
+          hunt: {
+            id: "hunt",
+            label: "Hunting Lodge",
+            desc: "A Void-Beast stalks the tracks. You may engage it.",
+            prob: 30,
+            isHub: false,
+            actions: ["hunt"],
+          },
+          res: {
+            id: "res",
+            label: "Resource Node",
+            desc: "Unrefined elements detected in the atmosphere and crust.",
+            prob: 40,
+            isHub: false,
+            actions: ["res_siphon", "res_harvest", "res_drill"],
+          },
+          maze: {
+            id: "maze",
+            label: "Maze / Escape Zone",
+            desc: "You spot derelict tech trapped in a spatial anomaly.",
+            prob: 10,
+            isHub: false,
+            actions: ["maze_blast", "maze_map_fuel", "maze_map_flux"],
+          },
+        },
+
         yard: {
-          // name : [type, cost, description]
-          Exoplating: ["module", 120, "-30% Dmg"],
-          "Dimensional Map": ["module", 150, "Maze Rescue"],
-          Greenhouse: ["carriage", 180, "Passive Fuel"],
-          "Orc Gunner": ["crew", 200, "+1 Wpn Tier"],
-          "Goblin Engineer": ["crew", 220, "Passive Repairs"],
+          exo: {
+            name: "Exoplating",
+            type: "module",
+            cost: 120,
+            desc: "-30% Dmg",
+          },
+          map: {
+            name: "Dimensional Map",
+            type: "module",
+            cost: 150,
+            desc: "Maze Rescue",
+          },
+          green: {
+            name: "Greenhouse",
+            type: "carriage",
+            cost: 180,
+            desc: "Passive Fuel",
+          },
+          orc: {
+            name: "Orc Gunner",
+            type: "crew",
+            cost: 200,
+            desc: "+1 Wpn Tier",
+          },
+          goblin: {
+            name: "Goblin Engineer",
+            type: "crew",
+            cost: 220,
+            desc: "Passive Repairs",
+          },
         },
       };
 
-      const dimAdjectives = [
-        "Crimson",
-        "Fractured",
-        "Clockwork",
-        "Overgrown",
-        "Frozen",
-        "Neon",
-      ];
-      const dimNouns = [
-        "Wastes",
-        "Catacombs",
-        "Tundra",
-        "Expanse",
-        "Nebula",
-        "Spire",
-      ];
+      // Action Interface Definition
+      // requires: map of requirements { stateKey: requiredValue }
+      // consumes: array of { res: resourceKey, amount: function(state, config) }
+      // produces: array of { res: resourceKey, amount: function(state, config) }
+      GAME_DATA.actions = {
+        res_siphon: {
+          label: "Siphon Gases",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: {},
+          consumes: [{ res: "energy", amount: (s, c) => c.RES_SIPHON_ENERGY }],
+          produces: [{ res: "fuel", amount: (s, c) => c.RES_SIPHON_FUEL }],
+          logSuccess: "Siphoned surface gases for Fuel.",
+        },
+        res_harvest: {
+          label: "Safe Harvest",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: {},
+          consumes: [{ res: "energy", amount: (s, c) => c.RES_HARVEST_ENERGY }],
+          produces: [{ res: "flux", amount: (s, c) => c.RES_HARVEST_FLUX }],
+          logSuccess: "Harvested local anomalies for Flux.",
+        },
+        res_drill: {
+          label: "Deep Drill",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: {},
+          consumes: [
+            { res: "energy", amount: (s, c) => c.RES_DRILL_ENERGY },
+            { res: "hull", amount: (s, c) => c.RES_DRILL_HULL_DMG },
+          ],
+          produces: [{ res: "flux", amount: (s, c) => c.RES_DRILL_FLUX }],
+          logSuccess: "Drilling caused a cave-in, but yielded heavy Flux.",
+        },
+        maze_blast: {
+          label: "Power Through",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: {},
+          consumes: [
+            { res: "energy", amount: (s, c) => c.MAZE_BLAST_ENERGY },
+            {
+              res: "hull",
+              amount: (s, c) =>
+                Math.max(
+                  0,
+                  c.MAZE_BLAST_BASE_DMG -
+                    s.engineTier * c.MAZE_BLAST_TIER_REDUC,
+                ),
+            },
+          ],
+          produces: [{ res: "flux", amount: (s, c) => c.MAZE_BLAST_FLUX }],
+          logSuccess: "Forced passage through anomalies, taking hull damage.",
+        },
+        maze_map_fuel: {
+          label: "Extract Power Core",
+          uiClass: GAME_DATA.dom.classes.btnSuccess,
+          requires: { module: GAME_DATA.yard.map.name },
+          consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
+          produces: [{ res: "fuel", amount: (s, c) => c.MAZE_MAP_FUEL_YIELD }],
+          logSuccess: "Safely navigated anomalies to extract a Power Core.",
+        },
+        maze_map_flux: {
+          label: "Extract Artifact",
+          uiClass: GAME_DATA.dom.classes.btnSuccess,
+          requires: { module: GAME_DATA.yard.map.name },
+          consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
+          produces: [{ res: "flux", amount: (s, c) => c.MAZE_MAP_FLUX_YIELD }],
+          logSuccess:
+            "Safely navigated anomalies to extract an Eldritch Artifact.",
+        },
+        hunt: {
+          label: "Hunt It",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          requires: {},
+          probability: (s, c) =>
+            c.HUNT_BASE_WIN_RATE +
+            (s.weaponTier +
+              (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
+              c.HUNT_WPN_MULT,
+          consumes: [{ res: "energy", amount: (s, c) => c.HUNT_ENERGY_COST }],
+          produces: [
+            { res: "flux", amount: (s, c) => c.HUNT_FLUX_YIELD },
+            { res: "fuel", amount: (s, c) => c.HUNT_FUEL_YIELD },
+          ],
+          failConsumes: [{ res: "hull", amount: (s, c) => c.HUNT_HULL_DMG }],
+          logSuccess:
+            "Beast slain! Harvested organic Flux and salvageable Fuel.",
+          logFail: "Your weapons failed! Took heavy Hull damage.",
+        },
+        hub_rest: {
+          label: "Dock Repairs",
+          isHub: true,
+          requires: {},
+          consumes: [{ res: "flux", amount: (s, c) => c.HUB_REST_FLUX_COST }],
+          produces: [{ res: "hull", amount: (s, c) => c.HUB_REST_HULL_YIELD }],
+          logSuccess: "Dock crew repaired your Hull.",
+        },
+        hub_fuel: {
+          label: "Buy Fuel",
+          isHub: true,
+          requires: {},
+          consumes: [{ res: "flux", amount: (s, c) => c.HUB_FUEL_FLUX_COST }],
+          produces: [{ res: "fuel", amount: (s, c) => c.HUB_FUEL_YIELD }],
+          logSuccess: "Purchased raw Fuel.",
+        },
+        hub_quest_easy: {
+          label: "Delivery Contract",
+          isHub: true,
+          requires: {},
+          consumes: [{ res: "fuel", amount: (s, c) => c.HUB_EASY_FUEL_COST }],
+          produces: [
+            { res: "flux", amount: (s, c) => c.HUB_EASY_FLUX_YIELD },
+            { res: "rep", amount: (s, c) => c.HUB_EASY_REP_YIELD },
+          ],
+          logSuccess: "Delivery complete. Gained Flux and Reputation.",
+        },
+        hub_quest_hard: {
+          label: "VIP Contract",
+          uiClass: GAME_DATA.dom.classes.btnAction,
+          requires: { rep: GAME_DATA.config.HUB_HARD_REP_REQ },
+          consumes: [{ res: "fuel", amount: (s, c) => c.HUB_HARD_FUEL_COST }],
+          produces: [{ res: "flux", amount: (s, c) => c.HUB_HARD_FLUX_YIELD }],
+          logSuccess: "VIP successfully transported. Massive Flux payout.",
+        },
+      };
 
       // ==========================================
-      // GAME STATE MACHINE
+      // ENGINE STATE
       // ==========================================
       let state = {
-        phase: "START",
-        hull: GAME_CONFIG.start.maxHull,
-        fuel: GAME_CONFIG.start.initFuel,
+        phase: GAME_DATA.phases.start,
+        hull: GAME_DATA.config.MAX_HULL,
+        fuel: GAME_DATA.config.START_FUEL,
         flux: 0,
         rep: 0,
-        energy: GAME_CONFIG.start.initEnergyBase,
+        energy: GAME_DATA.config.START_ENERGY,
         engineTier: 0,
         weaponTier: 0,
-        module: "None",
-        carriage: "None",
-        crew: "None",
-        dimName: "The Starting Void",
-        dimType: "Mission Hub",
+        module: GAME_DATA.text.noneState,
+        carriage: GAME_DATA.text.noneState,
+        crew: GAME_DATA.text.noneState,
+        dimId: GAME_DATA.locations.hub.id,
       };
 
       // ==========================================
-      // CORE MATH & ECONOMY (INTEGER ONLY)
+      // ENGINE CORE (STRICTLY LOGICAL)
       // ==========================================
-      function getMaxEnergy() {
-        return GAME_CONFIG.start.initEnergyBase + state.engineTier;
-      }
-      function getTravelCost() {
-        return (
-          GAME_CONFIG.travel.baseCost +
-          state.engineTier * GAME_CONFIG.travel.tierMult
-        );
-      }
-      function getForgeCost(tier) {
-        return (tier + 1) * GAME_CONFIG.forge.baseCost;
-      }
+      const Engine = {
+        getMaxEnergy: () => GAME_DATA.config.START_ENERGY + state.engineTier,
+        getTravelCost: () =>
+          GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
+          state.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT,
+        getForgeCost: (tier) =>
+          (tier + 1) * GAME_DATA.config.FORGE_BASE_FLUX_COST,
 
-      function applyDamage(amount) {
-        if (state.module === "Exoplating") {
-          amount = Math.round(amount * GAME_CONFIG.passives.exoDmgMult);
-        }
-        state.hull -= amount;
-        return amount;
-      }
-
-      function log(message, type = "log-event") {
-        const logBox = document.getElementById("story-log");
-        const entry = document.createElement("div");
-        entry.className = `log-entry ${type}`;
-        entry.innerHTML = message;
-        logBox.appendChild(entry);
-        logBox.scrollTop = logBox.scrollHeight;
-      }
-
-      // ==========================================
-      // STATE MACHINE TICK & UI UPDATE
-      // ==========================================
-      function initUI() {
-        const yardContainer = document.getElementById("train-yard-items");
-        yardContainer.innerHTML = "";
-        for (const [name, data] of Object.entries(GAME_CONFIG.yard)) {
-          const [type, cost, desc] = data;
-          const safeId = name.replace(/\s/g, "");
-          yardContainer.innerHTML += `
-            <div class="yard-item">
-              <span>${name} (${desc})</span>
-              <button onclick="buyYard('${type}', '${name}')" id="btn-buy-${safeId}">${cost}</button>
-            </div>
-          `;
-        }
-      }
-
-      function updateState() {
-        // Cap Bounds
-        if (state.hull > GAME_CONFIG.start.maxHull)
-          state.hull = GAME_CONFIG.start.maxHull;
-        if (state.energy > getMaxEnergy()) state.energy = getMaxEnergy();
-
-        const travelCost = getTravelCost();
-
-        // Death / Lock checks
-        if (state.hull <= 0) {
-          state.phase = "DEAD";
-        } else if (
-          state.fuel < travelCost &&
-          state.energy < GAME_CONFIG.start.exploreCost &&
-          state.hull <= GAME_CONFIG.desperate.hullCost
-        ) {
+        applyMitigation: (resourceKey, rawAmount) => {
           if (
-            state.dimType !== "Mission Hub" ||
-            state.flux < GAME_CONFIG.hub.fuelFluxCost
+            resourceKey === "hull" &&
+            state.module === GAME_DATA.yard.exo.name
           ) {
-            state.phase = "STRANDED";
+            return Math.round(rawAmount * GAME_DATA.config.EXO_DMG_MULT);
           }
-        }
+          return rawAmount;
+        },
 
-        // Render Vitals
-        document.getElementById("stat-hull").innerText =
-          Math.floor(state.hull) + "%";
-        document.getElementById("stat-fuel").innerText = Math.floor(state.fuel);
-        document.getElementById("stat-energy").innerText =
-          `${state.energy} / ${getMaxEnergy()}`;
-        document.getElementById("stat-flux").innerText = Math.floor(state.flux);
-        document.getElementById("stat-rep").innerText = state.rep;
+        log: (msg, styleClass) => {
+          const box = document.getElementById(GAME_DATA.dom.ids.storyLog);
+          const div = document.createElement(GAME_DATA.dom.tags.div);
+          div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
+          div.innerHTML = msg;
+          box.appendChild(div);
+          box.scrollTop = box.scrollHeight;
+        },
 
-        document.getElementById("equip-engine").innerText =
-          `Tier ${state.engineTier}`;
-        document.getElementById("equip-weapon").innerText =
-          `Tier ${state.weaponTier}`;
-        document.getElementById("equip-module").innerText = state.module;
-        document.getElementById("equip-carriage").innerText = state.carriage;
-        document.getElementById("equip-crew").innerText = state.crew;
+        executeAction: (actId, btnRef) => {
+          const act = GAME_DATA.actions[actId];
 
-        document.getElementById("location-name").innerText = state.dimName;
-        document.getElementById("location-type").innerText =
-          `Type: ${state.dimType}`;
-
-        // Color coding alerts
-        document.getElementById("stat-hull").style.color =
-          state.hull <= 30 ? "var(--accent)" : "var(--success)";
-        document.getElementById("stat-fuel").style.color =
-          state.fuel < travelCost ? "var(--accent)" : "var(--action)";
-        document.getElementById("stat-energy").style.color =
-          state.energy === 0 ? "var(--accent)" : "var(--energy)";
-
-        // Game Over Rendering
-        if (state.phase === "DEAD" || state.phase === "STRANDED") {
-          document
-            .querySelectorAll("button")
-            .forEach((b) => (b.disabled = true));
-          document.getElementById("right-panel").classList.add("locked-ui");
-          if (state.phase === "DEAD")
-            log(
-              "CRITICAL BREACH. The train is destroyed. Refresh to restart.",
-              "log-damage",
+          // Deduct consumes
+          for (const rule of act.consumes) {
+            const amount = Engine.applyMitigation(
+              rule.res,
+              rule.amount(state, GAME_DATA.config),
             );
-          if (state.phase === "STRANDED")
-            log(
-              "STRANDED IN THE VOID. No fuel, no salvageable hull, and the engine is dead. Refresh to restart.",
-              "log-damage",
-            );
-          return;
-        }
-
-        // Action Buttons Setup
-        const btnExplore = document.getElementById("btn-explore");
-        const btnTravel = document.getElementById("btn-travel");
-        const btnDesperate = document.getElementById("btn-desperate");
-
-        btnTravel.innerText = `Rift Jump (-${travelCost} Fuel)`;
-        btnTravel.disabled = state.fuel < travelCost;
-
-        if (state.dimType === "Mission Hub") {
-          btnExplore.innerText = `Open Docking Bay (${GAME_CONFIG.hub.enCost} EN)`;
-          btnExplore.disabled = state.phase === "ENCOUNTER";
-        } else {
-          btnExplore.innerText = `Explore (-${GAME_CONFIG.start.exploreCost} EN)`;
-          btnExplore.disabled =
-            state.energy < GAME_CONFIG.start.exploreCost ||
-            state.phase === "ENCOUNTER";
-        }
-
-        btnDesperate.innerText = `Strip Hull for Fuel (-${GAME_CONFIG.desperate.hullCost} Hull, +${GAME_CONFIG.desperate.fuelYield} Fuel)`;
-        btnDesperate.style.display =
-          state.fuel < travelCost && state.hull > GAME_CONFIG.desperate.hullCost
-            ? "block"
-            : "none";
-
-        // Forge Upgrades
-        const forgeEngineBtn = document.getElementById("btn-forge-engine");
-        forgeEngineBtn.disabled =
-          state.flux < getForgeCost(state.engineTier) ||
-          state.engineTier >= GAME_CONFIG.forge.maxTier;
-        forgeEngineBtn.innerText =
-          state.engineTier >= GAME_CONFIG.forge.maxTier
-            ? "Apex Engine"
-            : `Mutate Engine (${getForgeCost(state.engineTier)} Flux)`;
-
-        const forgeWeaponBtn = document.getElementById("btn-forge-weapon");
-        forgeWeaponBtn.disabled =
-          state.flux < getForgeCost(state.weaponTier) ||
-          state.weaponTier >= GAME_CONFIG.forge.maxTier;
-        forgeWeaponBtn.innerText =
-          state.weaponTier >= GAME_CONFIG.forge.maxTier
-            ? "Apex Weapon"
-            : `Mutate Weapon (${getForgeCost(state.weaponTier)} Flux)`;
-
-        // Yard Logic
-        document.getElementById("train-yard-container").style.display =
-          state.dimType === "Mission Hub" ? "block" : "none";
-        for (const [name, data] of Object.entries(GAME_CONFIG.yard)) {
-          const safeId = name.replace(/\s/g, "");
-          const btn = document.getElementById(`btn-buy-${safeId}`);
-          if (btn) btn.disabled = state.flux < data[1];
-        }
-      }
-
-      // ==========================================
-      // GAMEPLAY ACTIONS
-      // ==========================================
-      function startGame() {
-        document.getElementById("start-screen").style.display = "none";
-        document.getElementById("game-container").style.display = "grid";
-        state.phase = "IDLE";
-        initUI();
-        updateState();
-      }
-
-      function travel() {
-        const cost = getTravelCost();
-        if (state.fuel < cost) return;
-
-        state.fuel -= cost;
-        state.energy = getMaxEnergy();
-
-        // Passives
-        if (state.carriage === "Greenhouse") {
-          state.fuel += GAME_CONFIG.passives.greenhouseFuel;
-          log(
-            `Greenhouse passively generated +${GAME_CONFIG.passives.greenhouseFuel} Fuel.`,
-            "log-system",
-          );
-        }
-        if (
-          state.crew === "Goblin Engineer" &&
-          state.hull < GAME_CONFIG.start.maxHull
-        ) {
-          state.hull += GAME_CONFIG.passives.goblinHull;
-          log(
-            `Goblin Engineer repaired +${GAME_CONFIG.passives.goblinHull}% Hull.`,
-            "log-system",
-          );
-        }
-
-        // Generate Location based on Config Probabilities
-        state.dimName = `Dimension: The ${dimAdjectives[Math.floor(Math.random() * dimAdjectives.length)]} ${dimNouns[Math.floor(Math.random() * dimNouns.length)]}`;
-
-        let roll = Math.random() * 100;
-        let cumulative = 0;
-        for (const [type, chance] of Object.entries(GAME_CONFIG.probs)) {
-          cumulative += chance;
-          if (roll < cumulative) {
-            state.dimType = type;
-            break;
+            state[rule.res] -= amount;
           }
-        }
 
-        state.phase = "IDLE";
-        document.getElementById("encounter-choices").innerHTML = "";
-        log(`Rift Jump complete. Arrived at ${state.dimName}.`, "log-system");
-        updateState();
-      }
-
-      function desperateScavenge() {
-        state.hull -= GAME_CONFIG.desperate.hullCost;
-        state.fuel += GAME_CONFIG.desperate.fuelYield;
-        log(
-          `DESPERATE MEASURE: You ripped plating from the hull to feed the Crucible. -${GAME_CONFIG.desperate.hullCost} Hull, +${GAME_CONFIG.desperate.fuelYield} Fuel.`,
-          "log-damage",
-        );
-        updateState();
-      }
-
-      function exploreNode() {
-        const choicesDiv = document.getElementById("encounter-choices");
-        choicesDiv.innerHTML = "";
-
-        if (state.dimType !== "Mission Hub") {
-          if (state.energy < GAME_CONFIG.start.exploreCost) return;
-          state.energy -= GAME_CONFIG.start.exploreCost;
-        }
-
-        state.phase = "ENCOUNTER";
-
-        if (state.dimType === "Hunting Lodge") {
-          log(
-            "<b>Hunting Lodge:</b> A Void-Beast stalks the tracks. You may engage it, or Rift Jump away if you have fuel.",
-            "log-event",
-          );
-          let winChance = Math.floor(
-            (GAME_CONFIG.hunt.baseWinRate +
-              (state.weaponTier + (state.crew === "Orc Gunner" ? 1 : 0)) *
-                GAME_CONFIG.hunt.wpnMult) *
-              100,
-          );
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('hunt', ${GAME_CONFIG.hunt.enCost})" class="btn-energy">Hunt It (-${GAME_CONFIG.hunt.enCost} EN | ${winChance}% Win Chance)</button>`;
-        } else if (state.dimType === "Resource Node") {
-          log(
-            "<b>Resource Node:</b> Unrefined elements detected in the atmosphere and crust.",
-            "log-event",
-          );
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_siphon', ${GAME_CONFIG.res.siphonEn})" class="btn-energy">Siphon Gases (-${GAME_CONFIG.res.siphonEn} EN, +${GAME_CONFIG.res.siphonFuel} Fuel)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_harvest', ${GAME_CONFIG.res.harvestEn})" class="btn-energy">Safe Harvest (-${GAME_CONFIG.res.harvestEn} EN, +${GAME_CONFIG.res.harvestFlux} Flux)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_drill', ${GAME_CONFIG.res.drillEn})" class="btn-energy">Deep Drill (-${GAME_CONFIG.res.drillEn} EN, -${GAME_CONFIG.res.drillDmg} Hull, +${GAME_CONFIG.res.drillFlux} Flux)</button>`;
-        } else if (state.dimType === "Maze / Escape Zone") {
-          log(
-            "<b>Maze Zone:</b> You spot derelict tech trapped in a spatial anomaly.",
-            "log-event",
-          );
-          let dmg =
-            GAME_CONFIG.maze.blastDmgBase -
-            state.engineTier * GAME_CONFIG.maze.blastDmgTierReduc;
-          if (state.module === "Exoplating")
-            dmg = Math.round(dmg * GAME_CONFIG.passives.exoDmgMult);
-
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_blast', ${GAME_CONFIG.maze.blastEn})" class="btn-energy">Power Through (-${GAME_CONFIG.maze.blastEn} EN, -${dmg} Hull, +${GAME_CONFIG.maze.blastFlux} Flux)</button>`;
-
-          if (state.module === "Dimensional Map") {
-            choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_map_fuel', ${GAME_CONFIG.maze.mapFuelEn})" class="btn-success">Extract Power Core (-${GAME_CONFIG.maze.mapFuelEn} EN, +${GAME_CONFIG.maze.mapFuelYield} Fuel)</button>`;
-            choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_map_flux', ${GAME_CONFIG.maze.mapFluxEn})" class="btn-success">Extract Artifact (-${GAME_CONFIG.maze.mapFluxEn} EN, +${GAME_CONFIG.maze.mapFluxYield} Flux)</button>`;
-          }
-        } else if (state.dimType === "Mission Hub") {
-          log(
-            "<b>Mission Hub:</b> A trading post on the edge of reality. Actions here cost 0 Energy.",
-            "log-event",
-          );
-          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_rest', this)">Dock Repairs (-${GAME_CONFIG.hub.restFluxCost} Flux, +${GAME_CONFIG.hub.restHullYield} Hull)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_fuel', this)">Buy Fuel (-${GAME_CONFIG.hub.fuelFluxCost} Flux, +${GAME_CONFIG.hub.fuelYield} Fuel)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_quest_easy', this)">Delivery Contract (-${GAME_CONFIG.hub.easyFuelCost} Fuel, +${GAME_CONFIG.hub.easyFluxYield} Flux, +${GAME_CONFIG.hub.easyRepYield} Rep)</button>`;
-          if (state.rep >= GAME_CONFIG.hub.hardReqRep) {
-            choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_quest_hard', this)" style="color: var(--action); border-color: var(--action);">VIP Contract (-${GAME_CONFIG.hub.hardFuelCost} Fuel, +${GAME_CONFIG.hub.hardFluxYield} Flux)</button>`;
-          }
-        }
-        updateState();
-      }
-
-      function resolveEncounter(action, energyCost) {
-        if (state.energy < energyCost) {
-          log("Insufficient Energy.", "log-system");
-          return;
-        }
-        state.energy -= energyCost;
-        let msg = "";
-        let type = "log-event";
-
-        if (action === "hunt") {
-          let effWpn = state.weaponTier + (state.crew === "Orc Gunner" ? 1 : 0);
+          // Combat/Probability resolution
+          let success = true;
           if (
-            Math.random() <
-            GAME_CONFIG.hunt.baseWinRate + effWpn * GAME_CONFIG.hunt.wpnMult
-          ) {
-            state.flux += GAME_CONFIG.hunt.fluxYield;
-            state.fuel += GAME_CONFIG.hunt.fuelYield;
-            msg = `Beast slain! Harvested +${GAME_CONFIG.hunt.fluxYield} Flux and +${GAME_CONFIG.hunt.fuelYield} Fuel.`;
-            type = "log-success";
+            act.probability &&
+            Math.random() > act.probability(state, GAME_DATA.config)
+          )
+            success = false;
+
+          if (success && act.produces) {
+            for (const rule of act.produces) {
+              state[rule.res] += rule.amount(state, GAME_DATA.config);
+              if (rule.res === "hull" && state.hull > GAME_DATA.config.MAX_HULL)
+                state.hull = GAME_DATA.config.MAX_HULL;
+            }
+          } else if (!success && act.failConsumes) {
+            for (const rule of act.failConsumes) {
+              const amount = Engine.applyMitigation(
+                rule.res,
+                rule.amount(state, GAME_DATA.config),
+              );
+              state[rule.res] -= amount;
+            }
+          }
+
+          Engine.log(
+            success ? act.logSuccess : act.logFail,
+            success
+              ? GAME_DATA.dom.classes.logSuccess
+              : GAME_DATA.dom.classes.logDamage,
+          );
+
+          // Phase routing
+          if (act.isHub && btnRef) {
+            btnRef.disabled = true;
+            btnRef.innerText = GAME_DATA.text.btnCompleted;
+            btnRef.style.color = GAME_DATA.dom.styles.colorBorder;
+            btnRef.style.borderColor = GAME_DATA.dom.styles.colorBorder;
           } else {
-            let dmg = applyDamage(GAME_CONFIG.hunt.hullDmg);
-            msg = `Your weapons failed! Took -${dmg} Hull damage.`;
-            type = "log-damage";
+            document.getElementById(
+              GAME_DATA.dom.ids.encounterChoices,
+            ).innerHTML = "";
+            if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD)
+              state.phase = GAME_DATA.phases.idle;
           }
-        } else if (action === "res_siphon") {
-          state.fuel += GAME_CONFIG.res.siphonFuel;
-          msg = `Siphoned +${GAME_CONFIG.res.siphonFuel} Fuel.`;
-          type = "log-system";
-        } else if (action === "res_harvest") {
-          state.flux += GAME_CONFIG.res.harvestFlux;
-          msg = `Harvested +${GAME_CONFIG.res.harvestFlux} Flux.`;
-          type = "log-success";
-        } else if (action === "res_drill") {
-          let dmg = applyDamage(GAME_CONFIG.res.drillDmg);
-          state.flux += GAME_CONFIG.res.drillFlux;
-          msg = `Drilling caused a cave-in. Took -${dmg} Hull, but gained +${GAME_CONFIG.res.drillFlux} Flux.`;
-          type = "log-success";
-        } else if (action === "maze_blast") {
-          let dmg = applyDamage(
-            GAME_CONFIG.maze.blastDmgBase -
-              state.engineTier * GAME_CONFIG.maze.blastDmgTierReduc,
+          Engine.updateUI();
+        },
+
+        exploreNode: () => {
+          const loc = GAME_DATA.locations[state.dimId];
+          const choicesBox = document.getElementById(
+            GAME_DATA.dom.ids.encounterChoices,
           );
-          state.flux += GAME_CONFIG.maze.blastFlux;
-          msg = `Forced passage through anomalies. Took -${dmg} Hull, +${GAME_CONFIG.maze.blastFlux} Flux.`;
-          type = "log-event";
-        } else if (action === "maze_map_fuel") {
-          state.fuel += GAME_CONFIG.maze.mapFuelYield;
-          msg = `Safely navigated and extracted Power Core: +${GAME_CONFIG.maze.mapFuelYield} Fuel.`;
-          type = "log-success";
-        } else if (action === "maze_map_flux") {
-          state.flux += GAME_CONFIG.maze.mapFluxYield;
-          msg = `Safely navigated and extracted Eldritch Artifact: +${GAME_CONFIG.maze.mapFluxYield} Flux.`;
-          type = "log-success";
-        }
+          choicesBox.innerHTML = "";
 
-        log(msg, type);
-        document.getElementById("encounter-choices").innerHTML = "";
-        if (state.hull > 0) state.phase = "IDLE";
-        updateState();
-      }
+          if (!loc.isHub) {
+            if (state.energy < GAME_DATA.config.EXPLORE_ENERGY_COST) return;
+            state.energy -= GAME_DATA.config.EXPLORE_ENERGY_COST;
+          }
 
-      function resolveHubAction(action, btnElement) {
-        let msg = "";
-        let type = "log-event";
-        let success = false;
+          state.phase = GAME_DATA.phases.encounter;
+          Engine.log(
+            GAME_DATA.text.logEncounterTitle(loc.label, loc.desc),
+            GAME_DATA.dom.classes.logEvent,
+          );
 
-        if (action === "hub_rest") {
-          if (state.flux >= GAME_CONFIG.hub.restFluxCost) {
-            state.flux -= GAME_CONFIG.hub.restFluxCost;
-            state.hull = Math.min(
-              GAME_CONFIG.start.maxHull,
-              state.hull + GAME_CONFIG.hub.restHullYield,
+          for (const actId of loc.actions) {
+            const act = GAME_DATA.actions[actId];
+
+            // Validate Requirements
+            let meetsReqs = true;
+            for (const [reqKey, reqVal] of Object.entries(act.requires)) {
+              if (
+                state[reqKey] < reqVal ||
+                (typeof reqVal === "string" && state[reqKey] !== reqVal)
+              )
+                meetsReqs = false;
+            }
+            if (!meetsReqs && !act.isHub) continue;
+
+            // Compute formatted costs/yields for UI button
+            let costStrs = [],
+              prodStrs = [],
+              canAfford = true;
+
+            for (const rule of act.consumes) {
+              const amount = Engine.applyMitigation(
+                rule.res,
+                rule.amount(state, GAME_DATA.config),
+              );
+              if (state[rule.res] < amount) canAfford = false;
+              costStrs.push(
+                GAME_DATA.text.formatResVal(
+                  amount,
+                  GAME_DATA.resources[rule.res],
+                ),
+              );
+            }
+            if (act.probability) {
+              const winPct = Math.floor(
+                act.probability(state, GAME_DATA.config) * 100,
+              );
+              costStrs.push(GAME_DATA.text.formatChance(winPct));
+            }
+            for (const rule of act.produces || []) {
+              prodStrs.push(
+                GAME_DATA.text.formatResVal(
+                  rule.amount(state, GAME_DATA.config),
+                  GAME_DATA.resources[rule.res],
+                ),
+              );
+            }
+
+            const btn = document.createElement(GAME_DATA.dom.tags.button);
+            if (act.uiClass) btn.className = act.uiClass;
+            btn.innerText = GAME_DATA.text.formatActionBtn(
+              act.label,
+              costStrs,
+              prodStrs,
             );
-            msg = `Repaired +${GAME_CONFIG.hub.restHullYield} Hull.`;
-            success = true;
-          } else msg = "Not enough Flux.";
-        } else if (action === "hub_fuel") {
-          if (state.flux >= GAME_CONFIG.hub.fuelFluxCost) {
-            state.flux -= GAME_CONFIG.hub.fuelFluxCost;
-            state.fuel += GAME_CONFIG.hub.fuelYield;
-            msg = `Bought +${GAME_CONFIG.hub.fuelYield} Fuel.`;
-            success = true;
-          } else msg = "Not enough Flux.";
-        } else if (action === "hub_quest_easy") {
-          if (state.fuel >= GAME_CONFIG.hub.easyFuelCost) {
-            state.fuel -= GAME_CONFIG.hub.easyFuelCost;
-            state.flux += GAME_CONFIG.hub.easyFluxYield;
-            state.rep += GAME_CONFIG.hub.easyRepYield;
-            msg = `Delivery complete. Gained +${GAME_CONFIG.hub.easyFluxYield} Flux, +${GAME_CONFIG.hub.easyRepYield} Rep.`;
-            type = "log-success";
-            success = true;
-          } else msg = "Not enough Fuel.";
-        } else if (action === "hub_quest_hard") {
-          if (state.fuel >= GAME_CONFIG.hub.hardFuelCost) {
-            state.fuel -= GAME_CONFIG.hub.hardFuelCost;
-            state.flux += GAME_CONFIG.hub.hardFluxYield;
-            msg = `VIP transported. Massive payout: +${GAME_CONFIG.hub.hardFluxYield} Flux.`;
-            type = "log-success";
-            success = true;
-          } else msg = "Not enough Fuel.";
-        }
+            btn.disabled = !meetsReqs || !canAfford;
+            btn.addEventListener(GAME_DATA.dom.events.click, () =>
+              Engine.executeAction(actId, btn),
+            );
+            choicesBox.appendChild(btn);
+          }
+          Engine.updateUI();
+        },
 
-        if (success) {
-          btnElement.disabled = true;
-          btnElement.innerText = "Completed";
-          btnElement.style.color = "var(--border)";
-          btnElement.style.borderColor = "var(--border)";
-        }
-        log(msg, type);
-        updateState();
-      }
+        jumpTravel: () => {
+          const cost = Engine.getTravelCost();
+          if (state.fuel < cost) return;
 
-      function buyYard(type, name) {
-        const cost = GAME_CONFIG.yard[name][1];
-        if (state.flux >= cost) {
-          state.flux -= cost;
-          state[type] = name;
-          log(`Installed ${name} at the station yard.`, "log-success");
-          updateState();
-        }
-      }
+          state.fuel -= cost;
+          state.energy = Engine.getMaxEnergy();
 
-      function forge(type) {
-        const cost = getForgeCost(state[`${type}Tier`]);
-        if (state.flux >= cost) {
-          state.flux -= cost;
-          state[`${type}Tier`]++;
-          log(
-            `CRUCIBLE ACTIVE: ${type.toUpperCase()} evolves to Tier ${state[`${type}Tier`]}!`,
-            "log-success",
+          // Evaluate passives
+          if (state.carriage === GAME_DATA.yard.green.name) {
+            state.fuel += GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
+            Engine.log(
+              GAME_DATA.text.logGreenhouse(
+                GAME_DATA.config.GREENHOUSE_FUEL_YIELD,
+              ),
+              GAME_DATA.dom.classes.logSystem,
+            );
+          }
+          if (
+            state.crew === GAME_DATA.yard.goblin.name &&
+            state.hull < GAME_DATA.config.MAX_HULL
+          ) {
+            state.hull = Math.min(
+              GAME_DATA.config.MAX_HULL,
+              state.hull + GAME_DATA.config.GOBLIN_HULL_YIELD,
+            );
+            Engine.log(
+              GAME_DATA.text.logGoblin(GAME_DATA.config.GOBLIN_HULL_YIELD),
+              GAME_DATA.dom.classes.logSystem,
+            );
+          }
+
+          // RNG Node Generation
+          const adj =
+            GAME_DATA.procedural.adjectives[
+              Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
+            ];
+          const noun =
+            GAME_DATA.procedural.nouns[
+              Math.floor(Math.random() * GAME_DATA.procedural.nouns.length)
+            ];
+          const genName = `${adj} ${noun}`;
+
+          let roll = Math.random() * 100,
+            cum = 0;
+          for (const key of Object.keys(GAME_DATA.locations)) {
+            cum += GAME_DATA.locations[key].prob;
+            if (roll < cum) {
+              state.dimId = GAME_DATA.locations[key].id;
+              break;
+            }
+          }
+
+          state.phase = GAME_DATA.phases.idle;
+          document.getElementById(GAME_DATA.dom.ids.locationName).innerText =
+            GAME_DATA.text.formatDimName(genName);
+          document.getElementById(
+            GAME_DATA.dom.ids.encounterChoices,
+          ).innerHTML = "";
+          Engine.log(
+            GAME_DATA.text.logLocEnter(
+              genName,
+              GAME_DATA.locations[state.dimId].label,
+            ),
+            GAME_DATA.dom.classes.logSystem,
           );
-          updateState();
-        }
-      }
+          Engine.updateUI();
+        },
+
+        desperateScavenge: () => {
+          state.hull -= GAME_DATA.config.DESPERATE_HULL_COST;
+          state.fuel += GAME_DATA.config.DESPERATE_FUEL_YIELD;
+          Engine.log(
+            GAME_DATA.text.logDesperate,
+            GAME_DATA.dom.classes.logDamage,
+          );
+          Engine.updateUI();
+        },
+
+        updateUI: () => {
+          // Sync bounds
+          if (state.hull > GAME_DATA.config.MAX_HULL)
+            state.hull = GAME_DATA.config.MAX_HULL;
+          if (state.energy > Engine.getMaxEnergy())
+            state.energy = Engine.getMaxEnergy();
+
+          const travelCost = Engine.getTravelCost();
+
+          // Phase Checks
+          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+            state.phase = GAME_DATA.phases.dead;
+          } else if (
+            state.fuel < travelCost &&
+            state.energy < GAME_DATA.config.EXPLORE_ENERGY_COST &&
+            state.hull <= GAME_DATA.config.DESPERATE_HULL_COST
+          ) {
+            if (
+              state.dimId !== GAME_DATA.locations.hub.id ||
+              state.flux < GAME_DATA.config.MIN_FLUX_TO_BUY_FUEL
+            ) {
+              state.phase = GAME_DATA.phases.stranded;
+            }
+          }
+
+          // Update Vitals Text
+          document.getElementById(GAME_DATA.dom.ids.statHull).innerText =
+            GAME_DATA.text.formatPct(Math.floor(state.hull));
+          document.getElementById(GAME_DATA.dom.ids.statFuel).innerText =
+            Math.floor(state.fuel);
+          document.getElementById(GAME_DATA.dom.ids.statEnergy).innerText =
+            GAME_DATA.text.formatStatPair(state.energy, Engine.getMaxEnergy());
+          document.getElementById(GAME_DATA.dom.ids.statFlux).innerText =
+            Math.floor(state.flux);
+          document.getElementById(GAME_DATA.dom.ids.statRep).innerText =
+            state.rep;
+
+          document.getElementById(GAME_DATA.dom.ids.eqEngine).innerText =
+            GAME_DATA.text.formatTier(state.engineTier);
+          document.getElementById(GAME_DATA.dom.ids.eqWeapon).innerText =
+            GAME_DATA.text.formatTier(state.weaponTier);
+          document.getElementById(GAME_DATA.dom.ids.eqModule).innerText =
+            state.module;
+          document.getElementById(GAME_DATA.dom.ids.eqCarriage).innerText =
+            state.carriage;
+          document.getElementById(GAME_DATA.dom.ids.eqCrew).innerText =
+            state.crew;
+          document.getElementById(GAME_DATA.dom.ids.locationType).innerText =
+            GAME_DATA.text.formatDimType(
+              GAME_DATA.locations[state.dimId].label,
+            );
+
+          // Color Alerts
+          document.getElementById(GAME_DATA.dom.ids.statHull).style.color =
+            state.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
+              ? GAME_DATA.dom.styles.colorAccent
+              : GAME_DATA.dom.styles.colorSuccess;
+          document.getElementById(GAME_DATA.dom.ids.statFuel).style.color =
+            state.fuel < travelCost
+              ? GAME_DATA.dom.styles.colorAccent
+              : GAME_DATA.dom.styles.colorAction;
+          document.getElementById(GAME_DATA.dom.ids.statEnergy).style.color =
+            state.energy === 0
+              ? GAME_DATA.dom.styles.colorAccent
+              : GAME_DATA.dom.styles.colorEnergy;
+
+          // Terminal State Lock
+          if (
+            state.phase === GAME_DATA.phases.dead ||
+            state.phase === GAME_DATA.phases.stranded
+          ) {
+            document
+              .querySelectorAll(GAME_DATA.dom.tags.button)
+              .forEach((b) => (b.disabled = true));
+            document
+              .getElementById(GAME_DATA.dom.ids.rightPanel)
+              .classList.add(GAME_DATA.dom.classes.lockedUI);
+            Engine.log(
+              state.phase === GAME_DATA.phases.dead
+                ? GAME_DATA.text.logDead
+                : GAME_DATA.text.logStranded,
+              GAME_DATA.dom.classes.logDamage,
+            );
+            return;
+          }
+
+          // Interactive Controls
+          const isHub = GAME_DATA.locations[state.dimId].isHub;
+          const btnExp = document.getElementById(GAME_DATA.dom.ids.btnExplore);
+          btnExp.innerText = isHub
+            ? GAME_DATA.text.btnExploreHub(GAME_DATA.config.HUB_ENERGY_COST)
+            : GAME_DATA.text.btnExploreClosed(
+                GAME_DATA.config.EXPLORE_ENERGY_COST,
+              );
+          btnExp.disabled =
+            (state.energy < GAME_DATA.config.EXPLORE_ENERGY_COST && !isHub) ||
+            state.phase === GAME_DATA.phases.encounter;
+
+          const btnJmp = document.getElementById(GAME_DATA.dom.ids.btnTravel);
+          btnJmp.innerText = GAME_DATA.text.btnJump(travelCost);
+          btnJmp.disabled = state.fuel < travelCost;
+
+          const btnDesp = document.getElementById(
+            GAME_DATA.dom.ids.btnDesperate,
+          );
+          btnDesp.innerText = GAME_DATA.text.btnDesperate(
+            GAME_DATA.config.DESPERATE_HULL_COST,
+            GAME_DATA.config.DESPERATE_FUEL_YIELD,
+          );
+          btnDesp.style.display =
+            state.fuel < travelCost &&
+            state.hull > GAME_DATA.config.DESPERATE_HULL_COST
+              ? GAME_DATA.dom.styles.displayBlock
+              : GAME_DATA.dom.styles.displayNone;
+
+          // Forge UI
+          const fEngCost = Engine.getForgeCost(state.engineTier);
+          const btnFEng = document.getElementById(
+            GAME_DATA.dom.ids.btnForgeEng,
+          );
+          btnFEng.innerText =
+            state.engineTier >= GAME_DATA.config.MAX_TIER
+              ? GAME_DATA.text.btnApexEngine
+              : GAME_DATA.text.btnForgeEngine(fEngCost);
+          btnFEng.disabled =
+            state.flux < fEngCost ||
+            state.engineTier >= GAME_DATA.config.MAX_TIER;
+
+          const fWpnCost = Engine.getForgeCost(state.weaponTier);
+          const btnFWpn = document.getElementById(
+            GAME_DATA.dom.ids.btnForgeWpn,
+          );
+          btnFWpn.innerText =
+            state.weaponTier >= GAME_DATA.config.MAX_TIER
+              ? GAME_DATA.text.btnApexWeapon
+              : GAME_DATA.text.btnForgeWeapon(fWpnCost);
+          btnFWpn.disabled =
+            state.flux < fWpnCost ||
+            state.weaponTier >= GAME_DATA.config.MAX_TIER;
+
+          // Yard UI
+          document.getElementById(
+            GAME_DATA.dom.ids.yardItems,
+          ).parentElement.style.display = isHub
+            ? GAME_DATA.dom.styles.displayBlock
+            : GAME_DATA.dom.styles.displayNone;
+          for (const k of Object.keys(GAME_DATA.yard)) {
+            const btn = document.getElementById(k);
+            if (btn) btn.disabled = state.flux < GAME_DATA.yard[k].cost;
+          }
+        },
+
+        init: () => {
+          document.getElementById(GAME_DATA.dom.ids.btnIgnite).innerText =
+            GAME_DATA.text.btnIgnite;
+          document.getElementById(GAME_DATA.dom.ids.lblForge).innerText =
+            GAME_DATA.text.lblForge;
+          document.getElementById(GAME_DATA.dom.ids.lblYard).innerText =
+            GAME_DATA.text.lblYard;
+          Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
+
+          // Generate Yard HTML dynamically
+          const yardBox = document.getElementById(GAME_DATA.dom.ids.yardItems);
+          for (const [key, obj] of Object.entries(GAME_DATA.yard)) {
+            const d = document.createElement(GAME_DATA.dom.tags.div);
+            d.className = GAME_DATA.dom.classes.yardItem;
+            const s = document.createElement(GAME_DATA.dom.tags.span);
+            s.innerText = GAME_DATA.text.yardItemLabel(obj.name, obj.desc);
+            const b = document.createElement(GAME_DATA.dom.tags.button);
+            b.id = key;
+            b.innerText = GAME_DATA.text.yardItemCost(obj.cost);
+            b.addEventListener(GAME_DATA.dom.events.click, () => {
+              if (state.flux >= obj.cost) {
+                state.flux -= obj.cost;
+                state[obj.type] = obj.name;
+                Engine.updateUI();
+              }
+            });
+            d.appendChild(s);
+            d.appendChild(b);
+            yardBox.appendChild(d);
+          }
+
+          // Binds
+          document
+            .getElementById(GAME_DATA.dom.ids.btnExplore)
+            .addEventListener(GAME_DATA.dom.events.click, Engine.exploreNode);
+          document
+            .getElementById(GAME_DATA.dom.ids.btnTravel)
+            .addEventListener(GAME_DATA.dom.events.click, Engine.jumpTravel);
+          document
+            .getElementById(GAME_DATA.dom.ids.btnDesperate)
+            .addEventListener(
+              GAME_DATA.dom.events.click,
+              Engine.desperateScavenge,
+            );
+
+          document
+            .getElementById(GAME_DATA.dom.ids.btnForgeEng)
+            .addEventListener(GAME_DATA.dom.events.click, () => {
+              const c = Engine.getForgeCost(state.engineTier);
+              if (state.flux >= c) {
+                state.flux -= c;
+                state.engineTier++;
+                Engine.updateUI();
+              }
+            });
+          document
+            .getElementById(GAME_DATA.dom.ids.btnForgeWpn)
+            .addEventListener(GAME_DATA.dom.events.click, () => {
+              const c = Engine.getForgeCost(state.weaponTier);
+              if (state.flux >= c) {
+                state.flux -= c;
+                state.weaponTier++;
+                Engine.updateUI();
+              }
+            });
+
+          document
+            .getElementById(GAME_DATA.dom.ids.btnIgnite)
+            .addEventListener(GAME_DATA.dom.events.click, () => {
+              document.getElementById(
+                GAME_DATA.dom.ids.startScreen,
+              ).style.display = GAME_DATA.dom.styles.displayNone;
+              document.getElementById(
+                GAME_DATA.dom.ids.gameContainer,
+              ).style.display = GAME_DATA.dom.styles.displayGrid;
+              state.phase = GAME_DATA.phases.idle;
+              Engine.updateUI();
+            });
+        },
+      };
+
+      Engine.init();
     </script>
   </body>
 </html>
