@@ -216,6 +216,32 @@
     </style>
   </head>
   <body>
+    <!-- 
+    ========================================================
+    DEVELOPER NOTES: THE ENERGY ECONOMY
+    *** DO NOT REMOVE THIS COMMENT BLOCK ***
+    ========================================================
+    1. ENGINE TIER = MAX ENERGY & TRAVEL COST
+       - A larger engine increases the max Energy capacity of the train, 
+         allowing for more explorations and actions per dimension.
+       - However, a heavier engine increases the Fuel cost to initiate a Rift Jump.
+       - Energy resets completely upon entering a new dimension.
+
+    2. INFINITE PLAYABILITY BALANCE
+       - All numerical values (costs, yields, damage, probabilities) are extracted 
+         into a central GAME_CONFIG object for easy tweaking. No magic literals.
+       - To prevent soft-locks and guarantee a mathematically infinite run (with 
+         good play), resource yields have been buffed and damage slightly nerfed. 
+       - Players can chain resource nodes to bank fuel, while Hubs provide critical 
+         Hull repairs and Fuel conversions.
+         
+    3. ENGAGING GAMEPLAY
+       - Keep the player hooked. Gameplay should not feel repetitive.
+       - The math should be such that the player feels that they could have won
+         by just a bit when they loose. 
+    ========================================================
+    -->
+
     <div id="start-screen">
       <h1>Rift Rails: The Infinite Express</h1>
       <p>
@@ -254,7 +280,7 @@
 
         <div id="action-buttons">
           <button onclick="exploreNode()" id="btn-explore" class="btn-energy">
-            Explore (-1 EN)
+            Explore
           </button>
           <button onclick="travel()" id="btn-travel" class="btn-travel">
             Rift Jump
@@ -267,7 +293,7 @@
           class="btn-desperate"
           style="display: none"
         >
-          Strip Hull for Fuel (-15 Hull, +15 Fuel)
+          Strip Hull for Fuel
         </button>
 
         <div id="encounter-choices"></div>
@@ -283,11 +309,11 @@
           </div>
           <div class="stat-row">
             <span>Fuel:</span>
-            <span id="stat-fuel" style="color: var(--action)">35</span>
+            <span id="stat-fuel" style="color: var(--action)">0</span>
           </div>
           <div class="stat-row">
             <span>Energy:</span>
-            <span id="stat-energy" style="color: var(--energy)">2</span>
+            <span id="stat-energy" style="color: var(--energy)">0</span>
           </div>
           <div class="stat-row">
             <span>Dim. Flux:</span>
@@ -332,50 +358,8 @@
           <h4 style="margin-top: 15px; color: var(--action)">
             Station Train Yard
           </h4>
-          <div class="yard-item">
-            <span>Exoplating (-30% Dmg)</span>
-            <button
-              onclick="buyYard('module', 'Exoplating', 120)"
-              id="btn-buy-exo"
-            >
-              120
-            </button>
-          </div>
-          <div class="yard-item">
-            <span>Map Mod (Maze Rescue)</span>
-            <button
-              onclick="buyYard('module', 'Dimensional Map', 150)"
-              id="btn-buy-map"
-            >
-              150
-            </button>
-          </div>
-          <div class="yard-item">
-            <span>Greenhouse (+5 Fuel/Jump)</span>
-            <button
-              onclick="buyYard('carriage', 'Greenhouse', 180)"
-              id="btn-buy-green"
-            >
-              180
-            </button>
-          </div>
-          <div class="yard-item">
-            <span>Orc Gunner (+1 Wpn Tier)</span>
-            <button
-              onclick="buyYard('crew', 'Orc Gunner', 200)"
-              id="btn-buy-orc"
-            >
-              200
-            </button>
-          </div>
-          <div class="yard-item">
-            <span>Goblin Engineer (Repairs)</span>
-            <button
-              onclick="buyYard('crew', 'Goblin Engineer', 220)"
-              id="btn-buy-gob"
-            >
-              220
-            </button>
+          <div id="train-yard-items">
+            <!-- Populated via Javascript to avoid magic HTML literals -->
           </div>
         </div>
       </div>
@@ -383,22 +367,78 @@
 
     <script>
       // ==========================================
-      // GAME STATE MACHINE
+      // GAME CONFIGURATION (ALL CONSTANTS)
       // ==========================================
-      let state = {
-        phase: "START", // START, IDLE, ENCOUNTER, DEAD, STRANDED
-        hull: 100,
-        fuel: 35, // Tuned down to force tight near-miss survival
-        flux: 0,
-        rep: 0,
-        energy: 2,
-        engineTier: 0,
-        weaponTier: 0,
-        module: "None",
-        carriage: "None",
-        crew: "None",
-        dimName: "The Starting Void",
-        dimType: "Mission Hub",
+      const GAME_CONFIG = {
+        start: {
+          maxHull: 100,
+          initFuel: 40,
+          initEnergyBase: 2,
+          exploreCost: 1,
+        },
+        travel: { baseCost: 15, tierMult: 10 },
+        desperate: { hullCost: 10, fuelYield: 20 },
+        probs: {
+          "Resource Node": 40,
+          "Hunting Lodge": 30,
+          "Mission Hub": 20,
+          "Maze / Escape Zone": 10,
+        },
+
+        hunt: {
+          enCost: 1,
+          baseWinRate: 0.5,
+          wpnMult: 0.2,
+          fluxYield: 45,
+          fuelYield: 15,
+          hullDmg: 20,
+        },
+        res: {
+          siphonEn: 1,
+          siphonFuel: 25,
+          harvestEn: 1,
+          harvestFlux: 30,
+          drillEn: 2,
+          drillDmg: 15,
+          drillFlux: 60,
+        },
+        maze: {
+          blastEn: 1,
+          blastDmgBase: 30,
+          blastDmgTierReduc: 5,
+          blastFlux: 40,
+          mapFuelEn: 1,
+          mapFuelYield: 30,
+          mapFluxEn: 1,
+          mapFluxYield: 50,
+        },
+        hub: {
+          enCost: 0,
+          restFluxCost: 20,
+          restHullYield: 30,
+          fuelFluxCost: 20,
+          fuelYield: 25,
+          easyFuelCost: 10,
+          easyFluxYield: 35,
+          easyRepYield: 1,
+          hardReqRep: 2,
+          hardFuelCost: 25,
+          hardFluxYield: 100,
+        },
+        passives: {
+          exoDmgMult: 0.7,
+          greenhouseFuel: 8,
+          goblinHull: 5,
+        },
+        forge: { baseCost: 75, maxTier: 3 },
+        yard: {
+          // name : [type, cost, description]
+          Exoplating: ["module", 120, "-30% Dmg"],
+          "Dimensional Map": ["module", 150, "Maze Rescue"],
+          Greenhouse: ["carriage", 180, "Passive Fuel"],
+          "Orc Gunner": ["crew", 200, "+1 Wpn Tier"],
+          "Goblin Engineer": ["crew", 220, "Passive Repairs"],
+        },
       };
 
       const dimAdjectives = [
@@ -417,30 +457,45 @@
         "Nebula",
         "Spire",
       ];
-      // Configuration map for dimension probabilities (must sum to 100)
-      const dimProbabilities = {
-        "Resource Node": 40,
-        "Hunting Lodge": 30,
-        "Mission Hub": 20,
-        "Maze / Escape Zone": 10,
+
+      // ==========================================
+      // GAME STATE MACHINE
+      // ==========================================
+      let state = {
+        phase: "START",
+        hull: GAME_CONFIG.start.maxHull,
+        fuel: GAME_CONFIG.start.initFuel,
+        flux: 0,
+        rep: 0,
+        energy: GAME_CONFIG.start.initEnergyBase,
+        engineTier: 0,
+        weaponTier: 0,
+        module: "None",
+        carriage: "None",
+        crew: "None",
+        dimName: "The Starting Void",
+        dimType: "Mission Hub",
       };
 
       // ==========================================
       // CORE MATH & ECONOMY (INTEGER ONLY)
       // ==========================================
       function getMaxEnergy() {
-        return 2 + state.engineTier;
-      } // T0:2, T1:3, T2:4, T3:5
+        return GAME_CONFIG.start.initEnergyBase + state.engineTier;
+      }
       function getTravelCost() {
-        return 15 + state.engineTier * 10;
-      } // T0:15, T1:25, T2:35, T3:45
+        return (
+          GAME_CONFIG.travel.baseCost +
+          state.engineTier * GAME_CONFIG.travel.tierMult
+        );
+      }
       function getForgeCost(tier) {
-        return (tier + 1) * 75;
+        return (tier + 1) * GAME_CONFIG.forge.baseCost;
       }
 
       function applyDamage(amount) {
         if (state.module === "Exoplating") {
-          amount = Math.round(amount * 0.7); // Float eradication
+          amount = Math.round(amount * GAME_CONFIG.passives.exoDmgMult);
         }
         state.hull -= amount;
         return amount;
@@ -456,11 +511,27 @@
       }
 
       // ==========================================
-      // STATE MACHINE TICK
+      // STATE MACHINE TICK & UI UPDATE
       // ==========================================
+      function initUI() {
+        const yardContainer = document.getElementById("train-yard-items");
+        yardContainer.innerHTML = "";
+        for (const [name, data] of Object.entries(GAME_CONFIG.yard)) {
+          const [type, cost, desc] = data;
+          const safeId = name.replace(/\s/g, "");
+          yardContainer.innerHTML += `
+            <div class="yard-item">
+              <span>${name} (${desc})</span>
+              <button onclick="buyYard('${type}', '${name}')" id="btn-buy-${safeId}">${cost}</button>
+            </div>
+          `;
+        }
+      }
+
       function updateState() {
         // Cap Bounds
-        if (state.hull > 100) state.hull = 100;
+        if (state.hull > GAME_CONFIG.start.maxHull)
+          state.hull = GAME_CONFIG.start.maxHull;
         if (state.energy > getMaxEnergy()) state.energy = getMaxEnergy();
 
         const travelCost = getTravelCost();
@@ -470,11 +541,13 @@
           state.phase = "DEAD";
         } else if (
           state.fuel < travelCost &&
-          state.energy < 1 &&
-          state.hull <= 15
+          state.energy < GAME_CONFIG.start.exploreCost &&
+          state.hull <= GAME_CONFIG.desperate.hullCost
         ) {
-          // Softlock check: Cannot jump, cannot explore, cannot scavenge.
-          if (state.dimType !== "Mission Hub" || state.flux < 25) {
+          if (
+            state.dimType !== "Mission Hub" ||
+            state.flux < GAME_CONFIG.hub.fuelFluxCost
+          ) {
             state.phase = "STRANDED";
           }
         }
@@ -524,7 +597,7 @@
               "STRANDED IN THE VOID. No fuel, no salvageable hull, and the engine is dead. Refresh to restart.",
               "log-damage",
             );
-          return; // Halt UI updates
+          return;
         }
 
         // Action Buttons Setup
@@ -536,51 +609,58 @@
         btnTravel.disabled = state.fuel < travelCost;
 
         if (state.dimType === "Mission Hub") {
-          btnExplore.innerText = "Open Docking Bay (0 EN)";
+          btnExplore.innerText = `Open Docking Bay (${GAME_CONFIG.hub.enCost} EN)`;
           btnExplore.disabled = state.phase === "ENCOUNTER";
         } else {
-          btnExplore.innerText = `Explore (-1 EN)`;
-          btnExplore.disabled = state.energy < 1 || state.phase === "ENCOUNTER";
+          btnExplore.innerText = `Explore (-${GAME_CONFIG.start.exploreCost} EN)`;
+          btnExplore.disabled =
+            state.energy < GAME_CONFIG.start.exploreCost ||
+            state.phase === "ENCOUNTER";
         }
 
-        // Desperate Scavenge appears dynamically when trapped
+        btnDesperate.innerText = `Strip Hull for Fuel (-${GAME_CONFIG.desperate.hullCost} Hull, +${GAME_CONFIG.desperate.fuelYield} Fuel)`;
         btnDesperate.style.display =
-          state.fuel < travelCost && state.hull > 15 ? "block" : "none";
+          state.fuel < travelCost && state.hull > GAME_CONFIG.desperate.hullCost
+            ? "block"
+            : "none";
 
-        // Upgrades
+        // Forge Upgrades
         const forgeEngineBtn = document.getElementById("btn-forge-engine");
         forgeEngineBtn.disabled =
-          state.flux < getForgeCost(state.engineTier) || state.engineTier >= 3;
+          state.flux < getForgeCost(state.engineTier) ||
+          state.engineTier >= GAME_CONFIG.forge.maxTier;
         forgeEngineBtn.innerText =
-          state.engineTier >= 3
+          state.engineTier >= GAME_CONFIG.forge.maxTier
             ? "Apex Engine"
             : `Mutate Engine (${getForgeCost(state.engineTier)} Flux)`;
 
         const forgeWeaponBtn = document.getElementById("btn-forge-weapon");
         forgeWeaponBtn.disabled =
-          state.flux < getForgeCost(state.weaponTier) || state.weaponTier >= 3;
+          state.flux < getForgeCost(state.weaponTier) ||
+          state.weaponTier >= GAME_CONFIG.forge.maxTier;
         forgeWeaponBtn.innerText =
-          state.weaponTier >= 3
+          state.weaponTier >= GAME_CONFIG.forge.maxTier
             ? "Apex Weapon"
             : `Mutate Weapon (${getForgeCost(state.weaponTier)} Flux)`;
 
-        // Yard (Available at Hub)
+        // Yard Logic
         document.getElementById("train-yard-container").style.display =
           state.dimType === "Mission Hub" ? "block" : "none";
-        document.getElementById("btn-buy-exo").disabled = state.flux < 120;
-        document.getElementById("btn-buy-map").disabled = state.flux < 150;
-        document.getElementById("btn-buy-green").disabled = state.flux < 180;
-        document.getElementById("btn-buy-orc").disabled = state.flux < 200;
-        document.getElementById("btn-buy-gob").disabled = state.flux < 220;
+        for (const [name, data] of Object.entries(GAME_CONFIG.yard)) {
+          const safeId = name.replace(/\s/g, "");
+          const btn = document.getElementById(`btn-buy-${safeId}`);
+          if (btn) btn.disabled = state.flux < data[1];
+        }
       }
 
       // ==========================================
-      // ACTIONS
+      // GAMEPLAY ACTIONS
       // ==========================================
       function startGame() {
         document.getElementById("start-screen").style.display = "none";
         document.getElementById("game-container").style.display = "grid";
         state.phase = "IDLE";
+        initUI();
         updateState();
       }
 
@@ -589,31 +669,40 @@
         if (state.fuel < cost) return;
 
         state.fuel -= cost;
-        state.energy = getMaxEnergy(); // Full energy reset
+        state.energy = getMaxEnergy();
 
-        // Passive Procs
+        // Passives
         if (state.carriage === "Greenhouse") {
-          state.fuel += 5;
-          log("Greenhouse passively generated +5 Fuel.", "log-system");
+          state.fuel += GAME_CONFIG.passives.greenhouseFuel;
+          log(
+            `Greenhouse passively generated +${GAME_CONFIG.passives.greenhouseFuel} Fuel.`,
+            "log-system",
+          );
         }
-        if (state.crew === "Goblin Engineer" && state.hull < 100) {
-          state.hull += 4;
-          log("Goblin Engineer repaired +4% Hull.", "log-system");
+        if (
+          state.crew === "Goblin Engineer" &&
+          state.hull < GAME_CONFIG.start.maxHull
+        ) {
+          state.hull += GAME_CONFIG.passives.goblinHull;
+          log(
+            `Goblin Engineer repaired +${GAME_CONFIG.passives.goblinHull}% Hull.`,
+            "log-system",
+          );
         }
 
-        // Node Generation Probabilities
+        // Generate Location based on Config Probabilities
         state.dimName = `Dimension: The ${dimAdjectives[Math.floor(Math.random() * dimAdjectives.length)]} ${dimNouns[Math.floor(Math.random() * dimNouns.length)]}`;
 
         let roll = Math.random() * 100;
         let cumulative = 0;
-
-        for (const [type, chance] of Object.entries(dimProbabilities)) {
+        for (const [type, chance] of Object.entries(GAME_CONFIG.probs)) {
           cumulative += chance;
           if (roll < cumulative) {
             state.dimType = type;
             break;
           }
         }
+
         state.phase = "IDLE";
         document.getElementById("encounter-choices").innerHTML = "";
         log(`Rift Jump complete. Arrived at ${state.dimName}.`, "log-system");
@@ -621,10 +710,10 @@
       }
 
       function desperateScavenge() {
-        state.hull -= 15;
-        state.fuel += 15;
+        state.hull -= GAME_CONFIG.desperate.hullCost;
+        state.fuel += GAME_CONFIG.desperate.fuelYield;
         log(
-          "DESPERATE MEASURE: You ripped plating from the hull to feed the Crucible. -15 Hull, +15 Fuel.",
+          `DESPERATE MEASURE: You ripped plating from the hull to feed the Crucible. -${GAME_CONFIG.desperate.hullCost} Hull, +${GAME_CONFIG.desperate.fuelYield} Fuel.`,
           "log-damage",
         );
         updateState();
@@ -635,8 +724,8 @@
         choicesDiv.innerHTML = "";
 
         if (state.dimType !== "Mission Hub") {
-          if (state.energy < 1) return;
-          state.energy -= 1;
+          if (state.energy < GAME_CONFIG.start.exploreCost) return;
+          state.energy -= GAME_CONFIG.start.exploreCost;
         }
 
         state.phase = "ENCOUNTER";
@@ -647,44 +736,47 @@
             "log-event",
           );
           let winChance = Math.floor(
-            (0.5 +
+            (GAME_CONFIG.hunt.baseWinRate +
               (state.weaponTier + (state.crew === "Orc Gunner" ? 1 : 0)) *
-                0.2) *
+                GAME_CONFIG.hunt.wpnMult) *
               100,
           );
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('hunt', 1)" class="btn-energy">Hunt It (-1 EN | ${winChance}% Win Chance)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveEncounter('hunt', ${GAME_CONFIG.hunt.enCost})" class="btn-energy">Hunt It (-${GAME_CONFIG.hunt.enCost} EN | ${winChance}% Win Chance)</button>`;
         } else if (state.dimType === "Resource Node") {
           log(
             "<b>Resource Node:</b> Unrefined elements detected in the atmosphere and crust.",
             "log-event",
           );
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_siphon', 1)" class="btn-energy">Siphon Gases (-1 EN, +18 Fuel)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_harvest', 1)" class="btn-energy">Safe Harvest (-1 EN, +25 Flux)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_drill', 2)" class="btn-energy">Deep Drill (-2 EN, -20 Hull, +55 Flux)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_siphon', ${GAME_CONFIG.res.siphonEn})" class="btn-energy">Siphon Gases (-${GAME_CONFIG.res.siphonEn} EN, +${GAME_CONFIG.res.siphonFuel} Fuel)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_harvest', ${GAME_CONFIG.res.harvestEn})" class="btn-energy">Safe Harvest (-${GAME_CONFIG.res.harvestEn} EN, +${GAME_CONFIG.res.harvestFlux} Flux)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveEncounter('res_drill', ${GAME_CONFIG.res.drillEn})" class="btn-energy">Deep Drill (-${GAME_CONFIG.res.drillEn} EN, -${GAME_CONFIG.res.drillDmg} Hull, +${GAME_CONFIG.res.drillFlux} Flux)</button>`;
         } else if (state.dimType === "Maze / Escape Zone") {
           log(
             "<b>Maze Zone:</b> You spot derelict tech trapped in a spatial anomaly.",
             "log-event",
           );
-          let dmg = 35 - state.engineTier * 5;
-          if (state.module === "Exoplating") dmg = Math.round(dmg * 0.7);
+          let dmg =
+            GAME_CONFIG.maze.blastDmgBase -
+            state.engineTier * GAME_CONFIG.maze.blastDmgTierReduc;
+          if (state.module === "Exoplating")
+            dmg = Math.round(dmg * GAME_CONFIG.passives.exoDmgMult);
 
-          choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_blast', 1)" class="btn-energy">Power Through (-1 EN, -${dmg} Hull, +30 Flux)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_blast', ${GAME_CONFIG.maze.blastEn})" class="btn-energy">Power Through (-${GAME_CONFIG.maze.blastEn} EN, -${dmg} Hull, +${GAME_CONFIG.maze.blastFlux} Flux)</button>`;
 
           if (state.module === "Dimensional Map") {
-            choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_map_fuel', 1)" class="btn-success">Extract Power Core (-1 EN, +25 Fuel)</button>`;
-            choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_map_flux', 1)" class="btn-success">Extract Artifact (-1 EN, +45 Flux)</button>`;
+            choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_map_fuel', ${GAME_CONFIG.maze.mapFuelEn})" class="btn-success">Extract Power Core (-${GAME_CONFIG.maze.mapFuelEn} EN, +${GAME_CONFIG.maze.mapFuelYield} Fuel)</button>`;
+            choicesDiv.innerHTML += `<button onclick="resolveEncounter('maze_map_flux', ${GAME_CONFIG.maze.mapFluxEn})" class="btn-success">Extract Artifact (-${GAME_CONFIG.maze.mapFluxEn} EN, +${GAME_CONFIG.maze.mapFluxYield} Flux)</button>`;
           }
         } else if (state.dimType === "Mission Hub") {
           log(
             "<b>Mission Hub:</b> A trading post on the edge of reality. Actions here cost 0 Energy.",
             "log-event",
           );
-          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_rest', this)">Dock Repairs (-25 Flux, +25 Hull)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_fuel', this)">Buy Fuel (-25 Flux, +20 Fuel)</button>`;
-          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_quest_easy', this)">Delivery Contract (-10 Fuel, +30 Flux, +1 Rep)</button>`;
-          if (state.rep >= 2) {
-            choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_quest_hard', this)" style="color: var(--action); border-color: var(--action);">VIP Contract (-25 Fuel, +90 Flux)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_rest', this)">Dock Repairs (-${GAME_CONFIG.hub.restFluxCost} Flux, +${GAME_CONFIG.hub.restHullYield} Hull)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_fuel', this)">Buy Fuel (-${GAME_CONFIG.hub.fuelFluxCost} Flux, +${GAME_CONFIG.hub.fuelYield} Fuel)</button>`;
+          choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_quest_easy', this)">Delivery Contract (-${GAME_CONFIG.hub.easyFuelCost} Fuel, +${GAME_CONFIG.hub.easyFluxYield} Flux, +${GAME_CONFIG.hub.easyRepYield} Rep)</button>`;
+          if (state.rep >= GAME_CONFIG.hub.hardReqRep) {
+            choicesDiv.innerHTML += `<button onclick="resolveHubAction('hub_quest_hard', this)" style="color: var(--action); border-color: var(--action);">VIP Contract (-${GAME_CONFIG.hub.hardFuelCost} Fuel, +${GAME_CONFIG.hub.hardFluxYield} Flux)</button>`;
           }
         }
         updateState();
@@ -695,57 +787,59 @@
           log("Insufficient Energy.", "log-system");
           return;
         }
-
         state.energy -= energyCost;
         let msg = "";
         let type = "log-event";
 
         if (action === "hunt") {
           let effWpn = state.weaponTier + (state.crew === "Orc Gunner" ? 1 : 0);
-          if (Math.random() < 0.5 + effWpn * 0.2) {
-            state.flux += 40;
-            state.fuel += 10;
-            msg = `Beast slain! Harvested +40 Flux and +10 Fuel.`;
+          if (
+            Math.random() <
+            GAME_CONFIG.hunt.baseWinRate + effWpn * GAME_CONFIG.hunt.wpnMult
+          ) {
+            state.flux += GAME_CONFIG.hunt.fluxYield;
+            state.fuel += GAME_CONFIG.hunt.fuelYield;
+            msg = `Beast slain! Harvested +${GAME_CONFIG.hunt.fluxYield} Flux and +${GAME_CONFIG.hunt.fuelYield} Fuel.`;
             type = "log-success";
           } else {
-            let dmg = applyDamage(25);
+            let dmg = applyDamage(GAME_CONFIG.hunt.hullDmg);
             msg = `Your weapons failed! Took -${dmg} Hull damage.`;
             type = "log-damage";
           }
         } else if (action === "res_siphon") {
-          state.fuel += 18;
-          msg = `Siphoned +18 Fuel.`;
+          state.fuel += GAME_CONFIG.res.siphonFuel;
+          msg = `Siphoned +${GAME_CONFIG.res.siphonFuel} Fuel.`;
           type = "log-system";
         } else if (action === "res_harvest") {
-          state.flux += 25;
-          msg = `Harvested +25 Flux.`;
+          state.flux += GAME_CONFIG.res.harvestFlux;
+          msg = `Harvested +${GAME_CONFIG.res.harvestFlux} Flux.`;
           type = "log-success";
         } else if (action === "res_drill") {
-          let dmg = applyDamage(20);
-          state.flux += 55;
-          msg = `Drilling caused a cave-in. Took -${dmg} Hull, but gained +55 Flux.`;
+          let dmg = applyDamage(GAME_CONFIG.res.drillDmg);
+          state.flux += GAME_CONFIG.res.drillFlux;
+          msg = `Drilling caused a cave-in. Took -${dmg} Hull, but gained +${GAME_CONFIG.res.drillFlux} Flux.`;
           type = "log-success";
         } else if (action === "maze_blast") {
-          let dmg = applyDamage(35 - state.engineTier * 5);
-          state.flux += 30;
-          msg = `Forced passage through anomalies. Took -${dmg} Hull, +30 Flux.`;
+          let dmg = applyDamage(
+            GAME_CONFIG.maze.blastDmgBase -
+              state.engineTier * GAME_CONFIG.maze.blastDmgTierReduc,
+          );
+          state.flux += GAME_CONFIG.maze.blastFlux;
+          msg = `Forced passage through anomalies. Took -${dmg} Hull, +${GAME_CONFIG.maze.blastFlux} Flux.`;
           type = "log-event";
         } else if (action === "maze_map_fuel") {
-          state.fuel += 25;
-          msg = `Safely navigated and extracted Power Core: +25 Fuel.`;
+          state.fuel += GAME_CONFIG.maze.mapFuelYield;
+          msg = `Safely navigated and extracted Power Core: +${GAME_CONFIG.maze.mapFuelYield} Fuel.`;
           type = "log-success";
         } else if (action === "maze_map_flux") {
-          state.flux += 45;
-          msg = `Safely navigated and extracted Eldritch Artifact: +45 Flux.`;
+          state.flux += GAME_CONFIG.maze.mapFluxYield;
+          msg = `Safely navigated and extracted Eldritch Artifact: +${GAME_CONFIG.maze.mapFluxYield} Flux.`;
           type = "log-success";
         }
 
         log(msg, type);
-
-        // Encounter resolved. Clear choices and set to IDLE so player can Explore again.
         document.getElementById("encounter-choices").innerHTML = "";
         if (state.hull > 0) state.phase = "IDLE";
-
         updateState();
       }
 
@@ -755,33 +849,36 @@
         let success = false;
 
         if (action === "hub_rest") {
-          if (state.flux >= 25) {
-            state.flux -= 25;
-            state.hull = Math.min(100, state.hull + 25);
-            msg = `Repaired +25 Hull.`;
+          if (state.flux >= GAME_CONFIG.hub.restFluxCost) {
+            state.flux -= GAME_CONFIG.hub.restFluxCost;
+            state.hull = Math.min(
+              GAME_CONFIG.start.maxHull,
+              state.hull + GAME_CONFIG.hub.restHullYield,
+            );
+            msg = `Repaired +${GAME_CONFIG.hub.restHullYield} Hull.`;
             success = true;
           } else msg = "Not enough Flux.";
         } else if (action === "hub_fuel") {
-          if (state.flux >= 25) {
-            state.flux -= 25;
-            state.fuel += 20;
-            msg = `Bought +20 Fuel.`;
+          if (state.flux >= GAME_CONFIG.hub.fuelFluxCost) {
+            state.flux -= GAME_CONFIG.hub.fuelFluxCost;
+            state.fuel += GAME_CONFIG.hub.fuelYield;
+            msg = `Bought +${GAME_CONFIG.hub.fuelYield} Fuel.`;
             success = true;
           } else msg = "Not enough Flux.";
         } else if (action === "hub_quest_easy") {
-          if (state.fuel >= 10) {
-            state.fuel -= 10;
-            state.flux += 30;
-            state.rep += 1;
-            msg = `Delivery complete. Gained +30 Flux, +1 Rep.`;
+          if (state.fuel >= GAME_CONFIG.hub.easyFuelCost) {
+            state.fuel -= GAME_CONFIG.hub.easyFuelCost;
+            state.flux += GAME_CONFIG.hub.easyFluxYield;
+            state.rep += GAME_CONFIG.hub.easyRepYield;
+            msg = `Delivery complete. Gained +${GAME_CONFIG.hub.easyFluxYield} Flux, +${GAME_CONFIG.hub.easyRepYield} Rep.`;
             type = "log-success";
             success = true;
           } else msg = "Not enough Fuel.";
         } else if (action === "hub_quest_hard") {
-          if (state.fuel >= 25) {
-            state.fuel -= 25;
-            state.flux += 90;
-            msg = `VIP transported. Massive payout: +90 Flux.`;
+          if (state.fuel >= GAME_CONFIG.hub.hardFuelCost) {
+            state.fuel -= GAME_CONFIG.hub.hardFuelCost;
+            state.flux += GAME_CONFIG.hub.hardFluxYield;
+            msg = `VIP transported. Massive payout: +${GAME_CONFIG.hub.hardFluxYield} Flux.`;
             type = "log-success";
             success = true;
           } else msg = "Not enough Fuel.";
@@ -797,10 +894,11 @@
         updateState();
       }
 
-      function buyYard(type, name, cost) {
+      function buyYard(type, name) {
+        const cost = GAME_CONFIG.yard[name][1];
         if (state.flux >= cost) {
           state.flux -= cost;
-          state[type] = name; // Overwrites old modules, fixing the permanent lockout bug
+          state[type] = name;
           log(`Installed ${name} at the station yard.`, "log-success");
           updateState();
         }
