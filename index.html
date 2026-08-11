@@ -513,11 +513,13 @@
             "STRANDED IN THE VOID. No fuel, no salvageable hull, and the engine is dead. Refresh to restart.",
           logInsuffEnergy: "Insufficient Energy to perform this action.",
 
-          formatActionBtn: (label, costStrs, prodStrs) => {
+          formatActionBtn: (label, costStrs, prodStrs, reqStrs = []) => {
             const costs = costStrs.length ? `-${costStrs.join(", -")}` : "";
             const prods = prodStrs.length ? `+${prodStrs.join(", +")}` : "";
+            const reqs = reqStrs.length ? ` [${reqStrs.join(", ")}]` : "";
             const contents = [costs, prods].filter(Boolean).join(", ");
-            return contents ? `${label} (${contents})` : label;
+            const mainText = contents ? `${label} (${contents})` : label;
+            return reqs ? `${mainText}${reqs}` : mainText;
           },
           formatResVal: (val, resName) => `${val} ${resName}`,
           formatChance: (pct) => `${pct}% Win Chance`,
@@ -759,7 +761,7 @@
       };
 
       // ==========================================
-      // ENGINE CORE (STRICTLY LOGICAL)
+      // ENGINE CORE
       // ==========================================
       const Engine = {
         getMaxEnergy: () => GAME_DATA.config.START_ENERGY + state.engineTier,
@@ -833,6 +835,7 @@
 
           // Phase routing
           if (act.isHub && btnRef) {
+            btnRef.dataset.completed = "true";
             btnRef.disabled = true;
             btnRef.innerText = GAME_DATA.text.btnCompleted;
             btnRef.style.color = GAME_DATA.dom.styles.colorBorder;
@@ -867,15 +870,18 @@
 
           for (const actId of loc.actions) {
             const act = GAME_DATA.actions[actId];
-
             // Validate Requirements
-            let meetsReqs = true;
-            for (const [reqKey, reqVal] of Object.entries(act.requires)) {
+            let meetsReqs = true,
+              reqStrs = [];
+            for (const [reqKey, reqVal] of Object.entries(act.requires || {})) {
               if (
                 state[reqKey] < reqVal ||
                 (typeof reqVal === "string" && state[reqKey] !== reqVal)
               )
                 meetsReqs = false;
+              if (typeof reqVal === "number")
+                reqStrs.push(`Req: ${reqVal} ${GAME_DATA.resources[reqKey]}`);
+              else reqStrs.push(`Req: ${reqVal}`);
             }
             if (!meetsReqs && !act.isHub) continue;
 
@@ -913,11 +919,13 @@
             }
 
             const btn = document.createElement(GAME_DATA.dom.tags.button);
+            btn.dataset.actId = actId; // Link button to action for dynamic re-evaluation
             if (act.uiClass) btn.className = act.uiClass;
             btn.innerText = GAME_DATA.text.formatActionBtn(
               act.label,
               costStrs,
               prodStrs,
+              reqStrs,
             );
             btn.disabled = !meetsReqs || !canAfford;
             btn.addEventListener(GAME_DATA.dom.events.click, () =>
@@ -1120,6 +1128,39 @@
             state.hull > GAME_DATA.config.DESPERATE_HULL_COST
               ? GAME_DATA.dom.styles.displayBlock
               : GAME_DATA.dom.styles.displayNone;
+
+          // Dynamically re-evaluate active encounter choices (fixes Hub actions locking up)
+          if (state.phase === GAME_DATA.phases.encounter) {
+            const choicesBox = document.getElementById(
+              GAME_DATA.dom.ids.encounterChoices,
+            );
+            Array.from(choicesBox.children).forEach((btn) => {
+              if (btn.dataset.completed === "true" || !btn.dataset.actId)
+                return;
+
+              const act = GAME_DATA.actions[btn.dataset.actId];
+              let meetsReqs = true,
+                canAfford = true;
+
+              for (const [reqKey, reqVal] of Object.entries(
+                act.requires || {},
+              )) {
+                if (
+                  state[reqKey] < reqVal ||
+                  (typeof reqVal === "string" && state[reqKey] !== reqVal)
+                )
+                  meetsReqs = false;
+              }
+              for (const rule of act.consumes) {
+                const amount = Engine.applyMitigation(
+                  rule.res,
+                  rule.amount(state, GAME_DATA.config),
+                );
+                if (state[rule.res] < amount) canAfford = false;
+              }
+              btn.disabled = !meetsReqs || !canAfford;
+            });
+          }
 
           // Forge UI
           const fEngCost = Engine.getForgeCost(state.engineTier);
