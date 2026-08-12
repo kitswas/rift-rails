@@ -254,10 +254,8 @@
        - Energy resets completely upon entering a new dimension.
 
     2. INFINITE PLAYABILITY BALANCE
-       - All numerical values (costs, yields, damage, probabilities) are extracted 
-         into a central GAME_DATA object for easy tweaking. No magic literals.
-       - To prevent soft-locks and guarantee a mathematically infinite run (with 
-         good play), resource yields have been buffed and damage slightly nerfed. 
+       - All numerical values and strings are stored in a central GAME_DATA object for easy tweaking.
+       - A mathematically infinite run (with good play) is guaranteed through careful balancing.
        - Players can chain resource nodes to bank fuel, while Hubs provide critical 
          Hull repairs and Fuel conversions.
          
@@ -270,6 +268,14 @@
        - Preserve comments. Comments explain why, not what.
        - Single source of truth. DRY.
        - No magic literals. Constant names explain purpose. 
+       
+    5. PROGRAM CORRECTNESS
+       - The game uses embedded Runtime Assertions to verify its own logic.
+       - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions 
+         has no deadlocks or orphaned states (crucial when AI hallucinates edits).
+       - assertInvariants(): Runs after every UI update. Verifies mathematically 
+         impossible states (e.g., negative energy) haven't occurred.
+       - State mutations strictly flow through Engine.transitionTo().
     ========================================================
     -->
 
@@ -460,6 +466,28 @@
           stranded: "STRANDED",
           yard_root: "YARD_ROOT",
           yard_category: "YARD_CATEGORY",
+        },
+
+        transitions: {
+          START: ["IDLE"],
+          IDLE: ["ENCOUNTER", "NAVIGATING", "DEAD", "STRANDED", "IDLE"],
+          ENCOUNTER: ["IDLE", "YARD_ROOT", "DEAD", "STRANDED", "NAVIGATING"],
+          YARD_ROOT: ["YARD_CATEGORY", "ENCOUNTER"],
+          YARD_CATEGORY: ["YARD_ROOT"],
+          NAVIGATING: ["IDLE", "DEAD", "STRANDED"],
+          DEAD: [],
+          STRANDED: [],
+        },
+
+        permissions: {
+          START: { explore: false, travel: false, forge: false },
+          IDLE: { explore: true, travel: true, forge: true },
+          ENCOUNTER: { explore: false, travel: true, forge: true },
+          YARD_ROOT: { explore: false, travel: false, forge: false },
+          YARD_CATEGORY: { explore: false, travel: false, forge: false },
+          NAVIGATING: { explore: false, travel: false, forge: false },
+          DEAD: { explore: false, travel: false, forge: false },
+          STRANDED: { explore: false, travel: false, forge: false },
         },
 
         dom: {
@@ -866,6 +894,37 @@
       };
 
       const Engine = {
+        verifyGraphIntegrity: () => {
+          const phases = Object.values(GAME_DATA.phases);
+          const terminal = [GAME_DATA.phases.dead, GAME_DATA.phases.stranded];
+          for (const [phase, targets] of Object.entries(
+            GAME_DATA.transitions,
+          )) {
+            if (targets.length === 0 && !terminal.includes(phase)) {
+              console.error(
+                `FATAL: State Machine Deadlock. Phase '${phase}' has no valid exits.`,
+              );
+            }
+            targets.forEach((t) => {
+              if (!phases.includes(t))
+                console.error(
+                  `FATAL: State Machine Orphan. Phase '${phase}' targets invalid phase '${t}'.`,
+                );
+            });
+          }
+        },
+
+        assertInvariants: () => {
+          if (state.hull > GAME_DATA.config.MAX_HULL)
+            console.error("INVARIANT BREACH: Hull > Max");
+          if (state.energy < 0 || state.fuel < 0 || state.flux < 0)
+            console.error("INVARIANT BREACH: Resource dropped below 0");
+          if (!GAME_DATA.permissions[state.phase])
+            console.error(
+              `INVARIANT BREACH: No permissions defined for phase '${state.phase}'`,
+            );
+        },
+
         getMaxEnergy: () => GAME_DATA.config.START_ENERGY + state.engineTier,
         getTravelCost: () =>
           GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
@@ -897,27 +956,51 @@
           DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
         },
 
+        transitionTo: (newPhase) => {
+          const allowed = GAME_DATA.transitions[state.phase];
+
+          if (!allowed.includes(newPhase)) {
+            console.error(
+              `ILLEGAL TRANSITION: Cannot move from ${state.phase} to ${newPhase}`,
+            );
+            return false;
+          }
+
+          if (StateHooks[state.phase]?.onExit) StateHooks[state.phase].onExit();
+          state.phase = newPhase;
+          if (StateHooks[newPhase]?.onEnter) StateHooks[newPhase].onEnter();
+
+          Engine.updateUI();
+          return true;
+        },
+
         canSurvive: () => {
           if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) return false;
           if (state.fuel >= Engine.getTravelCost()) return true;
           if (state.hull > GAME_DATA.config.DESPERATE_HULL_COST) return true;
 
-          const inMenu = [
-            GAME_DATA.phases.encounter,
-            GAME_DATA.phases.yard_root,
-            GAME_DATA.phases.yard_category,
-          ].includes(state.phase);
           const node = GAME_DATA.nodes[state.dimId];
+          if (
+            state.phase === GAME_DATA.phases.idle &&
+            state.energy >= node.exploreCost
+          )
+            return true;
 
-          if (!inMenu && state.energy >= node.exploreCost) return true;
-
-          if (inMenu) {
+          if (state.phase === GAME_DATA.phases.encounter) {
             return node.actions.some((actId) => {
               const act = GAME_DATA.actions[actId];
               return !act.isMenu && Engine.canAffordAction(act);
             });
           }
           return false;
+        },
+
+        evaluateSurvival: () => {
+          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+            Engine.transitionTo(GAME_DATA.phases.dead);
+          } else if (!Engine.canSurvive()) {
+            Engine.transitionTo(GAME_DATA.phases.stranded);
+          }
         },
 
         canAffordAction: (act) => {
@@ -956,23 +1039,19 @@
 
         executeAction: (actId) => {
           const act = GAME_DATA.actions[actId];
+
           if (act.isMenu) {
-            state.phase = act.menuTarget;
-            Engine.updateUI();
+            Engine.transitionTo(act.menuTarget);
             return;
           }
 
           Engine.processActionCosts(act);
-
           const success =
             !act.probability ||
             Math.random() <= act.probability(state, GAME_DATA.config);
 
-          if (success) {
-            Engine.processActionYields(act.produces);
-          } else {
-            Engine.processActionFailConsumes(act.failConsumes);
-          }
+          if (success) Engine.processActionYields(act.produces);
+          else Engine.processActionFailConsumes(act.failConsumes);
 
           Engine.log(
             success ? act.logSuccess : act.logFail,
@@ -981,25 +1060,25 @@
               : GAME_DATA.dom.classes.logDamage,
           );
 
-          if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD) {
-            state.phase = GAME_DATA.phases.idle;
-          }
+          Engine.enforceStateBounds();
 
-          Engine.updateUI();
+          if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+            Engine.transitionTo(GAME_DATA.phases.idle);
+          } else {
+            Engine.evaluateSurvival();
+          }
         },
 
         exploreNode: () => {
           const node = GAME_DATA.nodes[state.dimId];
           if (state.energy < node.exploreCost) return;
-          state.energy -= node.exploreCost;
 
-          state.phase = GAME_DATA.phases.encounter;
+          state.energy -= node.exploreCost;
           Engine.log(
             GAME_DATA.text.logEncounterTitle(node.label, node.desc),
             GAME_DATA.dom.classes.logEvent,
           );
-
-          Engine.updateUI();
+          Engine.transitionTo(GAME_DATA.phases.encounter);
         },
 
         generateDimension: (excludedIds = []) => {
@@ -1016,10 +1095,8 @@
           let availableNodes = Object.values(GAME_DATA.nodes).filter(
             (n) => !excludedIds.includes(n.id),
           );
-
-          if (availableNodes.length === 0) {
+          if (availableNodes.length === 0)
             availableNodes = Object.values(GAME_DATA.nodes);
-          }
 
           let totalProb = availableNodes.reduce((sum, n) => sum + n.prob, 0);
           let roll = Math.random() * totalProb;
@@ -1033,7 +1110,6 @@
               break;
             }
           }
-
           return { id: chosenId, name: genName };
         },
 
@@ -1044,11 +1120,11 @@
           state.fuel -= cost;
 
           if (state.module === GAME_DATA.yard.astro.name) {
-            state.phase = GAME_DATA.phases.navigating;
-            const choice1 = Engine.generateDimension([]);
-            const choice2 = Engine.generateDimension([choice1.id]);
-            state.navChoices = [choice1, choice2];
-            Engine.updateUI();
+            state.navChoices = [
+              Engine.generateDimension([]),
+              Engine.generateDimension([Engine.generateDimension([]).id]),
+            ];
+            Engine.transitionTo(GAME_DATA.phases.navigating);
           } else {
             const dest = Engine.generateDimension([]);
             Engine.finalizeJump(dest.id, dest.name);
@@ -1082,10 +1158,7 @@
           }
 
           state.dimId = dimId;
-          state.phase = GAME_DATA.phases.idle;
-
           DOM.locationName.innerText = GAME_DATA.text.formatDimName(dimName);
-
           Engine.log(
             GAME_DATA.text.logLocEnter(
               dimName,
@@ -1093,7 +1166,9 @@
             ),
             GAME_DATA.dom.classes.logSystem,
           );
-          Engine.updateUI();
+
+          Engine.transitionTo(GAME_DATA.phases.idle);
+          Engine.evaluateSurvival();
         },
 
         desperateScavenge: () => {
@@ -1104,6 +1179,7 @@
             GAME_DATA.dom.classes.logDamage,
           );
           Engine.updateUI();
+          Engine.evaluateSurvival();
         },
 
         enforceStateBounds: () => {
@@ -1113,61 +1189,92 @@
             state.energy = Engine.getMaxEnergy();
         },
 
-        determinePhase: () => {
-          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
-            state.phase = GAME_DATA.phases.dead;
-          } else if (
-            state.phase !== GAME_DATA.phases.dead &&
-            state.phase !== GAME_DATA.phases.start &&
-            state.phase !== GAME_DATA.phases.navigating &&
-            !Engine.canSurvive()
-          ) {
-            state.phase = GAME_DATA.phases.stranded;
-          }
+        buildMenuButton: (label, onClick, uiClass, dataActId) => {
+          const btn = document.createElement(GAME_DATA.dom.tags.button);
+          btn.innerText = label;
+          if (uiClass) btn.className = uiClass;
+          if (dataActId) btn.dataset.actId = dataActId;
+          btn.addEventListener(GAME_DATA.dom.events.click, onClick);
+          DOM.encounterChoices.appendChild(btn);
+          return btn;
         },
 
-        lockTerminalState: () => {
-          document
-            .querySelectorAll(GAME_DATA.dom.tags.button)
-            .forEach((b) => (b.disabled = true));
-          DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
-          Engine.log(
-            state.phase === GAME_DATA.phases.dead
-              ? GAME_DATA.text.logDead
-              : GAME_DATA.text.logStranded,
-            GAME_DATA.dom.classes.logDamage,
+        updateActionBtnData: (btn, act) => {
+          const meetsReqsAndAffords = Engine.canAffordAction(act);
+          const reqStrs = [];
+          for (const [rKey, rVal] of Object.entries(act.requires || {})) {
+            reqStrs.push(
+              typeof rVal === "number"
+                ? `Req: ${rVal} ${GAME_DATA.resources[rKey]}`
+                : `Req: ${rVal}`,
+            );
+          }
+          const costStrs = act.consumes.map((rule) =>
+            GAME_DATA.text.formatResVal(
+              Engine.getActualCost(rule),
+              GAME_DATA.resources[rule.res],
+            ),
           );
+          if (act.probability) {
+            costStrs.push(
+              GAME_DATA.text.formatChance(
+                Math.floor(act.probability(state, GAME_DATA.config) * 100),
+              ),
+            );
+          }
+          const prodStrs = (act.produces || []).map((rule) =>
+            GAME_DATA.text.formatResVal(
+              rule.amount(state, GAME_DATA.config),
+              GAME_DATA.resources[rule.res],
+            ),
+          );
+
+          btn.innerText = GAME_DATA.text.formatActionBtn(
+            act.label,
+            costStrs,
+            prodStrs,
+            reqStrs,
+          );
+          btn.disabled = !meetsReqsAndAffords;
         },
 
-        renderNavigation: () => {
-          if (state.phase !== GAME_DATA.phases.navigating) {
-            DOM.navScreen.style.display = GAME_DATA.dom.styles.displayNone;
-            return;
+        updateYardBtnData: (btn, item) => {
+          let label = GAME_DATA.text.yardItemLabelMenu(
+            item.name,
+            item.desc,
+            item.cost,
+          );
+          const currentEq = state[item.type];
+
+          if (currentEq === item.name) {
+            label += `\n${GAME_DATA.text.yardOwned}`;
+            btn.disabled = true;
+          } else {
+            if (currentEq !== GAME_DATA.text.noneState)
+              label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
+            if (state.flux < item.cost) btn.disabled = true;
           }
+          btn.innerText = label;
+        },
 
-          DOM.navScreen.style.display = GAME_DATA.dom.styles.displayFlex;
-          DOM.navChoices.innerHTML = "";
-          state.navChoices.forEach((choice) => {
-            const btn = document.createElement(GAME_DATA.dom.tags.button);
-            btn.className = `${GAME_DATA.dom.classes.btnTravel} ${GAME_DATA.dom.classes.navBtn}`;
-
-            const nameSpan = document.createElement(GAME_DATA.dom.tags.span);
-            nameSpan.className = GAME_DATA.dom.classes.dimName;
-            nameSpan.innerText = GAME_DATA.text.formatDimName(choice.name);
-
-            const typeSpan = document.createElement(GAME_DATA.dom.tags.span);
-            typeSpan.className = GAME_DATA.dom.classes.dimType;
-            typeSpan.innerText = GAME_DATA.text.formatDimType(
-              GAME_DATA.nodes[choice.id].label,
-            );
-
-            btn.appendChild(nameSpan);
-            btn.appendChild(typeSpan);
-            btn.addEventListener(GAME_DATA.dom.events.click, () =>
-              Engine.finalizeJump(choice.id, choice.name),
-            );
-            DOM.navChoices.appendChild(btn);
-          });
+        refreshActiveMenu: () => {
+          if (state.phase === GAME_DATA.phases.encounter) {
+            Array.from(DOM.encounterChoices.children).forEach((btn) => {
+              if (btn.dataset.actId)
+                Engine.updateActionBtnData(
+                  btn,
+                  GAME_DATA.actions[btn.dataset.actId],
+                );
+            });
+          } else if (state.phase === GAME_DATA.phases.yard_category) {
+            Array.from(DOM.encounterChoices.children).forEach((btn) => {
+              if (btn.dataset.yardId)
+                Engine.updateYardBtnData(
+                  btn,
+                  GAME_DATA.yard[btn.dataset.yardId],
+                );
+            });
+          }
         },
 
         renderVitals: () => {
@@ -1208,24 +1315,16 @@
         renderInteractiveControls: () => {
           const travelCost = Engine.getTravelCost();
           const node = GAME_DATA.nodes[state.dimId];
-          const inMenu = [
-            GAME_DATA.phases.encounter,
-            GAME_DATA.phases.yard_root,
-            GAME_DATA.phases.yard_category,
-          ].includes(state.phase);
+          const perms = GAME_DATA.permissions[state.phase];
 
           DOM.btnExplore.innerText = node.isHub
             ? GAME_DATA.text.btnExploreHub(node.exploreCost)
             : GAME_DATA.text.btnExploreClosed(node.exploreCost);
           DOM.btnExplore.disabled =
-            state.energy < node.exploreCost ||
-            inMenu ||
-            state.phase === GAME_DATA.phases.navigating;
+            !perms.explore || state.energy < node.exploreCost;
 
           DOM.btnTravel.innerText = GAME_DATA.text.btnJump(travelCost);
-          DOM.btnTravel.disabled =
-            state.fuel < travelCost ||
-            state.phase === GAME_DATA.phases.navigating;
+          DOM.btnTravel.disabled = !perms.travel || state.fuel < travelCost;
 
           DOM.btnDesperate.innerText = GAME_DATA.text.btnDesperate(
             GAME_DATA.config.DESPERATE_HULL_COST,
@@ -1234,162 +1333,23 @@
           DOM.btnDesperate.style.display =
             state.fuel < travelCost &&
             state.hull > GAME_DATA.config.DESPERATE_HULL_COST &&
-            state.phase !== GAME_DATA.phases.navigating
+            perms.travel
               ? GAME_DATA.dom.styles.displayBlock
               : GAME_DATA.dom.styles.displayNone;
         },
 
-        updateActionButton: (btn, act) => {
-          const meetsReqsAndAffords = Engine.canAffordAction(act);
-          const reqStrs = [];
-
-          for (const [rKey, rVal] of Object.entries(act.requires || {})) {
-            if (typeof rVal === "number")
-              reqStrs.push(`Req: ${rVal} ${GAME_DATA.resources[rKey]}`);
-            else reqStrs.push(`Req: ${rVal}`);
-          }
-
-          const costStrs = act.consumes.map((rule) =>
-            GAME_DATA.text.formatResVal(
-              Engine.getActualCost(rule),
-              GAME_DATA.resources[rule.res],
-            ),
-          );
-
-          if (act.probability) {
-            const winPct = Math.floor(
-              act.probability(state, GAME_DATA.config) * 100,
-            );
-            costStrs.push(GAME_DATA.text.formatChance(winPct));
-          }
-
-          const prodStrs = (act.produces || []).map((rule) =>
-            GAME_DATA.text.formatResVal(
-              rule.amount(state, GAME_DATA.config),
-              GAME_DATA.resources[rule.res],
-            ),
-          );
-
-          btn.innerText = GAME_DATA.text.formatActionBtn(
-            act.label,
-            costStrs,
-            prodStrs,
-            reqStrs,
-          );
-          btn.disabled = !meetsReqsAndAffords;
-        },
-
-        updateYardButton: (btn, item) => {
-          let label = GAME_DATA.text.yardItemLabelMenu(
-            item.name,
-            item.desc,
-            item.cost,
-          );
-          const currentEq = state[item.type];
-
-          if (currentEq === item.name) {
-            label += `\n${GAME_DATA.text.yardOwned}`;
-            btn.disabled = true;
-          } else {
-            if (currentEq !== GAME_DATA.text.noneState) {
-              label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
-            }
-            if (state.flux < item.cost) {
-              btn.disabled = true;
-            }
-          }
-          btn.innerText = label;
-        },
-
-        buildMenuButton: (label, onClick, uiClass) => {
-          const btn = document.createElement(GAME_DATA.dom.tags.button);
-          btn.innerText = label;
-          if (uiClass) btn.className = uiClass;
-          btn.addEventListener(GAME_DATA.dom.events.click, onClick);
-          DOM.encounterChoices.appendChild(btn);
-          return btn;
-        },
-
-        navYard: (target) => {
-          if (target === "leave") {
-            state.phase = GAME_DATA.phases.encounter;
-          } else if (target === "back") {
-            state.phase = GAME_DATA.phases.yard_root;
-          } else {
-            state.phase = GAME_DATA.phases.yard_category;
-            state.yardCat = target;
-          }
-          Engine.updateUI();
-        },
-
-        buyYardItem: (item) => {
-          if (state.flux >= item.cost) {
-            state.flux -= item.cost;
-            state[item.type] = item.name;
-            Engine.log(
-              GAME_DATA.text.logYardPurchase(item.name),
-              GAME_DATA.dom.classes.logSuccess,
-            );
-            Engine.updateUI();
-          }
-        },
-
-        renderMenus: () => {
-          DOM.encounterChoices.innerHTML = "";
-
-          if (state.phase === GAME_DATA.phases.encounter) {
-            GAME_DATA.nodes[state.dimId].actions.forEach((actId) => {
-              const act = GAME_DATA.actions[actId];
-              const btn = Engine.buildMenuButton(
-                "",
-                () => Engine.executeAction(actId),
-                act.uiClass,
-              );
-              if (!act.isMenu) Engine.updateActionButton(btn, act);
-              else btn.innerText = act.label;
-            });
-          } else if (state.phase === GAME_DATA.phases.yard_root) {
-            Engine.buildMenuButton(GAME_DATA.text.btnYardModules, () =>
-              Engine.navYard("module"),
-            );
-            Engine.buildMenuButton(GAME_DATA.text.btnYardCarriages, () =>
-              Engine.navYard("carriage"),
-            );
-            Engine.buildMenuButton(GAME_DATA.text.btnYardCrew, () =>
-              Engine.navYard("crew"),
-            );
-            Engine.buildMenuButton(
-              GAME_DATA.text.btnYardLeave,
-              () => Engine.navYard("leave"),
-              GAME_DATA.dom.classes.btnDesperate,
-            );
-          } else if (state.phase === GAME_DATA.phases.yard_category) {
-            Object.values(GAME_DATA.yard)
-              .filter((i) => i.type === state.yardCat)
-              .forEach((item) => {
-                const btn = Engine.buildMenuButton("", () =>
-                  Engine.buyYardItem(item),
-                );
-                Engine.updateYardButton(btn, item);
-              });
-            Engine.buildMenuButton(
-              GAME_DATA.text.btnYardBack,
-              () => Engine.navYard("back"),
-              GAME_DATA.dom.classes.btnTravel,
-            );
-          }
-        },
-
         renderForge: () => {
           const fEngCost = Engine.getForgeCost(state.engineTier);
+          const perms = GAME_DATA.permissions[state.phase];
+
           DOM.btnForgeEng.innerText =
             state.engineTier >= GAME_DATA.config.MAX_TIER
               ? GAME_DATA.text.btnApexEngine
               : GAME_DATA.text.btnForgeEngine(fEngCost);
           DOM.btnForgeEng.disabled =
+            !perms.forge ||
             state.flux < fEngCost ||
-            state.engineTier >= GAME_DATA.config.MAX_TIER ||
-            state.phase === GAME_DATA.phases.navigating;
+            state.engineTier >= GAME_DATA.config.MAX_TIER;
 
           const fWpnCost = Engine.getForgeCost(state.weaponTier);
           DOM.btnForgeWpn.innerText =
@@ -1397,28 +1357,18 @@
               ? GAME_DATA.text.btnApexWeapon
               : GAME_DATA.text.btnForgeWeapon(fWpnCost);
           DOM.btnForgeWpn.disabled =
+            !perms.forge ||
             state.flux < fWpnCost ||
-            state.weaponTier >= GAME_DATA.config.MAX_TIER ||
-            state.phase === GAME_DATA.phases.navigating;
+            state.weaponTier >= GAME_DATA.config.MAX_TIER;
         },
 
         updateUI: () => {
           Engine.enforceStateBounds();
-          Engine.determinePhase();
-
-          if (
-            state.phase === GAME_DATA.phases.dead ||
-            state.phase === GAME_DATA.phases.stranded
-          ) {
-            Engine.lockTerminalState();
-            return;
-          }
-
-          Engine.renderNavigation();
           Engine.renderVitals();
           Engine.renderInteractiveControls();
-          Engine.renderMenus();
           Engine.renderForge();
+          Engine.refreshActiveMenu();
+          Engine.assertInvariants(); // Ensure the render did not violate state rules
         },
 
         cacheDOM: () => {
@@ -1434,32 +1384,6 @@
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
         },
 
-        handleForgeEngine: () => {
-          const c = Engine.getForgeCost(state.engineTier);
-          if (state.flux >= c) {
-            state.flux -= c;
-            state.engineTier++;
-            state.energy++;
-            Engine.updateUI();
-          }
-        },
-
-        handleForgeWeapon: () => {
-          const c = Engine.getForgeCost(state.weaponTier);
-          if (state.flux >= c) {
-            state.flux -= c;
-            state.weaponTier++;
-            Engine.updateUI();
-          }
-        },
-
-        handleIgnite: () => {
-          DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
-          DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayGrid;
-          state.phase = GAME_DATA.phases.idle;
-          Engine.updateUI();
-        },
-
         bindEvents: () => {
           DOM.btnExplore.addEventListener(
             GAME_DATA.dom.events.click,
@@ -1473,24 +1397,149 @@
             GAME_DATA.dom.events.click,
             Engine.desperateScavenge,
           );
-          DOM.btnForgeEng.addEventListener(
-            GAME_DATA.dom.events.click,
-            Engine.handleForgeEngine,
-          );
-          DOM.btnForgeWpn.addEventListener(
-            GAME_DATA.dom.events.click,
-            Engine.handleForgeWeapon,
-          );
-          DOM.btnIgnite.addEventListener(
-            GAME_DATA.dom.events.click,
-            Engine.handleIgnite,
-          );
+
+          DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
+            if (state.flux >= Engine.getForgeCost(state.engineTier)) {
+              state.flux -= Engine.getForgeCost(state.engineTier);
+              state.engineTier++;
+              state.energy++;
+              Engine.updateUI();
+            }
+          });
+
+          DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
+            if (state.flux >= Engine.getForgeCost(state.weaponTier)) {
+              state.flux -= Engine.getForgeCost(state.weaponTier);
+              state.weaponTier++;
+              Engine.updateUI();
+            }
+          });
+
+          DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
+            DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
+            DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayGrid;
+            Engine.transitionTo(GAME_DATA.phases.idle);
+          });
         },
 
         init: () => {
+          Engine.verifyGraphIntegrity(); // Boot-time mathematical verification
           Engine.cacheDOM();
           Engine.setupStaticText();
           Engine.bindEvents();
+        },
+      };
+
+      const StateHooks = {
+        ENCOUNTER: {
+          onEnter: () => {
+            GAME_DATA.nodes[state.dimId].actions.forEach((actId) => {
+              const act = GAME_DATA.actions[actId];
+              const btn = Engine.buildMenuButton(
+                "",
+                () => Engine.executeAction(actId),
+                act.uiClass,
+                actId,
+              );
+              if (act.isMenu) btn.innerText = act.label;
+            });
+          },
+          onExit: () => (DOM.encounterChoices.innerHTML = ""),
+        },
+        YARD_ROOT: {
+          onEnter: () => {
+            Engine.buildMenuButton(GAME_DATA.text.btnYardModules, () => {
+              state.yardCat = "module";
+              Engine.transitionTo(GAME_DATA.phases.yard_category);
+            });
+            Engine.buildMenuButton(GAME_DATA.text.btnYardCarriages, () => {
+              state.yardCat = "carriage";
+              Engine.transitionTo(GAME_DATA.phases.yard_category);
+            });
+            Engine.buildMenuButton(GAME_DATA.text.btnYardCrew, () => {
+              state.yardCat = "crew";
+              Engine.transitionTo(GAME_DATA.phases.yard_category);
+            });
+            Engine.buildMenuButton(
+              GAME_DATA.text.btnYardLeave,
+              () => Engine.transitionTo(GAME_DATA.phases.encounter),
+              GAME_DATA.dom.classes.btnDesperate,
+            );
+          },
+          onExit: () => (DOM.encounterChoices.innerHTML = ""),
+        },
+        YARD_CATEGORY: {
+          onEnter: () => {
+            Object.entries(GAME_DATA.yard)
+              .filter(([_, i]) => i.type === state.yardCat)
+              .forEach(([k, item]) => {
+                const btn = Engine.buildMenuButton("", () => {
+                  if (state.flux >= item.cost) {
+                    state.flux -= item.cost;
+                    state[item.type] = item.name;
+                    Engine.log(
+                      GAME_DATA.text.logYardPurchase(item.name),
+                      GAME_DATA.dom.classes.logSuccess,
+                    );
+                    Engine.updateUI();
+                  }
+                });
+                btn.dataset.yardId = k;
+              });
+            Engine.buildMenuButton(
+              GAME_DATA.text.btnYardBack,
+              () => Engine.transitionTo(GAME_DATA.phases.yard_root),
+              GAME_DATA.dom.classes.btnTravel,
+            );
+          },
+          onExit: () => (DOM.encounterChoices.innerHTML = ""),
+        },
+        NAVIGATING: {
+          onEnter: () => {
+            DOM.navScreen.style.display = GAME_DATA.dom.styles.displayFlex;
+            DOM.navChoices.innerHTML = "";
+            state.navChoices.forEach((choice) => {
+              const btn = document.createElement(GAME_DATA.dom.tags.button);
+              btn.className = `${GAME_DATA.dom.classes.btnTravel} ${GAME_DATA.dom.classes.navBtn}`;
+              const nameSpan = document.createElement(GAME_DATA.dom.tags.span);
+              nameSpan.className = GAME_DATA.dom.classes.dimName;
+              nameSpan.innerText = GAME_DATA.text.formatDimName(choice.name);
+              const typeSpan = document.createElement(GAME_DATA.dom.tags.span);
+              typeSpan.className = GAME_DATA.dom.classes.dimType;
+              typeSpan.innerText = GAME_DATA.text.formatDimType(
+                GAME_DATA.nodes[choice.id].label,
+              );
+              btn.appendChild(nameSpan);
+              btn.appendChild(typeSpan);
+              btn.addEventListener(GAME_DATA.dom.events.click, () =>
+                Engine.finalizeJump(choice.id, choice.name),
+              );
+              DOM.navChoices.appendChild(btn);
+            });
+          },
+          onExit: () =>
+            (DOM.navScreen.style.display = GAME_DATA.dom.styles.displayNone),
+        },
+        DEAD: {
+          onEnter: () => {
+            document
+              .querySelectorAll(GAME_DATA.dom.tags.button)
+              .forEach((b) => (b.disabled = true));
+            DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
+            Engine.log(GAME_DATA.text.logDead, GAME_DATA.dom.classes.logDamage);
+          },
+        },
+        STRANDED: {
+          onEnter: () => {
+            document
+              .querySelectorAll(GAME_DATA.dom.tags.button)
+              .forEach((b) => (b.disabled = true));
+            DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
+            Engine.log(
+              GAME_DATA.text.logStranded,
+              GAME_DATA.dom.classes.logDamage,
+            );
+          },
         },
       };
 
