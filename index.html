@@ -205,7 +205,6 @@
         filter: grayscale(100%);
       }
 
-      /* Navigation Interstitial Styles */
       #nav-screen {
         position: fixed;
         top: 0;
@@ -304,7 +303,6 @@
       <button class="btn-start" id="btn-ignite"></button>
     </div>
 
-    <!-- Navigation Interstitial Overlay -->
     <div id="nav-screen">
       <h1 id="lbl-nav-title"></h1>
       <div id="nav-choices"></div>
@@ -387,12 +385,8 @@
       // Global DOM Cache to prevent constant repaints/lookups
       let DOM = {};
 
-      // ==========================================
-      // SEMANTIC GAME DATA
-      // ==========================================
       const GAME_DATA = {
         config: {
-          // System Thresholds & Base Values
           MAX_HULL: 100,
           START_FUEL: 40,
           START_ENERGY: 2,
@@ -403,20 +397,17 @@
           MIN_FLUX_TO_BUY_FUEL: 20,
           NAV_CHOICES_COUNT: 2,
 
-          // Travel & Forging Mechanics
           TRAVEL_BASE_FUEL_COST: 15,
           TRAVEL_TIER_MULT: 10,
           FORGE_BASE_FLUX_COST: 75,
           DESPERATE_HULL_COST: 10,
           DESPERATE_FUEL_YIELD: 20,
 
-          // Passive Modifiers
           EXO_DMG_MULT: 0.7,
           GREENHOUSE_FUEL_YIELD: 8,
           GOBLIN_HULL_YIELD: 5,
           ORC_WPN_BONUS: 1,
 
-          // Encounter Balance Values
           HUNT_WPN_MULT: 0.2,
 
           HUNT_SOLITARY_ENERGY: 1,
@@ -433,6 +424,7 @@
           HUNT_DEEP_FLUX: 90,
           HUNT_DEEP_FUEL: 25,
           HUNT_DEEP_HULL_DMG: 40,
+          HUNT_DEEP_WPN_REQ: 2,
 
           RES_SIPHON_ENERGY: 1,
           RES_SIPHON_FUEL: 25,
@@ -462,7 +454,6 @@
           HUB_HARD_FLUX_YIELD: 100,
         },
 
-        // Keys map to string representations
         resources: {
           hull: "Hull",
           fuel: "Fuel",
@@ -548,7 +539,6 @@
           tags: { div: "div", span: "span", button: "button" },
         },
 
-        // Formatters handle all string interpolation
         text: {
           initLog:
             "The Crucible Engine hums to life. The tracks stretch into infinity.",
@@ -557,13 +547,11 @@
           lblNavTitle: "Select Dimensional Trajectory",
           btnIgnite: "Ignite the Crucible Engine",
           noneState: "None",
-
           formatTier: (val) => `Tier ${val}`,
           formatPct: (val) => `${val}%`,
           formatStatPair: (val, max) => `${val} / ${max}`,
           formatDimName: (name) => `Dimension: The ${name}`,
           formatDimType: (type) => `Type: ${type}`,
-
           btnExploreClosed: (cost) => `Explore (-${cost} EN)`,
           btnExploreHub: (cost) => `Open Docking Bay (-${cost} EN)`,
           btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
@@ -573,10 +561,8 @@
           btnForgeWeapon: (cost) => `Mutate Weapon (${cost} Flux)`,
           btnApexEngine: "Apex Engine",
           btnApexWeapon: "Apex Weapon",
-
           yardItemLabel: (name, desc) => `${name} (${desc})`,
           yardItemCost: (cost) => `${cost} Flux`,
-
           logLocEnter: (name, label) =>
             `Rift Jump complete. Arrived at The ${name}: ${label}`,
           logEncounterTitle: (label, desc) => `<b>${label}:</b> ${desc}`,
@@ -591,7 +577,6 @@
           logStranded:
             "STRANDED IN THE VOID. No fuel, no salvageable hull, and the engine is dead. Refresh to restart.",
           logInsuffEnergy: "Insufficient Energy to perform this action.",
-
           formatActionBtn: (label, costStrs, prodStrs, reqStrs = []) => {
             const costs = costStrs.length ? `-${costStrs.join(", -")}` : "";
             const prods = prodStrs.length ? `+${prodStrs.join(", +")}` : "";
@@ -623,13 +608,12 @@
           ],
         },
 
-        // Node Types mapping
         nodes: {
           hub: {
             id: "hub",
             label: "Mission Hub",
             desc: "A trading post on the edge of reality. Open the bay to negotiate.",
-            exploreCost: 1, // Hub exploration now costs energy to initiate interactions
+            exploreCost: 1,
             prob: 20,
             isHub: true,
             actions: [
@@ -708,10 +692,6 @@
         },
       };
 
-      // Action Interface Definition
-      // requires: map of requirements { stateKey: requiredValue }
-      // consumes: array of { res: resourceKey, amount: function(state, config) }
-      // produces: array of { res: resourceKey, amount: function(state, config) }
       GAME_DATA.actions = {
         res_siphon: {
           label: "Siphon Gases",
@@ -776,8 +756,6 @@
           logSuccess:
             "Safely navigated anomalies to extract an Eldritch Artifact.",
         },
-
-        // HUNT ACTIONS
         hunt_solitary: {
           label: "Hunt Solitary Beast",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
@@ -815,7 +793,7 @@
         hunt_deep: {
           label: "Hunt Apex Predators",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
-          requires: { weaponTier: 2 },
+          requires: { weaponTier: GAME_DATA.config.HUNT_DEEP_WPN_REQ },
           probability: (s, c) =>
             c.HUNT_DEEP_WIN_RATE +
             (s.weaponTier +
@@ -834,8 +812,6 @@
           logFail:
             "The apex predators breached the hull! Heavy damage sustained.",
         },
-
-        // HUB ACTIONS
         hub_rest: {
           label: "Dock Repairs",
           isHub: true,
@@ -873,9 +849,6 @@
         },
       };
 
-      // ==========================================
-      // ENGINE STATE
-      // ==========================================
       let state = {
         phase: GAME_DATA.phases.start,
         hull: GAME_DATA.config.MAX_HULL,
@@ -892,9 +865,6 @@
         navChoices: [],
       };
 
-      // ==========================================
-      // ENGINE CORE
-      // ==========================================
       const Engine = {
         getMaxEnergy: () => GAME_DATA.config.START_ENERGY + state.engineTier,
         getTravelCost: () =>
@@ -913,6 +883,12 @@
           return rawAmount;
         },
 
+        getActualCost: (rule) =>
+          Engine.applyMitigation(
+            rule.res,
+            rule.amount(state, GAME_DATA.config),
+          ),
+
         log: (msg, styleClass) => {
           const div = document.createElement(GAME_DATA.dom.tags.div);
           div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
@@ -928,75 +904,62 @@
           if (state.hull > GAME_DATA.config.DESPERATE_HULL_COST) return true;
 
           const node = GAME_DATA.nodes[state.dimId];
+          if (state.energy >= node.exploreCost) return true;
 
-          // If we have energy to explore, there's still a chance
-          if (state.energy >= node.exploreCost) {
-            return true;
-          }
-
-          // If we are currently IN an encounter, check active choices
           if (state.phase === GAME_DATA.phases.encounter) {
-            for (const actId of node.actions) {
-              const act = GAME_DATA.actions[actId];
-              let canAfford = true;
-              for (const [rKey, rVal] of Object.entries(act.requires || {})) {
-                if (
-                  state[rKey] < rVal ||
-                  (typeof rVal === "string" && state[rKey] !== rVal)
-                )
-                  canAfford = false;
-              }
-              for (const rule of act.consumes) {
-                if (
-                  state[rule.res] <
-                  Engine.applyMitigation(
-                    rule.res,
-                    rule.amount(state, GAME_DATA.config),
-                  )
-                )
-                  canAfford = false;
-              }
-              if (canAfford) return true;
-            }
+            return node.actions.some((actId) =>
+              Engine.canAffordAction(GAME_DATA.actions[actId]),
+            );
           }
-
           return false;
         },
 
-        executeAction: (actId, btnRef) => {
-          const act = GAME_DATA.actions[actId];
-
-          // Deduct consumes
-          for (const rule of act.consumes) {
-            const amount = Engine.applyMitigation(
-              rule.res,
-              rule.amount(state, GAME_DATA.config),
-            );
-            state[rule.res] -= amount;
+        canAffordAction: (act) => {
+          for (const [rKey, rVal] of Object.entries(act.requires || {})) {
+            if (
+              state[rKey] < rVal ||
+              (typeof rVal === "string" && state[rKey] !== rVal)
+            )
+              return false;
           }
+          for (const rule of act.consumes) {
+            if (state[rule.res] < Engine.getActualCost(rule)) return false;
+          }
+          return true;
+        },
 
-          // Combat/Probability resolution
-          let success = true;
-          if (
-            act.probability &&
-            Math.random() > act.probability(state, GAME_DATA.config)
-          )
-            success = false;
+        processActionCosts: (act) => {
+          for (const rule of act.consumes) {
+            state[rule.res] -= Engine.getActualCost(rule);
+          }
+        },
 
-          if (success && act.produces) {
-            for (const rule of act.produces) {
-              state[rule.res] += rule.amount(state, GAME_DATA.config);
-              if (rule.res === "hull" && state.hull > GAME_DATA.config.MAX_HULL)
-                state.hull = GAME_DATA.config.MAX_HULL;
-            }
-          } else if (!success && act.failConsumes) {
-            for (const rule of act.failConsumes) {
-              const amount = Engine.applyMitigation(
-                rule.res,
-                rule.amount(state, GAME_DATA.config),
-              );
-              state[rule.res] -= amount;
-            }
+        processActionYields: (rules) => {
+          if (!rules) return;
+          for (const rule of rules) {
+            state[rule.res] += rule.amount(state, GAME_DATA.config);
+          }
+        },
+
+        processActionFailConsumes: (rules) => {
+          if (!rules) return;
+          for (const rule of rules) {
+            state[rule.res] -= Engine.getActualCost(rule);
+          }
+        },
+
+        executeAction: (actId) => {
+          const act = GAME_DATA.actions[actId];
+          Engine.processActionCosts(act);
+
+          const success =
+            !act.probability ||
+            Math.random() <= act.probability(state, GAME_DATA.config);
+
+          if (success) {
+            Engine.processActionYields(act.produces);
+          } else {
+            Engine.processActionFailConsumes(act.failConsumes);
           }
 
           Engine.log(
@@ -1006,7 +969,6 @@
               : GAME_DATA.dom.classes.logDamage,
           );
 
-          // State Machine: action complete -> checks and updates -> idle node
           DOM.encounterChoices.innerHTML = "";
           if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD) {
             state.phase = GAME_DATA.phases.idle;
@@ -1017,7 +979,6 @@
 
         exploreNode: () => {
           const node = GAME_DATA.nodes[state.dimId];
-
           if (state.energy < node.exploreCost) return;
           state.energy -= node.exploreCost;
 
@@ -1029,17 +990,17 @@
             GAME_DATA.dom.classes.logEvent,
           );
 
-          // Generate DOM Elements purely for linking ID - dynamic text occurs in updateUI
           for (const actId of node.actions) {
             const act = GAME_DATA.actions[actId];
             const btn = document.createElement(GAME_DATA.dom.tags.button);
             btn.dataset.actId = actId;
             if (act.uiClass) btn.className = act.uiClass;
             btn.addEventListener(GAME_DATA.dom.events.click, () =>
-              Engine.executeAction(actId, btn),
+              Engine.executeAction(actId),
             );
             DOM.encounterChoices.appendChild(btn);
           }
+
           Engine.updateUI();
         },
 
@@ -1058,6 +1019,7 @@
           let availableNodes = Object.values(GAME_DATA.nodes).filter(
             (n) => !excludedIds.includes(n.id),
           );
+
           // Fallback if somehow we exclude everything
           if (availableNodes.length === 0) {
             availableNodes = Object.values(GAME_DATA.nodes);
@@ -1083,21 +1045,16 @@
           const cost = Engine.getTravelCost();
           if (state.fuel < cost) return;
 
-          // Deduct travel fuel immediately
+          // Deduct travel fuel immediately to reflect irreversible state before rendering jump choices
           state.fuel -= cost;
 
-          // Check for Routing unlocking Module
           if (state.module === GAME_DATA.yard.astro.name) {
             state.phase = GAME_DATA.phases.navigating;
-
-            // Generate distinct choices
             const choice1 = Engine.generateDimension([]);
             const choice2 = Engine.generateDimension([choice1.id]);
-
             state.navChoices = [choice1, choice2];
             Engine.updateUI();
           } else {
-            // Standard blind jump
             const dest = Engine.generateDimension([]);
             Engine.finalizeJump(dest.id, dest.name);
           }
@@ -1106,7 +1063,6 @@
         finalizeJump: (dimId, dimName) => {
           state.energy = Engine.getMaxEnergy();
 
-          // Evaluate passives
           if (state.carriage === GAME_DATA.yard.green.name) {
             state.fuel += GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
             Engine.log(
@@ -1157,16 +1113,14 @@
           Engine.updateUI();
         },
 
-        updateUI: () => {
-          // Sync bounds
+        enforceStateBounds: () => {
           if (state.hull > GAME_DATA.config.MAX_HULL)
             state.hull = GAME_DATA.config.MAX_HULL;
           if (state.energy > Engine.getMaxEnergy())
             state.energy = Engine.getMaxEnergy();
+        },
 
-          const travelCost = Engine.getTravelCost();
-
-          // Phase Checks (Abstracted into canSurvive heuristic)
+        determinePhase: () => {
           if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
             state.phase = GAME_DATA.phases.dead;
           } else if (
@@ -1177,38 +1131,53 @@
           ) {
             state.phase = GAME_DATA.phases.stranded;
           }
+        },
 
-          // Handle Navigation Screen
-          if (state.phase === GAME_DATA.phases.navigating) {
-            DOM.navScreen.style.display = GAME_DATA.dom.styles.displayFlex;
-            DOM.navChoices.innerHTML = "";
-            state.navChoices.forEach((choice) => {
-              const btn = document.createElement(GAME_DATA.dom.tags.button);
-              btn.className = `${GAME_DATA.dom.classes.btnTravel} ${GAME_DATA.dom.classes.navBtn}`;
+        lockTerminalState: () => {
+          document
+            .querySelectorAll(GAME_DATA.dom.tags.button)
+            .forEach((b) => (b.disabled = true));
+          DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
+          Engine.log(
+            state.phase === GAME_DATA.phases.dead
+              ? GAME_DATA.text.logDead
+              : GAME_DATA.text.logStranded,
+            GAME_DATA.dom.classes.logDamage,
+          );
+        },
 
-              const nameSpan = document.createElement(GAME_DATA.dom.tags.span);
-              nameSpan.className = GAME_DATA.dom.classes.dimName;
-              nameSpan.innerText = GAME_DATA.text.formatDimName(choice.name);
-
-              const typeSpan = document.createElement(GAME_DATA.dom.tags.span);
-              typeSpan.className = GAME_DATA.dom.classes.dimType;
-              typeSpan.innerText = GAME_DATA.text.formatDimType(
-                GAME_DATA.nodes[choice.id].label,
-              );
-
-              btn.appendChild(nameSpan);
-              btn.appendChild(typeSpan);
-
-              btn.addEventListener(GAME_DATA.dom.events.click, () => {
-                Engine.finalizeJump(choice.id, choice.name);
-              });
-              DOM.navChoices.appendChild(btn);
-            });
-          } else {
+        renderNavigation: () => {
+          if (state.phase !== GAME_DATA.phases.navigating) {
             DOM.navScreen.style.display = GAME_DATA.dom.styles.displayNone;
+            return;
           }
 
-          // Update Vitals Text
+          DOM.navScreen.style.display = GAME_DATA.dom.styles.displayFlex;
+          DOM.navChoices.innerHTML = "";
+          state.navChoices.forEach((choice) => {
+            const btn = document.createElement(GAME_DATA.dom.tags.button);
+            btn.className = `${GAME_DATA.dom.classes.btnTravel} ${GAME_DATA.dom.classes.navBtn}`;
+
+            const nameSpan = document.createElement(GAME_DATA.dom.tags.span);
+            nameSpan.className = GAME_DATA.dom.classes.dimName;
+            nameSpan.innerText = GAME_DATA.text.formatDimName(choice.name);
+
+            const typeSpan = document.createElement(GAME_DATA.dom.tags.span);
+            typeSpan.className = GAME_DATA.dom.classes.dimType;
+            typeSpan.innerText = GAME_DATA.text.formatDimType(
+              GAME_DATA.nodes[choice.id].label,
+            );
+
+            btn.appendChild(nameSpan);
+            btn.appendChild(typeSpan);
+            btn.addEventListener(GAME_DATA.dom.events.click, () =>
+              Engine.finalizeJump(choice.id, choice.name),
+            );
+            DOM.navChoices.appendChild(btn);
+          });
+        },
+
+        renderVitals: () => {
           DOM.statHull.innerText = GAME_DATA.text.formatPct(
             Math.floor(state.hull),
           );
@@ -1229,44 +1198,27 @@
             GAME_DATA.nodes[state.dimId].label,
           );
 
-          // Color Alerts
           DOM.statHull.style.color =
             state.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
               ? GAME_DATA.dom.styles.colorAccent
               : GAME_DATA.dom.styles.colorSuccess;
           DOM.statFuel.style.color =
-            state.fuel < travelCost
+            state.fuel < Engine.getTravelCost()
               ? GAME_DATA.dom.styles.colorAccent
               : GAME_DATA.dom.styles.colorAction;
           DOM.statEnergy.style.color =
             state.energy === 0
               ? GAME_DATA.dom.styles.colorAccent
               : GAME_DATA.dom.styles.colorEnergy;
+        },
 
-          // Terminal State Lock
-          if (
-            state.phase === GAME_DATA.phases.dead ||
-            state.phase === GAME_DATA.phases.stranded
-          ) {
-            document
-              .querySelectorAll(GAME_DATA.dom.tags.button)
-              .forEach((b) => (b.disabled = true));
-            DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
-            Engine.log(
-              state.phase === GAME_DATA.phases.dead
-                ? GAME_DATA.text.logDead
-                : GAME_DATA.text.logStranded,
-              GAME_DATA.dom.classes.logDamage,
-            );
-            return;
-          }
-
-          // Interactive Controls
+        renderInteractiveControls: () => {
+          const travelCost = Engine.getTravelCost();
           const node = GAME_DATA.nodes[state.dimId];
+
           DOM.btnExplore.innerText = node.isHub
             ? GAME_DATA.text.btnExploreHub(node.exploreCost)
             : GAME_DATA.text.btnExploreClosed(node.exploreCost);
-
           DOM.btnExplore.disabled =
             state.energy < node.exploreCost ||
             state.phase === GAME_DATA.phases.encounter ||
@@ -1287,71 +1239,60 @@
             state.phase !== GAME_DATA.phases.navigating
               ? GAME_DATA.dom.styles.displayBlock
               : GAME_DATA.dom.styles.displayNone;
+        },
 
-          // True Reactive Rendering for Encounter Choices
-          if (state.phase === GAME_DATA.phases.encounter) {
-            Array.from(DOM.encounterChoices.children).forEach((btn) => {
-              if (!btn.dataset.actId) return;
+        updateActionButton: (btn, act) => {
+          const meetsReqsAndAffords = Engine.canAffordAction(act);
+          const reqStrs = [];
 
-              const act = GAME_DATA.actions[btn.dataset.actId];
-              let meetsReqs = true,
-                canAfford = true;
-              let costStrs = [],
-                prodStrs = [],
-                reqStrs = [];
-
-              // Calculate Reqs & Consumes dynamically for accurate UI
-              for (const [reqKey, reqVal] of Object.entries(
-                act.requires || {},
-              )) {
-                if (
-                  state[reqKey] < reqVal ||
-                  (typeof reqVal === "string" && state[reqKey] !== reqVal)
-                )
-                  meetsReqs = false;
-                if (typeof reqVal === "number")
-                  reqStrs.push(`Req: ${reqVal} ${GAME_DATA.resources[reqKey]}`);
-                else reqStrs.push(`Req: ${reqVal}`);
-              }
-              for (const rule of act.consumes) {
-                const amount = Engine.applyMitigation(
-                  rule.res,
-                  rule.amount(state, GAME_DATA.config),
-                );
-                if (state[rule.res] < amount) canAfford = false;
-                costStrs.push(
-                  GAME_DATA.text.formatResVal(
-                    amount,
-                    GAME_DATA.resources[rule.res],
-                  ),
-                );
-              }
-              if (act.probability) {
-                const winPct = Math.floor(
-                  act.probability(state, GAME_DATA.config) * 100,
-                );
-                costStrs.push(GAME_DATA.text.formatChance(winPct));
-              }
-              for (const rule of act.produces || []) {
-                prodStrs.push(
-                  GAME_DATA.text.formatResVal(
-                    rule.amount(state, GAME_DATA.config),
-                    GAME_DATA.resources[rule.res],
-                  ),
-                );
-              }
-
-              btn.innerText = GAME_DATA.text.formatActionBtn(
-                act.label,
-                costStrs,
-                prodStrs,
-                reqStrs,
-              );
-              btn.disabled = !meetsReqs || !canAfford;
-            });
+          for (const [rKey, rVal] of Object.entries(act.requires || {})) {
+            if (typeof rVal === "number")
+              reqStrs.push(`Req: ${rVal} ${GAME_DATA.resources[rKey]}`);
+            else reqStrs.push(`Req: ${rVal}`);
           }
 
-          // Forge UI
+          const costStrs = act.consumes.map((rule) =>
+            GAME_DATA.text.formatResVal(
+              Engine.getActualCost(rule),
+              GAME_DATA.resources[rule.res],
+            ),
+          );
+
+          if (act.probability) {
+            const winPct = Math.floor(
+              act.probability(state, GAME_DATA.config) * 100,
+            );
+            costStrs.push(GAME_DATA.text.formatChance(winPct));
+          }
+
+          const prodStrs = (act.produces || []).map((rule) =>
+            GAME_DATA.text.formatResVal(
+              rule.amount(state, GAME_DATA.config),
+              GAME_DATA.resources[rule.res],
+            ),
+          );
+
+          btn.innerText = GAME_DATA.text.formatActionBtn(
+            act.label,
+            costStrs,
+            prodStrs,
+            reqStrs,
+          );
+          btn.disabled = !meetsReqsAndAffords;
+        },
+
+        renderEncounterChoices: () => {
+          if (state.phase !== GAME_DATA.phases.encounter) return;
+          Array.from(DOM.encounterChoices.children).forEach((btn) => {
+            if (!btn.dataset.actId) return;
+            Engine.updateActionButton(
+              btn,
+              GAME_DATA.actions[btn.dataset.actId],
+            );
+          });
+        },
+
+        renderForgeAndYard: () => {
           const fEngCost = Engine.getForgeCost(state.engineTier);
           DOM.btnForgeEng.innerText =
             state.engineTier >= GAME_DATA.config.MAX_TIER
@@ -1372,10 +1313,12 @@
             state.weaponTier >= GAME_DATA.config.MAX_TIER ||
             state.phase === GAME_DATA.phases.navigating;
 
-          // Yard UI
-          DOM.yardItems.parentElement.style.display = node.isHub
+          DOM.yardItems.parentElement.style.display = GAME_DATA.nodes[
+            state.dimId
+          ].isHub
             ? GAME_DATA.dom.styles.displayBlock
             : GAME_DATA.dom.styles.displayNone;
+
           for (const k of Object.keys(GAME_DATA.yard)) {
             const btn = document.getElementById(k);
             if (btn)
@@ -1385,8 +1328,26 @@
           }
         },
 
+        updateUI: () => {
+          Engine.enforceStateBounds();
+          Engine.determinePhase();
+
+          if (
+            state.phase === GAME_DATA.phases.dead ||
+            state.phase === GAME_DATA.phases.stranded
+          ) {
+            Engine.lockTerminalState();
+            return;
+          }
+
+          Engine.renderNavigation();
+          Engine.renderVitals();
+          Engine.renderInteractiveControls();
+          Engine.renderEncounterChoices();
+          Engine.renderForgeAndYard();
+        },
+
         init: () => {
-          // Cache DOM selectively
           DOM = {
             storyLog: document.getElementById(GAME_DATA.dom.ids.storyLog),
             locationName: document.getElementById(
@@ -1435,7 +1396,6 @@
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
 
-          // Generate Yard HTML dynamically
           for (const [key, obj] of Object.entries(GAME_DATA.yard)) {
             const d = document.createElement(GAME_DATA.dom.tags.div);
             d.className = GAME_DATA.dom.classes.yardItem;
@@ -1456,7 +1416,6 @@
             DOM.yardItems.appendChild(d);
           }
 
-          // Binds
           DOM.btnExplore.addEventListener(
             GAME_DATA.dom.events.click,
             Engine.exploreNode,
@@ -1475,7 +1434,8 @@
             if (state.flux >= c) {
               state.flux -= c;
               state.engineTier++;
-              state.energy++; // Immediately grant the energy cap to prevent softlocks
+              // Immediately grant the energy cap to prevent softlocks
+              state.energy++;
               Engine.updateUI();
             }
           });
