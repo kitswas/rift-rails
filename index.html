@@ -124,6 +124,8 @@
         margin-bottom: 8px;
         text-transform: uppercase;
         transition: 0.2s;
+        white-space: pre-wrap;
+        line-height: 1.4;
       }
       button:hover:not(:disabled) {
         background-color: var(--border);
@@ -186,18 +188,6 @@
         flex-direction: column;
         border-top: 1px dashed var(--border);
         padding-top: 15px;
-      }
-      .yard-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #222;
-        padding: 5px 0;
-      }
-      .yard-item button {
-        width: auto;
-        padding: 5px 10px;
-        margin: 0;
       }
       .locked-ui {
         pointer-events: none;
@@ -373,11 +363,6 @@
           <button id="btn-forge-engine"></button>
           <button id="btn-forge-weapon"></button>
         </div>
-
-        <div id="train-yard-container" style="display: block">
-          <h4 style="margin-top: 15px; color: var(--action)" id="lbl-yard"></h4>
-          <div id="train-yard-items"></div>
-        </div>
       </div>
     </div>
 
@@ -473,6 +458,8 @@
           navigating: "NAVIGATING",
           dead: "DEAD",
           stranded: "STRANDED",
+          yard_root: "YARD_ROOT",
+          yard_category: "YARD_CATEGORY",
         },
 
         dom: {
@@ -483,11 +470,11 @@
             logSuccess: "log-success",
             logDamage: "log-damage",
             lockedUI: "locked-ui",
-            yardItem: "yard-item",
             btnEnergy: "btn-energy",
             btnSuccess: "btn-success",
             btnAction: "btn-action",
             btnTravel: "btn-travel",
+            btnDesperate: "btn-desperate",
             navBtn: "nav-btn",
             dimName: "dim-name",
             dimType: "dim-type",
@@ -518,9 +505,7 @@
             btnIgnite: "btn-ignite",
             btnForgeEng: "btn-forge-engine",
             btnForgeWpn: "btn-forge-weapon",
-            yardItems: "train-yard-items",
             lblForge: "lbl-forge",
-            lblYard: "lbl-yard",
             rightPanel: "right-panel",
           },
           styles: {
@@ -532,7 +517,6 @@
             colorSuccess: "var(--success)",
             colorAction: "var(--action)",
             colorEnergy: "var(--energy)",
-            colorBorder: "var(--border)",
           },
           events: { click: "click" },
           tags: { div: "div", span: "span", button: "button" },
@@ -542,7 +526,6 @@
           initLog:
             "The Crucible Engine hums to life. The tracks stretch into infinity.",
           lblForge: "Crucible Forge (Anywhere)",
-          lblYard: "Station Train Yard",
           lblNavTitle: "Select Dimensional Trajectory",
           btnIgnite: "Ignite the Crucible Engine",
           noneState: "None",
@@ -560,8 +543,18 @@
           btnForgeWeapon: (cost) => `Mutate Weapon (${cost} Flux)`,
           btnApexEngine: "Apex Engine",
           btnApexWeapon: "Apex Weapon",
-          yardItemLabel: (name, desc) => `${name} (${desc})`,
-          yardItemCost: (cost) => `${cost} Flux`,
+
+          btnYardModules: "Browse Modules",
+          btnYardCarriages: "Browse Carriages",
+          btnYardCrew: "Browse Crew",
+          btnYardLeave: "Leave Train Yard",
+          btnYardBack: "Back to Categories",
+          yardItemLabelMenu: (name, desc, cost) =>
+            `${name} - ${cost} Flux\n(${desc})`,
+          yardReplaceWarning: (currentEq) => `[WARNING: Replaces ${currentEq}]`,
+          yardOwned: `[ALREADY OWNED]`,
+          logYardPurchase: (name) => `Procured and installed: ${name}.`,
+
           logLocEnter: (name, label) =>
             `Rift Jump complete. Arrived at The ${name}: ${label}`,
           logEncounterTitle: (label, desc) => `<b>${label}:</b> ${desc}`,
@@ -616,6 +609,7 @@
             prob: 20,
             isHub: true,
             actions: [
+              "hub_yard",
               "hub_rest",
               "hub_fuel",
               "hub_quest_easy",
@@ -656,42 +650,51 @@
             name: "Astrolabe",
             type: "module",
             cost: 50,
-            desc: "Route Selection",
+            desc: "Enables advanced dimensional route selection.",
           },
           exo: {
             name: "Exoplating",
             type: "module",
             cost: 120,
-            desc: "-30% Dmg",
+            desc: "Permanently reduces all hull damage taken by 30%.",
           },
           map: {
             name: "Dimensional Map",
             type: "module",
             cost: 150,
-            desc: "Maze Rescue",
+            desc: "Grants safe passage alternatives during Maze encounters.",
           },
           green: {
             name: "Greenhouse",
             type: "carriage",
             cost: 180,
-            desc: "Passive Fuel",
+            desc: "Passively generates Fuel after every Rift Jump.",
           },
           orc: {
             name: "Orc Gunner",
             type: "crew",
             cost: 200,
-            desc: "+1 Wpn Tier",
+            desc: "Functions as a permanent +1 to your current Weapon Tier.",
           },
           goblin: {
             name: "Goblin Engineer",
             type: "crew",
             cost: 220,
-            desc: "Passive Repairs",
+            desc: "Passively repairs the Hull for a small amount after every Rift Jump.",
           },
         },
       };
 
       GAME_DATA.actions = {
+        hub_yard: {
+          label: "Visit Train Yard",
+          uiClass: GAME_DATA.dom.classes.btnEnergy,
+          isMenu: true,
+          menuTarget: GAME_DATA.phases.yard_root,
+          requires: {},
+          consumes: [],
+          produces: [],
+        },
         res_siphon: {
           label: "Siphon Gases",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
@@ -813,7 +816,6 @@
         },
         hub_rest: {
           label: "Dock Repairs",
-          isHub: true,
           requires: {},
           consumes: [{ res: "flux", amount: (s, c) => c.HUB_REST_FLUX_COST }],
           produces: [{ res: "hull", amount: (s, c) => c.HUB_REST_HULL_YIELD }],
@@ -821,7 +823,6 @@
         },
         hub_fuel: {
           label: "Buy Fuel",
-          isHub: true,
           requires: {},
           consumes: [{ res: "flux", amount: (s, c) => c.HUB_FUEL_FLUX_COST }],
           produces: [{ res: "fuel", amount: (s, c) => c.HUB_FUEL_YIELD }],
@@ -829,7 +830,6 @@
         },
         hub_quest_easy: {
           label: "Delivery Contract",
-          isHub: true,
           requires: {},
           consumes: [{ res: "fuel", amount: (s, c) => c.HUB_EASY_FUEL_COST }],
           produces: [
@@ -862,6 +862,7 @@
         crew: GAME_DATA.text.noneState,
         dimId: GAME_DATA.nodes.hub.id,
         navChoices: [],
+        yardCat: null,
       };
 
       const Engine = {
@@ -901,13 +902,20 @@
           if (state.fuel >= Engine.getTravelCost()) return true;
           if (state.hull > GAME_DATA.config.DESPERATE_HULL_COST) return true;
 
+          const inMenu = [
+            GAME_DATA.phases.encounter,
+            GAME_DATA.phases.yard_root,
+            GAME_DATA.phases.yard_category,
+          ].includes(state.phase);
           const node = GAME_DATA.nodes[state.dimId];
-          if (state.energy >= node.exploreCost) return true;
 
-          if (state.phase === GAME_DATA.phases.encounter) {
-            return node.actions.some((actId) =>
-              Engine.canAffordAction(GAME_DATA.actions[actId]),
-            );
+          if (!inMenu && state.energy >= node.exploreCost) return true;
+
+          if (inMenu) {
+            return node.actions.some((actId) => {
+              const act = GAME_DATA.actions[actId];
+              return !act.isMenu && Engine.canAffordAction(act);
+            });
           }
           return false;
         },
@@ -948,6 +956,12 @@
 
         executeAction: (actId) => {
           const act = GAME_DATA.actions[actId];
+          if (act.isMenu) {
+            state.phase = act.menuTarget;
+            Engine.updateUI();
+            return;
+          }
+
           Engine.processActionCosts(act);
 
           const success =
@@ -967,7 +981,6 @@
               : GAME_DATA.dom.classes.logDamage,
           );
 
-          DOM.encounterChoices.innerHTML = "";
           if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD) {
             state.phase = GAME_DATA.phases.idle;
           }
@@ -980,24 +993,11 @@
           if (state.energy < node.exploreCost) return;
           state.energy -= node.exploreCost;
 
-          DOM.encounterChoices.innerHTML = "";
           state.phase = GAME_DATA.phases.encounter;
-
           Engine.log(
             GAME_DATA.text.logEncounterTitle(node.label, node.desc),
             GAME_DATA.dom.classes.logEvent,
           );
-
-          for (const actId of node.actions) {
-            const act = GAME_DATA.actions[actId];
-            const btn = document.createElement(GAME_DATA.dom.tags.button);
-            btn.dataset.actId = actId;
-            if (act.uiClass) btn.className = act.uiClass;
-            btn.addEventListener(GAME_DATA.dom.events.click, () =>
-              Engine.executeAction(actId),
-            );
-            DOM.encounterChoices.appendChild(btn);
-          }
 
           Engine.updateUI();
         },
@@ -1085,7 +1085,6 @@
           state.phase = GAME_DATA.phases.idle;
 
           DOM.locationName.innerText = GAME_DATA.text.formatDimName(dimName);
-          DOM.encounterChoices.innerHTML = "";
 
           Engine.log(
             GAME_DATA.text.logLocEnter(
@@ -1094,7 +1093,6 @@
             ),
             GAME_DATA.dom.classes.logSystem,
           );
-
           Engine.updateUI();
         },
 
@@ -1210,13 +1208,18 @@
         renderInteractiveControls: () => {
           const travelCost = Engine.getTravelCost();
           const node = GAME_DATA.nodes[state.dimId];
+          const inMenu = [
+            GAME_DATA.phases.encounter,
+            GAME_DATA.phases.yard_root,
+            GAME_DATA.phases.yard_category,
+          ].includes(state.phase);
 
           DOM.btnExplore.innerText = node.isHub
             ? GAME_DATA.text.btnExploreHub(node.exploreCost)
             : GAME_DATA.text.btnExploreClosed(node.exploreCost);
           DOM.btnExplore.disabled =
             state.energy < node.exploreCost ||
-            state.phase === GAME_DATA.phases.encounter ||
+            inMenu ||
             state.phase === GAME_DATA.phases.navigating;
 
           DOM.btnTravel.innerText = GAME_DATA.text.btnJump(travelCost);
@@ -1276,18 +1279,108 @@
           btn.disabled = !meetsReqsAndAffords;
         },
 
-        renderEncounterChoices: () => {
-          if (state.phase !== GAME_DATA.phases.encounter) return;
-          Array.from(DOM.encounterChoices.children).forEach((btn) => {
-            if (!btn.dataset.actId) return;
-            Engine.updateActionButton(
-              btn,
-              GAME_DATA.actions[btn.dataset.actId],
-            );
-          });
+        updateYardButton: (btn, item) => {
+          let label = GAME_DATA.text.yardItemLabelMenu(
+            item.name,
+            item.desc,
+            item.cost,
+          );
+          const currentEq = state[item.type];
+
+          if (currentEq === item.name) {
+            label += `\n${GAME_DATA.text.yardOwned}`;
+            btn.disabled = true;
+          } else {
+            if (currentEq !== GAME_DATA.text.noneState) {
+              label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
+            }
+            if (state.flux < item.cost) {
+              btn.disabled = true;
+            }
+          }
+          btn.innerText = label;
         },
 
-        renderForgeAndYard: () => {
+        buildMenuButton: (label, onClick, uiClass) => {
+          const btn = document.createElement(GAME_DATA.dom.tags.button);
+          btn.innerText = label;
+          if (uiClass) btn.className = uiClass;
+          btn.addEventListener(GAME_DATA.dom.events.click, onClick);
+          DOM.encounterChoices.appendChild(btn);
+          return btn;
+        },
+
+        navYard: (target) => {
+          if (target === "leave") {
+            state.phase = GAME_DATA.phases.encounter;
+          } else if (target === "back") {
+            state.phase = GAME_DATA.phases.yard_root;
+          } else {
+            state.phase = GAME_DATA.phases.yard_category;
+            state.yardCat = target;
+          }
+          Engine.updateUI();
+        },
+
+        buyYardItem: (item) => {
+          if (state.flux >= item.cost) {
+            state.flux -= item.cost;
+            state[item.type] = item.name;
+            Engine.log(
+              GAME_DATA.text.logYardPurchase(item.name),
+              GAME_DATA.dom.classes.logSuccess,
+            );
+            Engine.updateUI();
+          }
+        },
+
+        renderMenus: () => {
+          DOM.encounterChoices.innerHTML = "";
+
+          if (state.phase === GAME_DATA.phases.encounter) {
+            GAME_DATA.nodes[state.dimId].actions.forEach((actId) => {
+              const act = GAME_DATA.actions[actId];
+              const btn = Engine.buildMenuButton(
+                "",
+                () => Engine.executeAction(actId),
+                act.uiClass,
+              );
+              if (!act.isMenu) Engine.updateActionButton(btn, act);
+              else btn.innerText = act.label;
+            });
+          } else if (state.phase === GAME_DATA.phases.yard_root) {
+            Engine.buildMenuButton(GAME_DATA.text.btnYardModules, () =>
+              Engine.navYard("module"),
+            );
+            Engine.buildMenuButton(GAME_DATA.text.btnYardCarriages, () =>
+              Engine.navYard("carriage"),
+            );
+            Engine.buildMenuButton(GAME_DATA.text.btnYardCrew, () =>
+              Engine.navYard("crew"),
+            );
+            Engine.buildMenuButton(
+              GAME_DATA.text.btnYardLeave,
+              () => Engine.navYard("leave"),
+              GAME_DATA.dom.classes.btnDesperate,
+            );
+          } else if (state.phase === GAME_DATA.phases.yard_category) {
+            Object.values(GAME_DATA.yard)
+              .filter((i) => i.type === state.yardCat)
+              .forEach((item) => {
+                const btn = Engine.buildMenuButton("", () =>
+                  Engine.buyYardItem(item),
+                );
+                Engine.updateYardButton(btn, item);
+              });
+            Engine.buildMenuButton(
+              GAME_DATA.text.btnYardBack,
+              () => Engine.navYard("back"),
+              GAME_DATA.dom.classes.btnTravel,
+            );
+          }
+        },
+
+        renderForge: () => {
           const fEngCost = Engine.getForgeCost(state.engineTier);
           DOM.btnForgeEng.innerText =
             state.engineTier >= GAME_DATA.config.MAX_TIER
@@ -1307,20 +1400,6 @@
             state.flux < fWpnCost ||
             state.weaponTier >= GAME_DATA.config.MAX_TIER ||
             state.phase === GAME_DATA.phases.navigating;
-
-          DOM.yardItems.parentElement.style.display = GAME_DATA.nodes[
-            state.dimId
-          ].isHub
-            ? GAME_DATA.dom.styles.displayBlock
-            : GAME_DATA.dom.styles.displayNone;
-
-          for (const k of Object.keys(GAME_DATA.yard)) {
-            const btn = document.getElementById(k);
-            if (btn)
-              btn.disabled =
-                state.flux < GAME_DATA.yard[k].cost ||
-                state.phase === GAME_DATA.phases.navigating;
-          }
         },
 
         updateUI: () => {
@@ -1338,8 +1417,8 @@
           Engine.renderNavigation();
           Engine.renderVitals();
           Engine.renderInteractiveControls();
-          Engine.renderEncounterChoices();
-          Engine.renderForgeAndYard();
+          Engine.renderMenus();
+          Engine.renderForge();
         },
 
         cacheDOM: () => {
@@ -1351,38 +1430,8 @@
         setupStaticText: () => {
           DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
           DOM.lblForge.innerText = GAME_DATA.text.lblForge;
-          DOM.lblYard.innerText = GAME_DATA.text.lblYard;
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
-        },
-
-        handleYardPurchase: (obj) => {
-          if (state.flux >= obj.cost) {
-            state.flux -= obj.cost;
-            state[obj.type] = obj.name;
-            Engine.updateUI();
-          }
-        },
-
-        buildYardUI: () => {
-          for (const [key, obj] of Object.entries(GAME_DATA.yard)) {
-            const d = document.createElement(GAME_DATA.dom.tags.div);
-            d.className = GAME_DATA.dom.classes.yardItem;
-
-            const s = document.createElement(GAME_DATA.dom.tags.span);
-            s.innerText = GAME_DATA.text.yardItemLabel(obj.name, obj.desc);
-
-            const b = document.createElement(GAME_DATA.dom.tags.button);
-            b.id = key;
-            b.innerText = GAME_DATA.text.yardItemCost(obj.cost);
-            b.addEventListener(GAME_DATA.dom.events.click, () =>
-              Engine.handleYardPurchase(obj),
-            );
-
-            d.appendChild(s);
-            d.appendChild(b);
-            DOM.yardItems.appendChild(d);
-          }
         },
 
         handleForgeEngine: () => {
@@ -1441,7 +1490,6 @@
         init: () => {
           Engine.cacheDOM();
           Engine.setupStaticText();
-          Engine.buildYardUI();
           Engine.bindEvents();
         },
       };
