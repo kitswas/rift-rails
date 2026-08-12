@@ -382,7 +382,6 @@
     </div>
 
     <script>
-      // Global DOM Cache to prevent constant repaints/lookups
       let DOM = {};
 
       const GAME_DATA = {
@@ -897,7 +896,6 @@
           DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
         },
 
-        // Heuristic to check if the player still has a viable path forward
         canSurvive: () => {
           if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) return false;
           if (state.fuel >= Engine.getTravelCost()) return true;
@@ -1004,7 +1002,6 @@
           Engine.updateUI();
         },
 
-        // Generate a random dimension, optionally excluding specific node IDs to guarantee variety
         generateDimension: (excludedIds = []) => {
           const adj =
             GAME_DATA.procedural.adjectives[
@@ -1020,7 +1017,6 @@
             (n) => !excludedIds.includes(n.id),
           );
 
-          // Fallback if somehow we exclude everything
           if (availableNodes.length === 0) {
             availableNodes = Object.values(GAME_DATA.nodes);
           }
@@ -1045,7 +1041,6 @@
           const cost = Engine.getTravelCost();
           if (state.fuel < cost) return;
 
-          // Deduct travel fuel immediately to reflect irreversible state before rendering jump choices
           state.fuel -= cost;
 
           if (state.module === GAME_DATA.yard.astro.name) {
@@ -1347,75 +1342,76 @@
           Engine.renderForgeAndYard();
         },
 
-        init: () => {
-          DOM = {
-            storyLog: document.getElementById(GAME_DATA.dom.ids.storyLog),
-            locationName: document.getElementById(
-              GAME_DATA.dom.ids.locationName,
-            ),
-            locationType: document.getElementById(
-              GAME_DATA.dom.ids.locationType,
-            ),
-            encounterChoices: document.getElementById(
-              GAME_DATA.dom.ids.encounterChoices,
-            ),
-            statHull: document.getElementById(GAME_DATA.dom.ids.statHull),
-            statFuel: document.getElementById(GAME_DATA.dom.ids.statFuel),
-            statEnergy: document.getElementById(GAME_DATA.dom.ids.statEnergy),
-            statFlux: document.getElementById(GAME_DATA.dom.ids.statFlux),
-            statRep: document.getElementById(GAME_DATA.dom.ids.statRep),
-            eqEngine: document.getElementById(GAME_DATA.dom.ids.eqEngine),
-            eqWeapon: document.getElementById(GAME_DATA.dom.ids.eqWeapon),
-            eqModule: document.getElementById(GAME_DATA.dom.ids.eqModule),
-            eqCarriage: document.getElementById(GAME_DATA.dom.ids.eqCarriage),
-            eqCrew: document.getElementById(GAME_DATA.dom.ids.eqCrew),
-            btnExplore: document.getElementById(GAME_DATA.dom.ids.btnExplore),
-            btnTravel: document.getElementById(GAME_DATA.dom.ids.btnTravel),
-            btnDesperate: document.getElementById(
-              GAME_DATA.dom.ids.btnDesperate,
-            ),
-            btnIgnite: document.getElementById(GAME_DATA.dom.ids.btnIgnite),
-            btnForgeEng: document.getElementById(GAME_DATA.dom.ids.btnForgeEng),
-            btnForgeWpn: document.getElementById(GAME_DATA.dom.ids.btnForgeWpn),
-            yardItems: document.getElementById(GAME_DATA.dom.ids.yardItems),
-            lblForge: document.getElementById(GAME_DATA.dom.ids.lblForge),
-            lblYard: document.getElementById(GAME_DATA.dom.ids.lblYard),
-            rightPanel: document.getElementById(GAME_DATA.dom.ids.rightPanel),
-            startScreen: document.getElementById(GAME_DATA.dom.ids.startScreen),
-            gameContainer: document.getElementById(
-              GAME_DATA.dom.ids.gameContainer,
-            ),
-            navScreen: document.getElementById(GAME_DATA.dom.ids.navScreen),
-            navChoices: document.getElementById(GAME_DATA.dom.ids.navChoices),
-            lblNavTitle: document.getElementById(GAME_DATA.dom.ids.lblNavTitle),
-          };
+        cacheDOM: () => {
+          Object.entries(GAME_DATA.dom.ids).forEach(([domKey, elementId]) => {
+            DOM[domKey] = document.getElementById(elementId);
+          });
+        },
 
+        setupStaticText: () => {
           DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
           DOM.lblForge.innerText = GAME_DATA.text.lblForge;
           DOM.lblYard.innerText = GAME_DATA.text.lblYard;
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
+        },
 
+        handleYardPurchase: (obj) => {
+          if (state.flux >= obj.cost) {
+            state.flux -= obj.cost;
+            state[obj.type] = obj.name;
+            Engine.updateUI();
+          }
+        },
+
+        buildYardUI: () => {
           for (const [key, obj] of Object.entries(GAME_DATA.yard)) {
             const d = document.createElement(GAME_DATA.dom.tags.div);
             d.className = GAME_DATA.dom.classes.yardItem;
+
             const s = document.createElement(GAME_DATA.dom.tags.span);
             s.innerText = GAME_DATA.text.yardItemLabel(obj.name, obj.desc);
+
             const b = document.createElement(GAME_DATA.dom.tags.button);
             b.id = key;
             b.innerText = GAME_DATA.text.yardItemCost(obj.cost);
-            b.addEventListener(GAME_DATA.dom.events.click, () => {
-              if (state.flux >= obj.cost) {
-                state.flux -= obj.cost;
-                state[obj.type] = obj.name;
-                Engine.updateUI();
-              }
-            });
+            b.addEventListener(GAME_DATA.dom.events.click, () =>
+              Engine.handleYardPurchase(obj),
+            );
+
             d.appendChild(s);
             d.appendChild(b);
             DOM.yardItems.appendChild(d);
           }
+        },
 
+        handleForgeEngine: () => {
+          const c = Engine.getForgeCost(state.engineTier);
+          if (state.flux >= c) {
+            state.flux -= c;
+            state.engineTier++;
+            state.energy++;
+            Engine.updateUI();
+          }
+        },
+
+        handleForgeWeapon: () => {
+          const c = Engine.getForgeCost(state.weaponTier);
+          if (state.flux >= c) {
+            state.flux -= c;
+            state.weaponTier++;
+            Engine.updateUI();
+          }
+        },
+
+        handleIgnite: () => {
+          DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
+          DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayGrid;
+          state.phase = GAME_DATA.phases.idle;
+          Engine.updateUI();
+        },
+
+        bindEvents: () => {
           DOM.btnExplore.addEventListener(
             GAME_DATA.dom.events.click,
             Engine.exploreNode,
@@ -1428,33 +1424,25 @@
             GAME_DATA.dom.events.click,
             Engine.desperateScavenge,
           );
+          DOM.btnForgeEng.addEventListener(
+            GAME_DATA.dom.events.click,
+            Engine.handleForgeEngine,
+          );
+          DOM.btnForgeWpn.addEventListener(
+            GAME_DATA.dom.events.click,
+            Engine.handleForgeWeapon,
+          );
+          DOM.btnIgnite.addEventListener(
+            GAME_DATA.dom.events.click,
+            Engine.handleIgnite,
+          );
+        },
 
-          DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
-            const c = Engine.getForgeCost(state.engineTier);
-            if (state.flux >= c) {
-              state.flux -= c;
-              state.engineTier++;
-              // Immediately grant the energy cap to prevent softlocks
-              state.energy++;
-              Engine.updateUI();
-            }
-          });
-
-          DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
-            const c = Engine.getForgeCost(state.weaponTier);
-            if (state.flux >= c) {
-              state.flux -= c;
-              state.weaponTier++;
-              Engine.updateUI();
-            }
-          });
-
-          DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
-            DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
-            DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayGrid;
-            state.phase = GAME_DATA.phases.idle;
-            Engine.updateUI();
-          });
+        init: () => {
+          Engine.cacheDOM();
+          Engine.setupStaticText();
+          Engine.buildYardUI();
+          Engine.bindEvents();
         },
       };
 
