@@ -1135,10 +1135,9 @@
           state.fuel -= cost;
 
           if (state.module === GAME_DATA.yard.astro.name) {
-            state.navChoices = [
-              Engine.generateDimension([]),
-              Engine.generateDimension([Engine.generateDimension([]).id]),
-            ];
+            const dest1 = Engine.generateDimension([]);
+            const dest2 = Engine.generateDimension([dest1.id]);
+            state.navChoices = [dest1, dest2];
             Engine.transitionTo(GAME_DATA.phases.navigating);
           } else {
             const dest = Engine.generateDimension([]);
