@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rift Rails: Procedural Dimension Gallery</title>
+    <title>Rift Rails: Procedural Pixel Art Dimension Gallery</title>
     <style>
       :root {
-        --bg: #1a1a24;
-        --panel-bg: #2a2a36;
+        --bg: #111;
+        --panel-bg: #1a1a24;
         --text: #f0f0f5;
-        --border: #444455;
+        --border: #333;
       }
 
       body {
@@ -26,11 +26,10 @@
       }
 
       header h1 {
-        color: #ffcc00;
+        color: #ffb800;
         text-transform: uppercase;
         letter-spacing: 2px;
         font-weight: 900;
-        text-shadow: 2px 2px 0 #000;
       }
 
       header p {
@@ -42,7 +41,7 @@
 
       #gallery {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
         gap: 30px;
         width: 100%;
         max-width: 1600px;
@@ -51,183 +50,102 @@
 
       .art-card {
         background: var(--panel-bg);
-        border: 3px solid #111;
-        border-radius: 12px;
+        border: 2px solid var(--border);
         padding: 15px;
         display: flex;
         flex-direction: column;
         gap: 15px;
         transition:
           transform 0.2s,
-          box-shadow 0.2s;
-        box-shadow: 4px 4px 0 #111;
+          border-color 0.2s;
       }
 
       .art-card:hover {
-        transform: translate(-4px, -4px);
-        box-shadow: 8px 8px 0 #000;
+        transform: translateY(-5px);
+        border-color: #ffb800;
       }
 
       .art-title {
         text-transform: uppercase;
         font-weight: 900;
-        font-size: 1.2em;
+        font-size: 1.1em;
         text-align: center;
         margin: 0;
         color: #fff;
-        text-shadow: 1px 1px 0 #000;
+        letter-spacing: 1px;
       }
 
-      .art-container {
+      .canvas-wrapper {
         width: 100%;
+        /* 16:9 Aspect Ratio */
         aspect-ratio: 16 / 9;
         background: #000;
-        border-radius: 8px;
+        border: 2px solid #000;
         overflow: hidden;
-        border: 4px solid #111;
-        position: relative;
       }
 
-      /* ========================================================
-         CARTOON ADJECTIVE PALETTES
-      ======================================================== */
-
-      .dim-svg {
+      /* CRITICAL: Forces the browser to render the canvas sharply without blurring */
+      canvas {
         width: 100%;
         height: 100%;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
         display: block;
       }
 
-      /* Crimson: Vibrant reds, deep burgundy outlines */
-      .adj-crimson {
-        --dim-bg: #4a0d0d;
-        --dim-primary: #ff3333;
-        --dim-secondary: #ff8888;
-        --dim-stroke: #220000;
+      /* CSS animations for atmosphere */
+      .anim-eldritch {
+        animation: pulse-hue 4s infinite alternate ease-in-out;
       }
 
-      /* Neon: Bubblegum cyberpunk */
-      .adj-neon {
-        --dim-bg: #0f0f2a;
-        --dim-primary: #00ffff;
-        --dim-secondary: #ff00ff;
-        --dim-stroke: #050511;
-      }
-      .adj-neon .midground {
-        filter: drop-shadow(0 4px 10px rgba(0, 255, 255, 0.5));
+      .anim-neon {
+        animation: neon-flicker 3s infinite;
       }
 
-      /* Fractured: Stark contrasts, glitched */
-      .adj-fractured {
-        --dim-bg: #222;
-        --dim-primary: #ffffff;
-        --dim-secondary: #ffcc00;
-        --dim-stroke: #000000;
-      }
-      .adj-fractured .midground {
-        filter: url(#filter-glitch);
-      }
-
-      /* Overgrown: Lush, toxic cartoon greens */
-      .adj-overgrown {
-        --dim-bg: #0d2b14;
-        --dim-primary: #44dd44;
-        --dim-secondary: #aaffaa;
-        --dim-stroke: #061a06;
-      }
-      .adj-overgrown .midground {
-        filter: url(#filter-wobble);
-      }
-
-      /* Clockwork: Chunky brass and gold */
-      .adj-clockwork {
-        --dim-bg: #2b1f15;
-        --dim-primary: #e69900;
-        --dim-secondary: #ffe680;
-        --dim-stroke: #1a0f00;
-      }
-
-      /* Eldritch: Spooky purples, floating animation */
-      .adj-eldritch {
-        --dim-bg: #160824;
-        --dim-primary: #9933ff;
-        --dim-secondary: #d4aaff;
-        --dim-stroke: #10001a;
-      }
-      .adj-eldritch .midground {
-        animation: float 3s infinite alternate ease-in-out;
-      }
-
-      @keyframes float {
+      @keyframes pulse-hue {
         0% {
-          transform: translateY(0px) scale(1);
+          filter: contrast(1.1) brightness(1);
         }
         100% {
-          transform: translateY(-8px) scale(1.02);
+          filter: contrast(1.2) brightness(1.2) hue-rotate(15deg);
+        }
+      }
+
+      @keyframes neon-flicker {
+        0%,
+        19%,
+        21%,
+        23%,
+        25%,
+        54%,
+        56%,
+        100% {
+          filter: contrast(1.2) brightness(1)
+            drop-shadow(0 0 5px rgba(0, 255, 255, 0.2));
+        }
+        20%,
+        24%,
+        55% {
+          filter: contrast(1) brightness(0.5);
         }
       }
     </style>
   </head>
   <body>
-    <!-- SVG FILTERS (Tuned for cartoon style) -->
-    <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
-      <defs>
-        <!-- Sharp, stepped displacement for Fractured -->
-        <filter id="filter-glitch">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.2 0.02"
-            numOctaves="1"
-            result="noise"
-          />
-          <feColorMatrix
-            type="matrix"
-            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 -2"
-            in="noise"
-            result="steppedNoise"
-          />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="steppedNoise"
-            scale="15"
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
-        </filter>
-
-        <!-- Thick, bubbling distortion for Overgrown -->
-        <filter id="filter-wobble">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.04"
-            numOctaves="2"
-            result="noise"
-          />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale="10"
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
-        </filter>
-      </defs>
-    </svg>
-
     <header>
       <h1>Dimensional Registry</h1>
       <p>
-        Procedural Cartoony Art Engine. Powered by SVG Bezier curves,
-        overlapping paint-orders, and Seeded RNG.
+        Procedural Pixel Art Engine. 160x90 Base Resolution. Restricted 5-Color
+        Palettes. Bayer Matrix Dithering.
       </p>
     </header>
 
     <div id="gallery"></div>
 
     <script>
-      /**
-       * 1. HASH FUNCTION (String -> 32-bit Integer Seed)
-       */
+      /** ========================================================
+       *  1. SEEDED RNG ENGINE
+       *  ======================================================== */
       function generateSeed(str) {
         let h = 0xdeadbeef;
         for (let i = 0; i < str.length; i++) {
@@ -236,9 +154,6 @@
         return (h ^ (h >>> 16)) >>> 0;
       }
 
-      /**
-       * 2. PRNG ALGORITHM (Mulberry32)
-       */
       function mulberry32(seed) {
         return function () {
           let t = (seed += 0x6d2b79f5);
@@ -248,209 +163,394 @@
         };
       }
 
-      /**
-       * 3. RNG CLASS TOOLKIT
-       */
       class SeededRNG {
         constructor(seedString) {
           this.seed = generateSeed(seedString);
           this.random = mulberry32(this.seed);
         }
-
         next() {
           return this.random();
         }
         range(min, max) {
           return Math.floor(this.random() * (max - min + 1)) + min;
         }
-        choice(array) {
-          return array[Math.floor(this.random() * array.length)];
+        chance(prob) {
+          return this.random() < prob;
         }
       }
 
-      /**
-       * 4. PROCEDURAL GEOMETRY GENERATORS (NOUNS - CARTOON STYLE)
-       * Utilizing `paint-order="stroke fill"` to create fused cartoon outlines.
-       */
-      const GeometryGenerators = {
-        // Tall, swooping, Dr. Seuss-style curved towers
-        Spire: (rng) => {
-          let svg = `<g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="12" stroke-linejoin="round" fill="var(--dim-primary)">`;
-          const count = rng.range(3, 5);
+      /** ========================================================
+       *  2. PIXEL ART RENDERER CLASS
+       *  ======================================================== */
+      class PixelRenderer {
+        constructor(width = 160, height = 90) {
+          this.w = width;
+          this.h = height;
+          this.canvas = document.createElement("canvas");
+          this.canvas.width = this.w;
+          this.canvas.height = this.h;
+          this.ctx = this.canvas.getContext("2d");
+          this.imageData = this.ctx.createImageData(this.w, this.h);
+          this.buf = new Uint32Array(this.imageData.data.buffer);
 
-          for (let i = 0; i < count; i++) {
-            const baseX = rng.range(150, 650);
-            const tipX = baseX + rng.range(-150, 150);
-            const tipY = rng.range(20, 150);
-            const width = rng.range(80, 160);
-            const controlY = tipY + rng.range(80, 200);
+          // 4x4 Bayer Dithering Matrix
+          this.bayer = [
+            [0, 8, 2, 10],
+            [12, 4, 14, 6],
+            [3, 11, 1, 9],
+            [15, 7, 13, 5],
+          ];
+        }
 
-            // Swooping bezier horn shape
-            svg += `<path d="M ${baseX - width / 2},450 Q ${baseX - width / 4},${controlY} ${tipX},${tipY} Q ${baseX + width / 4},${controlY} ${baseX + width / 2},450 Z" />`;
+        setPalette(hexColors) {
+          // Convert hex strings to 32-bit integers (ABGR format for Uint32Array)
+          this.palette = hexColors.map((hex) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return (255 << 24) | (b << 16) | (g << 8) | r;
+          });
+        }
 
-            // Inner cell-shade highlight
-            svg += `<path d="M ${baseX - width / 2 + 20},450 Q ${baseX - width / 4 + 20},${controlY + 20} ${tipX},${tipY + 30} Q ${baseX},${controlY + 20} ${baseX},450 Z" fill="var(--dim-secondary)" stroke="none" opacity="0.6"/>`;
-          }
-          svg += `</g>`;
-          return svg;
-        },
+        setPixel(x, y, colorIndex) {
+          if (x < 0 || x >= this.w || y < 0 || y >= this.h) return;
+          // colorIndex 0-4 maps to the 5 colors in the palette
+          this.buf[y * this.w + x] =
+            this.palette[
+              Math.min(Math.max(colorIndex, 0), this.palette.length - 1)
+            ];
+        }
 
-        // Overlapping, bubbling cartoon dunes with craters
-        Wastes: (rng) => {
-          let svg = `<g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="12" stroke-linejoin="round" fill="var(--dim-primary)">`;
+        // Blends two palette indices using a dither matrix based on x,y coordinates
+        // Ratio is 0.0 (color1) to 1.0 (color2)
+        setPixelDither(x, y, color1, color2, ratio) {
+          if (x < 0 || x >= this.w || y < 0 || y >= this.h) return;
+          const threshold = (this.bayer[y % 4][x % 4] + 0.5) / 16;
+          const c = ratio > threshold ? color2 : color1;
+          this.buf[y * this.w + x] = this.palette[c];
+        }
 
-          // 3 layers of dunes moving foreground
-          for (let i = 0; i < 3; i++) {
-            const startY = 200 + i * 60;
-            const cp1x = rng.range(100, 300);
-            const cp1y = rng.range(startY - 120, startY + 60);
-            const cp2x = rng.range(500, 700);
-            const cp2y = rng.range(startY - 120, startY + 60);
+        fill(colorIndex) {
+          this.buf.fill(this.palette[colorIndex]);
+        }
 
-            // Wavy dune curve
-            svg += `<path d="M -50,450 L -50,${startY} C ${cp1x},${cp1y} ${cp2x},${cp2y} 850,${startY} L 850,450 Z" />`;
+        // Renders the buffer to the canvas
+        present() {
+          this.imageData.data.set(new Uint8ClampedArray(this.buf.buffer));
+          this.ctx.putImageData(this.imageData, 0, 0);
+          return this.canvas;
+        }
 
-            // Add a couple of cartoon craters to each dune
-            const craters = rng.range(1, 3);
-            for (let c = 0; c < craters; c++) {
-              const cx = rng.range(100, 700);
-              const cy = startY + rng.range(30, 80);
-              const cr = rng.range(15, 35);
-              svg += `<ellipse cx="${cx}" cy="${cy}" rx="${cr}" ry="${cr / 2.5}" fill="var(--dim-bg)" stroke="var(--dim-stroke)" stroke-width="6" opacity="0.7"/>`;
+        // Applies a glitch effect to the buffer directly
+        applyGlitch(rng) {
+          const slices = rng.range(3, 8);
+          for (let i = 0; i < slices; i++) {
+            const y = rng.range(0, this.h);
+            const height = rng.range(1, 4);
+            const offset = rng.range(-5, 5);
+            if (offset === 0) continue;
+
+            for (let yy = y; yy < y + height && yy < this.h; yy++) {
+              const row = new Uint32Array(
+                this.buf.buffer,
+                yy * this.w * 4,
+                this.w,
+              );
+              const shifted = new Uint32Array(this.w);
+              if (offset > 0) {
+                shifted.set(row.subarray(0, this.w - offset), offset);
+              } else {
+                shifted.set(row.subarray(-offset), 0);
+              }
+              row.set(shifted);
             }
           }
-          svg += `</g>`;
-          return svg;
+        }
+      }
+
+      /** ========================================================
+       *  3. PALETTES (Adjectives)
+       *  [Background, Shadow, Midtone, Light, Highlight/Accent]
+       *  ======================================================== */
+      const PALETTES = {
+        Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
+        Neon: ["#05021a", "#1b0a40", "#3a127a", "#ff007f", "#00ffff"],
+        Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
+        Overgrown: ["#02140a", "#093318", "#17662c", "#33a647", "#85e68b"],
+        Clockwork: ["#140d02", "#331f05", "#7a4e0c", "#c4881a", "#ffcc4d"],
+        Eldritch: ["#090214", "#1c0733", "#45127a", "#7a22c4", "#c770ff"],
+      };
+
+      /** ========================================================
+       *  4. NOUN GENERATORS (The Pixel Art Logic)
+       *  ======================================================== */
+      const Generators = {
+        // Spires: Towering geometric structures with pixel shading
+        Spire: (r, rng) => {
+          // Sky gradient
+          for (let y = 0; y < r.h; y++) {
+            const ratio = y / r.h;
+            for (let x = 0; x < r.w; x++) {
+              r.setPixelDither(x, y, 0, 1, ratio * 1.5);
+              // Stars
+              if (y < 50 && rng.chance(0.01))
+                r.setPixel(x, y, rng.chance(0.8) ? 2 : 4);
+            }
+          }
+
+          // Generate 4-6 Spires back-to-front
+          const count = rng.range(4, 7);
+          for (let i = 0; i < count; i++) {
+            const isFront = i >= count - 2;
+            const cx = rng.range(20, r.w - 20);
+            const peakY = isFront ? rng.range(10, 40) : rng.range(30, 60);
+            const baseW = isFront ? rng.range(40, 80) : rng.range(20, 50);
+
+            // Palette mapping based on depth
+            const cShadow = isFront ? 1 : 0;
+            const cLit = isFront ? 3 : 2;
+            const cHi = isFront ? 4 : 3;
+
+            // Draw spire top-down
+            for (let y = peakY; y < r.h; y++) {
+              const depthRatio = (y - peakY) / (r.h - peakY);
+              // Exponential widening for structural look
+              const width = depthRatio * depthRatio * baseW + 2;
+              const left = Math.floor(cx - width / 2);
+              const right = Math.floor(cx + width / 2);
+
+              for (let x = left; x <= right; x++) {
+                // Light comes from the right
+                let color = x < cx ? cShadow : cLit;
+                // Highlight edge
+                if (x === right || x === right - 1) color = cHi;
+                // Add dither blending in the middle
+                if (Math.abs(x - cx) < 3) {
+                  r.setPixelDither(x, y, cShadow, cLit, (x - left) / width);
+                } else {
+                  r.setPixel(x, y, color);
+                }
+
+                // Random tech lights on shadow side
+                if (isFront && x < cx - 2 && rng.chance(0.02) && y % 3 === 0) {
+                  r.setPixel(x, y, 4);
+                }
+              }
+            }
+          }
         },
 
-        // Classic dungeon crawler perspective walls
-        Labyrinth: (rng) => {
-          let svg = `<g stroke="var(--dim-stroke)" stroke-width="10" stroke-linejoin="round" fill="var(--dim-primary)">`;
-          const layers = rng.range(3, 5);
-          const cx = 400;
-          const cy = 200;
+        // Wastes: Parallax dunes and a giant celestial body
+        Wastes: (r, rng) => {
+          // Sky and giant planet
+          const moonX = rng.range(30, r.w - 30);
+          const moonY = rng.range(20, 40);
+          const moonR = rng.range(15, 30);
 
-          for (let i = 0; i < layers; i++) {
-            const outerW = 800 - i * 180;
-            const outerH = 450 - i * 100;
-            const innerW = 800 - (i + 1) * 180;
-            const innerH = 450 - (i + 1) * 100;
-
-            if (innerW < 50 || innerH < 50) break;
-
-            const ox = cx - outerW / 2;
-            const oy = cy - outerH / 2;
-            const ix = cx - innerW / 2;
-            const iy = cy - innerH / 2;
-
-            const color =
-              i % 2 === 0 ? "var(--dim-primary)" : "var(--dim-secondary)";
-
-            // Left Wall Trapezoid
-            svg += `<path d="M ${ox},${oy} L ${ix},${iy} L ${ix},${iy + innerH} L ${ox},${oy + outerH} Z" fill="${color}" />`;
-            // Right Wall Trapezoid
-            svg += `<path d="M ${ox + outerW},${oy} L ${ix + innerW},${iy} L ${ix + innerW},${iy + innerH} L ${ox + outerW},${oy + outerH} Z" fill="${color}" />`;
-            // Ceiling
-            svg += `<path d="M ${ox},${oy} L ${ix},${iy} L ${ix + innerW},${iy} L ${ox + outerW},${oy} Z" fill="var(--dim-bg)" opacity="0.6"/>`;
-            // Floor
-            svg += `<path d="M ${ox},${oy + outerH} L ${ix},${iy + innerH} L ${ix + innerW},${iy + innerH} L ${ox + outerW},${oy + outerH} Z" fill="var(--dim-bg)" opacity="0.3"/>`;
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) {
+              r.setPixel(x, y, 0);
+              const distSq = (x - moonX) ** 2 + (y - moonY) ** 2;
+              if (distSq < moonR ** 2) {
+                // Moon shading
+                const shadow = (x - moonX + moonR) / (moonR * 2);
+                r.setPixelDither(x, y, 2, 4, shadow);
+              } else if (rng.chance(0.005) && y < 50) {
+                r.setPixel(x, y, 3); // Stars
+              }
+            }
           }
-          svg += `</g>`;
-          return svg;
+
+          // 3 layers of terrain using stacked sine waves
+          const layers = 3;
+          for (let l = 0; l < layers; l++) {
+            const baseY = 40 + l * 20;
+            const freq1 = rng.next() * 0.05 + 0.02;
+            const freq2 = rng.next() * 0.1;
+            const phase = rng.next() * 10;
+
+            const cTop = l + 1; // 1, 2, 3
+            const cBot = l; // 0, 1, 2
+
+            for (let x = 0; x < r.w; x++) {
+              // Terrain height at x
+              const height =
+                Math.sin(x * freq1 + phase) * 10 + Math.sin(x * freq2) * 5;
+              const yStart = Math.floor(baseY + height);
+
+              // Fill down to bottom
+              for (let y = yStart; y < r.h; y++) {
+                const depth = (y - yStart) / (r.h - yStart); // 0 at surface, 1 at bottom
+                // Dither gradient from top color to bottom color
+                r.setPixelDither(x, y, cTop, cBot, depth * 1.5);
+
+                // Surface highlight edge
+                if (y === yStart && l === layers - 1) r.setPixel(x, y, 4);
+              }
+            }
+          }
         },
 
-        // Overlapping cartoony space-clouds (fused together by paint-order)
-        Nebula: (rng) => {
-          let svg = `<g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="14" fill="var(--dim-primary)">`;
-          const count = rng.range(8, 15);
+        // Labyrinth: 1-point perspective dungeon crawler view
+        Labyrinth: (r, rng) => {
+          const cx = r.w / 2;
+          const cy = r.h / 2;
 
-          // Draw the main fused cloud body
-          for (let i = 0; i < count; i++) {
-            const cx = rng.range(150, 650);
-            const cy = rng.range(100, 300);
-            const r = rng.range(40, 100);
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" />`;
-          }
-          svg += `</g>`;
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) {
+              // Calculate depth based on distance from center
+              const dx = Math.abs(x - cx);
+              const dy = Math.abs(y - cy);
 
-          // Draw bright highlight crescents inside the clouds
-          svg += `<g fill="var(--dim-secondary)" stroke="none">`;
-          for (let i = 0; i < count; i++) {
-            // Re-run the exact same PRNG sequence to get the exact same circles
-            // (We reset the RNG slightly to match the positions)
-          }
-          // (Instead of complex state reset, just add a few random floating bubbles for highlights)
-          for (let i = 0; i < 6; i++) {
-            const cx = rng.range(250, 550);
-            const cy = rng.range(150, 250);
-            const r = rng.range(10, 30);
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" opacity="0.8" />`;
-          }
-          svg += `</g>`;
+              // Raycast pseudo-depth
+              let depth;
+              let isWall = false;
 
-          // Floating stars in foreground
-          for (let i = 0; i < 5; i++) {
-            let sx = rng.range(100, 700);
-            let sy = rng.range(50, 350);
-            let s = rng.range(5, 12);
-            svg += `<path d="M ${sx},${sy - s} Q ${sx},${sy} ${sx + s},${sy} Q ${sx},${sy} ${sx},${sy + s} Q ${sx},${sy} ${sx - s},${sy} Q ${sx},${sy} ${sx},${sy - s} Z" fill="var(--dim-secondary)" stroke="var(--dim-stroke)" stroke-width="4"/>`;
+              if (dy * (r.w / r.h) < dx) {
+                // Left / Right Walls
+                depth = r.w / (dx + 1);
+                isWall = true;
+              } else {
+                // Floor / Ceiling
+                depth = r.h / (dy + 1);
+              }
+
+              // Normalize depth for coloring (0.0 = far, 1.0 = near)
+              let normDepth = Math.max(0, Math.min(1, 1 - depth / 10));
+
+              if (isWall) {
+                // Create vertical pillar segments based on depth
+                const wallSegment = Math.floor(depth * 4) % 2 === 0;
+                let col1 = wallSegment ? 1 : 2;
+                let col2 = wallSegment ? 2 : 3;
+                r.setPixelDither(x, y, col1, col2, normDepth);
+
+                // Details: Glowing runes on walls randomly
+                if (normDepth > 0.3 && rng.chance(0.01)) r.setPixel(x, y, 4);
+              } else {
+                if (y > cy) {
+                  // Floor
+                  r.setPixelDither(x, y, 0, 2, normDepth);
+                  // Floor grid lines
+                  if (
+                    Math.floor(dx * depth) % 10 === 0 ||
+                    Math.floor(depth * 10) % 5 === 0
+                  ) {
+                    r.setPixel(x, y, 1);
+                  }
+                } else {
+                  // Ceiling
+                  r.setPixel(x, y, 0);
+                }
+              }
+            }
           }
 
-          return svg;
+          // Draw a mysterious glowing portal at the end of the hall
+          for (let y = cy - 10; y < cy + 15; y++) {
+            for (let x = cx - 10; x < cx + 10; x++) {
+              const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+              if (d < 8) r.setPixelDither(x, y, 3, 4, 1 - d / 8);
+            }
+          }
+        },
+
+        // Nebula: Bilinear interpolated noise clouds
+        Nebula: (r, rng) => {
+          // 1. Generate a low-res 20x12 noise grid
+          const gridW = 20;
+          const gridH = 12;
+          const noise = new Array(gridW * gridH);
+          for (let i = 0; i < noise.length; i++) noise[i] = rng.next();
+
+          // 2. Render upscaled using bilinear interpolation
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) {
+              const gx = (x / r.w) * (gridW - 1);
+              const gy = (y / r.h) * (gridH - 1);
+
+              const gxi = Math.floor(gx);
+              const gyi = Math.floor(gy);
+              const tx = gx - gxi;
+              const ty = gy - gyi;
+
+              const v00 = noise[gyi * gridW + gxi];
+              const v10 = noise[gyi * gridW + gxi + 1];
+              const v01 = noise[(gyi + 1) * gridW + gxi];
+              const v11 = noise[(gyi + 1) * gridW + gxi + 1];
+
+              // Bilinear interpolation
+              const top = v00 * (1 - tx) + v10 * tx;
+              const bot = v01 * (1 - tx) + v11 * tx;
+              let v = top * (1 - ty) + bot * ty;
+
+              // Threshold into 4 color bands (0, 1, 2, 3)
+              v = v * 1.5; // Boost brightness
+              if (v < 0.3) r.setPixelDither(x, y, 0, 1, v / 0.3);
+              else if (v < 0.6) r.setPixelDither(x, y, 1, 2, (v - 0.3) / 0.3);
+              else if (v < 0.9) r.setPixelDither(x, y, 2, 3, (v - 0.6) / 0.3);
+              else r.setPixelDither(x, y, 3, 4, Math.min(1, (v - 0.9) / 0.3));
+
+              // Draw sharp stars
+              if (rng.chance(0.003)) {
+                r.setPixel(x, y, 4);
+                if (rng.chance(0.5)) {
+                  r.setPixel(x - 1, y, 4);
+                  r.setPixel(x + 1, y, 4);
+                  r.setPixel(x, y - 1, 4);
+                  r.setPixel(x, y + 1, 4);
+                }
+              }
+            }
+          }
         },
       };
 
-      /**
-       * 5. MASTER SVG ASSEMBLER
-       */
-      function buildDimensionSVG(adjective, noun) {
+      /** ========================================================
+       *  5. MASTER ASSEMBLER
+       *  ======================================================== */
+      function buildDimensionCard(adjective, noun) {
         const fullName = `The ${adjective} ${noun}`;
         const rng = new SeededRNG(fullName);
 
-        const adjClass = `adj-${adjective.toLowerCase()}`;
-        const geometryRenderer = GeometryGenerators[noun];
-        if (!geometryRenderer) return "";
+        // Setup Renderer
+        const renderer = new PixelRenderer(160, 90);
+        renderer.setPalette(PALETTES[adjective] || PALETTES.Fractured);
 
-        // BACKGROUND: 4-Pointed Cartoon Stars
-        let backgroundMarkup = "";
-        const bgDetails = rng.range(15, 35);
-        for (let i = 0; i < bgDetails; i++) {
-          const x = rng.range(20, 780);
-          const y = rng.range(20, 380);
-          const s = rng.range(2, 6);
-          // 4 point star path
-          const starPath = `M ${x},${y - s} Q ${x},${y} ${x + s},${y} Q ${x},${y} ${x},${y + s} Q ${x},${y} ${x - s},${y} Q ${x},${y} ${x},${y - s} Z`;
-          backgroundMarkup += `<path d="${starPath}" fill="var(--dim-secondary)" opacity="${rng.next() * 0.5 + 0.2}" />`;
-        }
+        // Generate Base Art
+        const generator = Generators[noun];
+        if (generator) generator(renderer, rng);
 
-        // MIDGROUND: The unique Noun geometry
-        const midgroundMarkup = geometryRenderer(rng);
+        // Apply Adjective-specific post-processing (Glitch)
+        if (adjective === "Fractured") renderer.applyGlitch(rng);
 
-        // FOREGROUND: Chunky base sill to frame the image (replacing the rails)
-        const foregroundMarkup = `
-          <g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="12" fill="var(--dim-bg)">
-            <!-- Left foreground rock -->
-            <path d="M -20,420 C 50,340 150,380 250,420 Z" />
-            <!-- Right foreground rock -->
-            <path d="M 820,420 C 750,330 600,370 500,420 Z" />
-            <!-- Flat bottom border sill -->
-            <rect x="-10" y="390" width="820" height="20" fill="var(--dim-stroke)" />
-          </g>
-        `;
+        const canvas = renderer.present();
 
-        return `
-          <svg class="dim-svg ${adjClass}" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="var(--dim-bg)" />
-            <g class="background">${backgroundMarkup}</g>
-            <g class="midground">${midgroundMarkup}</g>
-            <g class="foreground">${foregroundMarkup}</g>
-          </svg>
-        `;
+        // Build HTML
+        const card = document.createElement("div");
+        card.className = "art-card";
+
+        const title = document.createElement("h3");
+        title.className = "art-title";
+        title.innerText = fullName;
+
+        const container = document.createElement("div");
+        container.className = "canvas-wrapper";
+
+        // Add CSS animation classes if applicable
+        if (adjective === "Eldritch") canvas.classList.add("anim-eldritch");
+        if (adjective === "Neon") canvas.classList.add("anim-neon");
+
+        container.appendChild(canvas);
+        card.appendChild(title);
+        card.appendChild(container);
+
+        return card;
       }
 
-      /**
-       * 6. INIT SCRIPT: BUILD THE GALLERY
-       */
+      /** ========================================================
+       *  6. INIT SCRIPT: BUILD THE GALLERY
+       *  ======================================================== */
       const ADJECTIVES = [
         "Crimson",
         "Neon",
@@ -464,20 +564,7 @@
 
       ADJECTIVES.forEach((adjective) => {
         NOUNS.forEach((noun) => {
-          const card = document.createElement("div");
-          card.className = "art-card";
-
-          const title = document.createElement("h3");
-          title.className = "art-title";
-          title.innerText = `The ${adjective} ${noun}`;
-
-          const artContainer = document.createElement("div");
-          artContainer.className = "art-container";
-          artContainer.innerHTML = buildDimensionSVG(adjective, noun);
-
-          card.appendChild(title);
-          card.appendChild(artContainer);
-          galleryElement.appendChild(card);
+          galleryElement.appendChild(buildDimensionCard(adjective, noun));
         });
       });
     </script>
