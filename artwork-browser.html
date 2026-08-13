@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rift Rails: Procedural Pixel Art Dimension Gallery</title>
+    <title>Rift Rails: 5-Engine Procedural Gallery</title>
     <style>
       :root {
         --bg: #111;
@@ -34,11 +34,39 @@
 
       header p {
         color: #aaa;
-        max-width: 600px;
-        margin: 0 auto;
+        max-width: 700px;
+        margin: 10px auto 20px;
         font-weight: bold;
+        line-height: 1.5;
       }
 
+      /* Control Panel */
+      .controls {
+        background: #000;
+        border: 2px solid var(--border);
+        padding: 15px;
+        display: inline-block;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      select {
+        background: #222;
+        color: #fff;
+        border: 1px solid #555;
+        padding: 10px 20px;
+        font-size: 1.1em;
+        font-family: inherit;
+        font-weight: bold;
+        cursor: pointer;
+        outline: none;
+      }
+
+      select:focus {
+        border-color: #ffb800;
+      }
+
+      /* Gallery Grid */
       #gallery {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -58,6 +86,7 @@
         transition:
           transform 0.2s,
           border-color 0.2s;
+        box-shadow: 4px 4px 0 #050505;
       }
 
       .art-card:hover {
@@ -75,16 +104,34 @@
         letter-spacing: 1px;
       }
 
-      .canvas-wrapper {
+      /* Art Containers */
+      .art-container {
         width: 100%;
-        /* 16:9 Aspect Ratio */
         aspect-ratio: 16 / 9;
         background: #000;
         border: 2px solid #000;
         overflow: hidden;
+        position: relative;
       }
 
-      /* CRITICAL: Forces the browser to render the canvas sharply without blurring */
+      /* Vector CRT Scanlines Overlay */
+      .style-vector::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(
+          rgba(0, 0, 0, 0) 0px,
+          rgba(0, 0, 0, 0) 2px,
+          rgba(0, 0, 0, 0.15) 3px,
+          rgba(0, 0, 0, 0.15) 4px
+        );
+        pointer-events: none;
+      }
+
+      /* Sharpen Pixel Art */
       canvas {
         width: 100%;
         height: 100%;
@@ -93,13 +140,21 @@
         display: block;
       }
 
-      /* CSS animations for atmosphere */
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      /* Procedural Atmosphere Animations */
       .anim-eldritch {
         animation: pulse-hue 4s infinite alternate ease-in-out;
       }
-
       .anim-neon {
         animation: neon-flicker 3s infinite;
+      }
+      .anim-float .midground {
+        animation: float 3s infinite alternate ease-in-out;
       }
 
       @keyframes pulse-hue {
@@ -110,7 +165,6 @@
           filter: contrast(1.2) brightness(1.2) hue-rotate(15deg);
         }
       }
-
       @keyframes neon-flicker {
         0%,
         19%,
@@ -121,7 +175,7 @@
         56%,
         100% {
           filter: contrast(1.2) brightness(1)
-            drop-shadow(0 0 5px rgba(0, 255, 255, 0.2));
+            drop-shadow(0 0 5px rgba(0, 255, 255, 0.4));
         }
         20%,
         24%,
@@ -129,22 +183,94 @@
           filter: contrast(1) brightness(0.5);
         }
       }
+      @keyframes float {
+        0% {
+          transform: translateY(0px) scale(1);
+        }
+        100% {
+          transform: translateY(-8px) scale(1.02);
+        }
+      }
     </style>
   </head>
   <body>
+    <!-- SVG FILTERS (Shared across SVG modes) -->
+    <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
+      <defs>
+        <!-- Sharp, stepped glitch for Fractured -->
+        <filter id="filter-glitch">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.2 0.02"
+            numOctaves="1"
+            result="noise"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 -2"
+            in="noise"
+            result="steppedNoise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="steppedNoise"
+            scale="20"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+        <!-- Bubbling distortion for Overgrown -->
+        <filter id="filter-wobble">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.04"
+            numOctaves="2"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="12"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+        <!-- Heavy Blur for Nebula & Silhouette -->
+        <filter id="filter-blur">
+          <feGaussianBlur stdDeviation="25" />
+        </filter>
+      </defs>
+    </svg>
+
     <header>
       <h1>Dimensional Registry</h1>
       <p>
-        Procedural Pixel Art Engine. 160x90 Base Resolution. Restricted 5-Color
-        Palettes. Bayer Matrix Dithering.
+        Select an engine below. All 5 engines pull from the exact same
+        mathematical seed and 5-color palette, resulting in wildly different
+        deterministic art.
       </p>
+      <div class="controls">
+        <select id="style-select">
+          <option value="pixel">Engine 1: Procedural Pixel Art (Canvas)</option>
+          <option value="cartoon">Engine 2: Cartoon 2D (SVG Beziers)</option>
+          <option value="abstract">
+            Engine 3: Abstract Low-Poly (SVG Polygons)
+          </option>
+          <option value="vector" selected>
+            Engine 4: Retro Vector CRT (SVG Wireframe)
+          </option>
+          <option value="silhouette">
+            Engine 5: Shadowplay Silhouette (SVG Parallax)
+          </option>
+        </select>
+      </div>
     </header>
 
     <div id="gallery"></div>
 
     <script>
       /** ========================================================
-       *  1. SEEDED RNG ENGINE
+       *  SHARED CORE (RNG & PALETTES)
        *  ======================================================== */
       function generateSeed(str) {
         let h = 0xdeadbeef;
@@ -179,8 +305,18 @@
         }
       }
 
+      // Palettes [0: BG, 1: Shadow/Stroke, 2: Mid, 3: Light/Primary, 4: Highlight]
+      const PALETTES = {
+        Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
+        Neon: ["#05021a", "#1b0a40", "#3a127a", "#ff007f", "#00ffff"],
+        Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
+        Overgrown: ["#02140a", "#093318", "#17662c", "#33a647", "#85e68b"],
+        Clockwork: ["#140d02", "#331f05", "#7a4e0c", "#c4881a", "#ffcc4d"],
+        Eldritch: ["#090214", "#1c0733", "#45127a", "#7a22c4", "#c770ff"],
+      };
+
       /** ========================================================
-       *  2. PIXEL ART RENDERER CLASS
+       *  ENGINE 1: PIXEL ART RENDERER (CANVAS)
        *  ======================================================== */
       class PixelRenderer {
         constructor(width = 160, height = 90) {
@@ -192,8 +328,6 @@
           this.ctx = this.canvas.getContext("2d");
           this.imageData = this.ctx.createImageData(this.w, this.h);
           this.buf = new Uint32Array(this.imageData.data.buffer);
-
-          // 4x4 Bayer Dithering Matrix
           this.bayer = [
             [0, 8, 2, 10],
             [12, 4, 14, 6],
@@ -201,297 +335,179 @@
             [15, 7, 13, 5],
           ];
         }
-
         setPalette(hexColors) {
-          // Convert hex strings to 32-bit integers (ABGR format for Uint32Array)
           this.palette = hexColors.map((hex) => {
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
+            const r = parseInt(hex.slice(1, 3), 16),
+              g = parseInt(hex.slice(3, 5), 16),
+              b = parseInt(hex.slice(5, 7), 16);
             return (255 << 24) | (b << 16) | (g << 8) | r;
           });
         }
-
-        setPixel(x, y, colorIndex) {
-          if (x < 0 || x >= this.w || y < 0 || y >= this.h) return;
-          // colorIndex 0-4 maps to the 5 colors in the palette
-          this.buf[y * this.w + x] =
-            this.palette[
-              Math.min(Math.max(colorIndex, 0), this.palette.length - 1)
-            ];
+        setPixel(x, y, i) {
+          if (x >= 0 && x < this.w && y >= 0 && y < this.h)
+            this.buf[y * this.w + x] =
+              this.palette[Math.min(Math.max(i, 0), 4)];
         }
-
-        // Blends two palette indices using a dither matrix based on x,y coordinates
-        // Ratio is 0.0 (color1) to 1.0 (color2)
-        setPixelDither(x, y, color1, color2, ratio) {
-          if (x < 0 || x >= this.w || y < 0 || y >= this.h) return;
-          const threshold = (this.bayer[y % 4][x % 4] + 0.5) / 16;
-          const c = ratio > threshold ? color2 : color1;
-          this.buf[y * this.w + x] = this.palette[c];
+        setPixelDither(x, y, c1, c2, ratio) {
+          if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
+            const threshold = (this.bayer[y % 4][x % 4] + 0.5) / 16;
+            this.buf[y * this.w + x] =
+              this.palette[ratio > threshold ? c2 : c1];
+          }
         }
-
-        fill(colorIndex) {
-          this.buf.fill(this.palette[colorIndex]);
-        }
-
-        // Renders the buffer to the canvas
-        present() {
-          this.imageData.data.set(new Uint8ClampedArray(this.buf.buffer));
-          this.ctx.putImageData(this.imageData, 0, 0);
-          return this.canvas;
-        }
-
-        // Applies a glitch effect to the buffer directly
         applyGlitch(rng) {
           const slices = rng.range(3, 8);
           for (let i = 0; i < slices; i++) {
-            const y = rng.range(0, this.h);
-            const height = rng.range(1, 4);
-            const offset = rng.range(-5, 5);
+            const y = rng.range(0, this.h),
+              h = rng.range(1, 4),
+              offset = rng.range(-5, 5);
             if (offset === 0) continue;
-
-            for (let yy = y; yy < y + height && yy < this.h; yy++) {
+            for (let yy = y; yy < y + h && yy < this.h; yy++) {
               const row = new Uint32Array(
                 this.buf.buffer,
                 yy * this.w * 4,
                 this.w,
               );
               const shifted = new Uint32Array(this.w);
-              if (offset > 0) {
+              if (offset > 0)
                 shifted.set(row.subarray(0, this.w - offset), offset);
-              } else {
-                shifted.set(row.subarray(-offset), 0);
-              }
+              else shifted.set(row.subarray(-offset), 0);
               row.set(shifted);
             }
           }
         }
+        present() {
+          this.imageData.data.set(new Uint8ClampedArray(this.buf.buffer));
+          this.ctx.putImageData(this.imageData, 0, 0);
+          return this.canvas;
+        }
       }
 
-      /** ========================================================
-       *  3. PALETTES (Adjectives)
-       *  [Background, Shadow, Midtone, Light, Highlight/Accent]
-       *  ======================================================== */
-      const PALETTES = {
-        Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
-        Neon: ["#05021a", "#1b0a40", "#3a127a", "#ff007f", "#00ffff"],
-        Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
-        Overgrown: ["#02140a", "#093318", "#17662c", "#33a647", "#85e68b"],
-        Clockwork: ["#140d02", "#331f05", "#7a4e0c", "#c4881a", "#ffcc4d"],
-        Eldritch: ["#090214", "#1c0733", "#45127a", "#7a22c4", "#c770ff"],
-      };
-
-      /** ========================================================
-       *  4. NOUN GENERATORS (The Pixel Art Logic)
-       *  ======================================================== */
-      const Generators = {
-        // Spires: Towering geometric structures with pixel shading
+      const GenPixel = {
         Spire: (r, rng) => {
-          // Sky gradient
           for (let y = 0; y < r.h; y++) {
-            const ratio = y / r.h;
             for (let x = 0; x < r.w; x++) {
-              r.setPixelDither(x, y, 0, 1, ratio * 1.5);
-              // Stars
+              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
               if (y < 50 && rng.chance(0.01))
                 r.setPixel(x, y, rng.chance(0.8) ? 2 : 4);
             }
           }
-
-          // Generate 4-6 Spires back-to-front
           const count = rng.range(4, 7);
           for (let i = 0; i < count; i++) {
-            const isFront = i >= count - 2;
-            const cx = rng.range(20, r.w - 20);
-            const peakY = isFront ? rng.range(10, 40) : rng.range(30, 60);
-            const baseW = isFront ? rng.range(40, 80) : rng.range(20, 50);
-
-            // Palette mapping based on depth
-            const cShadow = isFront ? 1 : 0;
-            const cLit = isFront ? 3 : 2;
-            const cHi = isFront ? 4 : 3;
-
-            // Draw spire top-down
-            for (let y = peakY; y < r.h; y++) {
-              const depthRatio = (y - peakY) / (r.h - peakY);
-              // Exponential widening for structural look
-              const width = depthRatio * depthRatio * baseW + 2;
-              const left = Math.floor(cx - width / 2);
-              const right = Math.floor(cx + width / 2);
-
-              for (let x = left; x <= right; x++) {
-                // Light comes from the right
-                let color = x < cx ? cShadow : cLit;
-                // Highlight edge
-                if (x === right || x === right - 1) color = cHi;
-                // Add dither blending in the middle
-                if (Math.abs(x - cx) < 3) {
-                  r.setPixelDither(x, y, cShadow, cLit, (x - left) / width);
-                } else {
-                  r.setPixel(x, y, color);
-                }
-
-                // Random tech lights on shadow side
-                if (isFront && x < cx - 2 && rng.chance(0.02) && y % 3 === 0) {
+            const isF = i >= count - 2,
+              cx = rng.range(20, r.w - 20),
+              py = isF ? rng.range(10, 40) : rng.range(30, 60),
+              bw = isF ? rng.range(40, 80) : rng.range(20, 50);
+            const cs = isF ? 1 : 0,
+              cl = isF ? 3 : 2,
+              ch = isF ? 4 : 3;
+            for (let y = py; y < r.h; y++) {
+              const d = (y - py) / (r.h - py),
+                w = d * d * bw + 2,
+                L = Math.floor(cx - w / 2),
+                R = Math.floor(cx + w / 2);
+              for (let x = L; x <= R; x++) {
+                let c = x < cx ? cs : cl;
+                if (x >= R - 1) c = ch;
+                if (Math.abs(x - cx) < 3)
+                  r.setPixelDither(x, y, cs, cl, (x - L) / w);
+                else r.setPixel(x, y, c);
+                if (isF && x < cx - 2 && rng.chance(0.02) && y % 3 === 0)
                   r.setPixel(x, y, 4);
-                }
               }
             }
           }
         },
-
-        // Wastes: Parallax dunes and a giant celestial body
         Wastes: (r, rng) => {
-          // Sky and giant planet
-          const moonX = rng.range(30, r.w - 30);
-          const moonY = rng.range(20, 40);
-          const moonR = rng.range(15, 30);
-
+          const mx = rng.range(30, r.w - 30),
+            my = rng.range(20, 40),
+            mr = rng.range(15, 30);
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               r.setPixel(x, y, 0);
-              const distSq = (x - moonX) ** 2 + (y - moonY) ** 2;
-              if (distSq < moonR ** 2) {
-                // Moon shading
-                const shadow = (x - moonX + moonR) / (moonR * 2);
-                r.setPixelDither(x, y, 2, 4, shadow);
-              } else if (rng.chance(0.005) && y < 50) {
-                r.setPixel(x, y, 3); // Stars
-              }
+              if ((x - mx) ** 2 + (y - my) ** 2 < mr ** 2)
+                r.setPixelDither(x, y, 2, 4, (x - mx + mr) / (mr * 2));
+              else if (rng.chance(0.005) && y < 50) r.setPixel(x, y, 3);
             }
           }
-
-          // 3 layers of terrain using stacked sine waves
-          const layers = 3;
-          for (let l = 0; l < layers; l++) {
-            const baseY = 40 + l * 20;
-            const freq1 = rng.next() * 0.05 + 0.02;
-            const freq2 = rng.next() * 0.1;
-            const phase = rng.next() * 10;
-
-            const cTop = l + 1; // 1, 2, 3
-            const cBot = l; // 0, 1, 2
-
+          for (let l = 0; l < 3; l++) {
+            const by = 40 + l * 20,
+              f1 = rng.next() * 0.05 + 0.02,
+              f2 = rng.next() * 0.1,
+              p = rng.next() * 10;
             for (let x = 0; x < r.w; x++) {
-              // Terrain height at x
-              const height =
-                Math.sin(x * freq1 + phase) * 10 + Math.sin(x * freq2) * 5;
-              const yStart = Math.floor(baseY + height);
-
-              // Fill down to bottom
-              for (let y = yStart; y < r.h; y++) {
-                const depth = (y - yStart) / (r.h - yStart); // 0 at surface, 1 at bottom
-                // Dither gradient from top color to bottom color
-                r.setPixelDither(x, y, cTop, cBot, depth * 1.5);
-
-                // Surface highlight edge
-                if (y === yStart && l === layers - 1) r.setPixel(x, y, 4);
+              const ys = Math.floor(
+                by + Math.sin(x * f1 + p) * 10 + Math.sin(x * f2) * 5,
+              );
+              for (let y = ys; y < r.h; y++) {
+                r.setPixelDither(x, y, l + 1, l, ((y - ys) / (r.h - ys)) * 1.5);
+                if (y === ys && l === 2) r.setPixel(x, y, 4);
               }
             }
           }
         },
-
-        // Labyrinth: 1-point perspective dungeon crawler view
         Labyrinth: (r, rng) => {
-          const cx = r.w / 2;
-          const cy = r.h / 2;
-
+          const cx = r.w / 2,
+            cy = r.h / 2;
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
-              // Calculate depth based on distance from center
-              const dx = Math.abs(x - cx);
-              const dy = Math.abs(y - cy);
-
-              // Raycast pseudo-depth
-              let depth;
-              let isWall = false;
-
+              const dx = Math.abs(x - cx),
+                dy = Math.abs(y - cy);
+              let d,
+                wall = false;
               if (dy * (r.w / r.h) < dx) {
-                // Left / Right Walls
-                depth = r.w / (dx + 1);
-                isWall = true;
+                d = r.w / (dx + 1);
+                wall = true;
               } else {
-                // Floor / Ceiling
-                depth = r.h / (dy + 1);
+                d = r.h / (dy + 1);
               }
-
-              // Normalize depth for coloring (0.0 = far, 1.0 = near)
-              let normDepth = Math.max(0, Math.min(1, 1 - depth / 10));
-
-              if (isWall) {
-                // Create vertical pillar segments based on depth
-                const wallSegment = Math.floor(depth * 4) % 2 === 0;
-                let col1 = wallSegment ? 1 : 2;
-                let col2 = wallSegment ? 2 : 3;
-                r.setPixelDither(x, y, col1, col2, normDepth);
-
-                // Details: Glowing runes on walls randomly
-                if (normDepth > 0.3 && rng.chance(0.01)) r.setPixel(x, y, 4);
+              let nd = Math.max(0, Math.min(1, 1 - d / 10));
+              if (wall) {
+                const seg = Math.floor(d * 4) % 2 === 0;
+                r.setPixelDither(x, y, seg ? 1 : 2, seg ? 2 : 3, nd);
+                if (nd > 0.3 && rng.chance(0.01)) r.setPixel(x, y, 4);
               } else {
                 if (y > cy) {
-                  // Floor
-                  r.setPixelDither(x, y, 0, 2, normDepth);
-                  // Floor grid lines
+                  r.setPixelDither(x, y, 0, 2, nd);
                   if (
-                    Math.floor(dx * depth) % 10 === 0 ||
-                    Math.floor(depth * 10) % 5 === 0
-                  ) {
+                    Math.floor(dx * d) % 10 === 0 ||
+                    Math.floor(d * 10) % 5 === 0
+                  )
                     r.setPixel(x, y, 1);
-                  }
-                } else {
-                  // Ceiling
-                  r.setPixel(x, y, 0);
-                }
+                } else r.setPixel(x, y, 0);
               }
             }
           }
-
-          // Draw a mysterious glowing portal at the end of the hall
-          for (let y = cy - 10; y < cy + 15; y++) {
+          for (let y = cy - 10; y < cy + 15; y++)
             for (let x = cx - 10; x < cx + 10; x++) {
-              const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-              if (d < 8) r.setPixelDither(x, y, 3, 4, 1 - d / 8);
+              const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+              if (dist < 8) r.setPixelDither(x, y, 3, 4, 1 - dist / 8);
             }
-          }
         },
-
-        // Nebula: Bilinear interpolated noise clouds
         Nebula: (r, rng) => {
-          // 1. Generate a low-res 20x12 noise grid
-          const gridW = 20;
-          const gridH = 12;
-          const noise = new Array(gridW * gridH);
+          const gw = 20,
+            gh = 12,
+            noise = new Array(gw * gh);
           for (let i = 0; i < noise.length; i++) noise[i] = rng.next();
-
-          // 2. Render upscaled using bilinear interpolation
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
-              const gx = (x / r.w) * (gridW - 1);
-              const gy = (y / r.h) * (gridH - 1);
-
-              const gxi = Math.floor(gx);
-              const gyi = Math.floor(gy);
-              const tx = gx - gxi;
-              const ty = gy - gyi;
-
-              const v00 = noise[gyi * gridW + gxi];
-              const v10 = noise[gyi * gridW + gxi + 1];
-              const v01 = noise[(gyi + 1) * gridW + gxi];
-              const v11 = noise[(gyi + 1) * gridW + gxi + 1];
-
-              // Bilinear interpolation
-              const top = v00 * (1 - tx) + v10 * tx;
-              const bot = v01 * (1 - tx) + v11 * tx;
-              let v = top * (1 - ty) + bot * ty;
-
-              // Threshold into 4 color bands (0, 1, 2, 3)
-              v = v * 1.5; // Boost brightness
+              const gx = (x / r.w) * (gw - 1),
+                gy = (y / r.h) * (gh - 1),
+                gxi = Math.floor(gx),
+                gyi = Math.floor(gy),
+                tx = gx - gxi,
+                ty = gy - gyi;
+              const top =
+                noise[gyi * gw + gxi] * (1 - tx) +
+                noise[gyi * gw + gxi + 1] * tx;
+              const bot =
+                noise[(gyi + 1) * gw + gxi] * (1 - tx) +
+                noise[(gyi + 1) * gw + gxi + 1] * tx;
+              let v = (top * (1 - ty) + bot * ty) * 1.5;
               if (v < 0.3) r.setPixelDither(x, y, 0, 1, v / 0.3);
               else if (v < 0.6) r.setPixelDither(x, y, 1, 2, (v - 0.3) / 0.3);
               else if (v < 0.9) r.setPixelDither(x, y, 2, 3, (v - 0.6) / 0.3);
               else r.setPixelDither(x, y, 3, 4, Math.min(1, (v - 0.9) / 0.3));
-
-              // Draw sharp stars
               if (rng.chance(0.003)) {
                 r.setPixel(x, y, 4);
                 if (rng.chance(0.5)) {
@@ -507,26 +523,276 @@
       };
 
       /** ========================================================
-       *  5. MASTER ASSEMBLER
+       *  ENGINE 2: CARTOON SVG (BEZIERS & PAINT-ORDER)
        *  ======================================================== */
-      function buildDimensionCard(adjective, noun) {
+      const GenCartoon = {
+        Spire: (rng, p) => {
+          let svg = `<g paint-order="stroke fill" stroke="${p[1]}" stroke-width="12" stroke-linejoin="round" fill="${p[3]}">`;
+          for (let i = 0, c = rng.range(3, 5); i < c; i++) {
+            const bx = rng.range(150, 650),
+              tx = bx + rng.range(-150, 150),
+              ty = rng.range(20, 150),
+              w = rng.range(80, 160),
+              cy = ty + rng.range(80, 200);
+            svg += `<path d="M ${bx - w / 2},450 Q ${bx - w / 4},${cy} ${tx},${ty} Q ${bx + w / 4},${cy} ${bx + w / 2},450 Z" />`;
+            svg += `<path d="M ${bx - w / 2 + 20},450 Q ${bx - w / 4 + 20},${cy + 20} ${tx},${ty + 30} Q ${bx},${cy + 20} ${bx},450 Z" fill="${p[4]}" stroke="none" opacity="0.6"/>`;
+          }
+          return svg + `</g>`;
+        },
+        Wastes: (rng, p) => {
+          let svg = `<g paint-order="stroke fill" stroke="${p[1]}" stroke-width="12" stroke-linejoin="round" fill="${p[3]}">`;
+          for (let i = 0; i < 3; i++) {
+            const sy = 200 + i * 60,
+              c1x = rng.range(100, 300),
+              c1y = rng.range(sy - 120, sy + 60),
+              c2x = rng.range(500, 700),
+              c2y = rng.range(sy - 120, sy + 60);
+            svg += `<path d="M -50,450 L -50,${sy} C ${c1x},${c1y} ${c2x},${c2y} 850,${sy} L 850,450 Z" />`;
+            for (let c = 0, len = rng.range(1, 3); c < len; c++) {
+              const cx = rng.range(100, 700),
+                cy = sy + rng.range(30, 80),
+                cr = rng.range(15, 35);
+              svg += `<ellipse cx="${cx}" cy="${cy}" rx="${cr}" ry="${cr / 2.5}" fill="${p[0]}" stroke="${p[1]}" stroke-width="6" opacity="0.7"/>`;
+            }
+          }
+          return svg + `</g>`;
+        },
+        Labyrinth: (rng, p) => {
+          let svg = `<g stroke="${p[1]}" stroke-width="10" stroke-linejoin="round">`;
+          const layers = rng.range(3, 5),
+            cx = 400,
+            cy = 200;
+          for (let i = 0; i < layers; i++) {
+            const ow = 800 - i * 180,
+              oh = 450 - i * 100,
+              iw = 800 - (i + 1) * 180,
+              ih = 450 - (i + 1) * 100;
+            if (iw < 50 || ih < 50) break;
+            const ox = cx - ow / 2,
+              oy = cy - oh / 2,
+              ix = cx - iw / 2,
+              iy = cy - ih / 2,
+              c = i % 2 === 0 ? p[3] : p[2];
+            svg += `<path d="M ${ox},${oy} L ${ix},${iy} L ${ix},${iy + ih} L ${ox},${oy + oh} Z" fill="${c}" />`;
+            svg += `<path d="M ${ox + ow},${oy} L ${ix + iw},${iy} L ${ix + iw},${iy + ih} L ${ox + ow},${oy + oh} Z" fill="${c}" />`;
+            svg += `<path d="M ${ox},${oy} L ${ix},${iy} L ${ix + iw},${iy} L ${ox + ow},${oy} Z" fill="${p[0]}" opacity="0.6"/>`;
+            svg += `<path d="M ${ox},${oy + oh} L ${ix},${iy + ih} L ${ix + iw},${iy + ih} L ${ox + ow},${oy + oh} Z" fill="${p[0]}" opacity="0.3"/>`;
+          }
+          return svg + `</g>`;
+        },
+        Nebula: (rng, p) => {
+          let svg = `<g paint-order="stroke fill" stroke="${p[1]}" stroke-width="14" fill="${p[3]}">`;
+          const count = rng.range(8, 15);
+          for (let i = 0; i < count; i++)
+            svg += `<circle cx="${rng.range(150, 650)}" cy="${rng.range(100, 300)}" r="${rng.range(40, 100)}" />`;
+          svg += `</g><g fill="${p[4]}" stroke="none">`;
+          for (let i = 0; i < 6; i++)
+            svg += `<circle cx="${rng.range(250, 550)}" cy="${rng.range(150, 250)}" r="${rng.range(10, 30)}" opacity="0.8" />`;
+          svg += `</g>`;
+          for (let i = 0; i < 5; i++) {
+            const sx = rng.range(100, 700),
+              sy = rng.range(50, 350),
+              s = rng.range(5, 12);
+            svg += `<path d="M ${sx},${sy - s} Q ${sx},${sy} ${sx + s},${sy} Q ${sx},${sy} ${sx},${sy + s} Q ${sx},${sy} ${sx - s},${sy} Q ${sx},${sy} ${sx},${sy - s} Z" fill="${p[4]}" stroke="${p[1]}" stroke-width="4"/>`;
+          }
+          return svg;
+        },
+      };
+
+      /** ========================================================
+       *  ENGINE 3: ABSTRACT SVG (POLYGONS & FILTERS)
+       *  ======================================================== */
+      const GenAbstract = {
+        Spire: (rng, p) => {
+          let svg = "";
+          for (let i = 0, c = rng.range(3, 7); i < c; i++) {
+            const px = rng.range(200, 600),
+              py = rng.range(50, 250),
+              w = rng.range(100, 250),
+              op = rng.next() * 0.6 + 0.4;
+            svg += `<polygon points="${px - w / 2},450 ${px},${py} ${px + w / 2},450" fill="${p[2]}" opacity="${op}" />`;
+          }
+          return svg;
+        },
+        Wastes: (rng, p) => {
+          let pts = `0,450 `;
+          let cx = 0;
+          while (cx < 800) {
+            cx += rng.range(40, 150);
+            pts += `${Math.min(cx, 800)},${rng.range(250, 350)} `;
+          }
+          pts += `800,450`;
+          return `<polygon points="${pts}" fill="${p[2]}" />`;
+        },
+        Labyrinth: (rng, p) => {
+          let svg = "";
+          for (let i = 0, c = rng.range(4, 9); i < c; i++) {
+            const w = 700 - i * rng.range(60, 100),
+              h = 350 - i * rng.range(30, 50);
+            if (w < 20 || h < 20) break;
+            svg += `<rect x="${400 - w / 2 + rng.range(-30, 30)}" y="${200 - h / 2}" width="${w}" height="${h}" fill="none" stroke="${p[2]}" stroke-width="${rng.range(2, 6)}" opacity="${1 - i * 0.1}" />`;
+          }
+          return svg;
+        },
+        Nebula: (rng, p) => {
+          let svg = "";
+          for (let i = 0, c = rng.range(4, 8); i < c; i++) {
+            svg += `<circle cx="${rng.range(100, 700)}" cy="${rng.range(50, 350)}" r="${rng.range(80, 250)}" fill="${p[2]}" opacity="${rng.next() * 0.5 + 0.2}" filter="url(#filter-blur)" />`;
+          }
+          return svg;
+        },
+      };
+
+      /** ========================================================
+       *  ENGINE 4: RETRO VECTOR CRT (WIREFRAME GLOW)
+       *  ======================================================== */
+      const GenVector = {
+        Spire: (rng, p) => {
+          let svg = `<g stroke="${p[4]}" fill="none" stroke-width="2" filter="drop-shadow(0 0 6px ${p[4]})">`;
+          svg += `<path d="M 0,330 L 800,330 M 0,360 L 800,360 M 0,390 L 800,390" stroke="${p[2]}" opacity="0.5" />`;
+          for (let i = 0, c = rng.range(3, 6); i < c; i++) {
+            const cx = rng.range(150, 650),
+              y = rng.range(50, 200),
+              w = rng.range(100, 200);
+            svg += `<polygon points="${cx - w / 2},400 ${cx},${y} ${cx + w / 2},400" />`;
+            for (let cy = y + 30; cy < 400; cy += rng.range(30, 50)) {
+              const ratio = (cy - y) / (400 - y),
+                halfW = (w / 2) * ratio;
+              svg += `<line x1="${cx - halfW}" y1="${cy}" x2="${cx + halfW}" y2="${cy}" />`;
+            }
+          }
+          return svg + `</g>`;
+        },
+        Wastes: (rng, p) => {
+          let svg = `<g stroke="${p[3]}" fill="none" stroke-width="1.5" filter="drop-shadow(0 0 5px ${p[3]})">`;
+          const f1 = rng.next() * 0.02,
+            f2 = rng.next() * 0.05,
+            p1 = rng.next() * 10;
+          for (let y = 150; y <= 400; y += 25) {
+            let pts = "";
+            for (let x = 0; x <= 800; x += 40) {
+              const depth = (y - 150) / 250;
+              const dy =
+                (Math.sin((x + y) * f1 + p1) * 20 + Math.sin(x * f2) * 10) *
+                depth;
+              pts += `${x},${y - dy} `;
+            }
+            svg += `<polyline points="${pts}" />`;
+          }
+          return svg + `</g>`;
+        },
+        Labyrinth: (rng, p) => {
+          let svg = `<g stroke="${p[4]}" fill="none" stroke-width="2" filter="drop-shadow(0 0 6px ${p[4]})">`;
+          const cx = 400,
+            cy = 200;
+          let prev = null;
+          for (let i = 0, c = rng.range(6, 10); i < c; i++) {
+            const w = 700 - i * 70,
+              h = 350 - i * 35;
+            if (w < 30 || h < 30) break;
+            const rx = cx - w / 2,
+              ry = cy - h / 2;
+            svg += `<rect x="${rx}" y="${ry}" width="${w}" height="${h}" opacity="${1 - i * 0.08}" />`;
+            if (prev) {
+              svg += `<line x1="${prev.x}" y1="${prev.y}" x2="${rx}" y2="${ry}" opacity="${1 - i * 0.08}" />`;
+              svg += `<line x1="${prev.x + prev.w}" y1="${prev.y}" x2="${rx + w}" y2="${ry}" opacity="${1 - i * 0.08}" />`;
+              svg += `<line x1="${prev.x}" y1="${prev.y + prev.h}" x2="${rx}" y2="${ry + h}" opacity="${1 - i * 0.08}" />`;
+              svg += `<line x1="${prev.x + prev.w}" y1="${prev.y + prev.h}" x2="${rx + w}" y2="${ry + h}" opacity="${1 - i * 0.08}" />`;
+            }
+            prev = { x: rx, y: ry, w: w, h: h };
+          }
+          return svg + `</g>`;
+        },
+        Nebula: (rng, p) => {
+          let svg = `<g stroke="${p[3]}" fill="none" stroke-width="1.5" filter="drop-shadow(0 0 5px ${p[3]})">`;
+          for (let i = 0, c = rng.range(3, 6); i < c; i++) {
+            const cx = rng.range(200, 600),
+              cy = rng.range(100, 300);
+            for (
+              let r = rng.range(10, 30);
+              r < rng.range(150, 250);
+              r += rng.range(15, 25)
+            ) {
+              svg += `<circle cx="${cx}" cy="${cy}" r="${r}" stroke-opacity="${1 - r / 250}" />`;
+            }
+          }
+          return svg + `</g>`;
+        },
+      };
+
+      /** ========================================================
+       *  ENGINE 5: SHADOWPLAY SILHOUETTE (GRADIENTS & FOG)
+       *  ======================================================== */
+      const GenSilhouette = {
+        Spire: (rng, p) => {
+          let svg = `<defs><linearGradient id="sky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#sky-${rng.seed})" />`;
+          svg += `<circle cx="${rng.range(100, 700)}" cy="${rng.range(100, 250)}" r="${rng.range(50, 150)}" fill="${p[4]}" opacity="0.8" filter="url(#filter-blur)"/>`;
+          for (let i = 0, c = rng.range(4, 8); i < c; i++) {
+            const isF = i >= c - 3,
+              cx = rng.range(50, 750),
+              y = isF ? rng.range(100, 250) : rng.range(50, 200),
+              w = rng.range(100, 250);
+            svg += `<polygon points="${cx - w / 2},400 ${cx},${y} ${cx + w / 2},400" fill="${isF ? p[0] : p[1]}" />`;
+          }
+          return svg;
+        },
+        Wastes: (rng, p) => {
+          let svg = `<defs><linearGradient id="sky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#sky-${rng.seed})" />`;
+          for (let l = 0; l < 4; l++) {
+            const sy = 150 + l * 55;
+            let pts = `-50,450 -50,${sy} `;
+            let cx = -50;
+            while (cx < 850) {
+              cx += rng.range(100, 200);
+              pts += `${cx},${sy + rng.range(-50, 50)} `;
+            }
+            pts += `850,450`;
+            const col = l === 0 ? p[3] : l === 1 ? p[2] : l === 2 ? p[1] : p[0];
+            svg += `<polygon points="${pts}" fill="${col}" />`;
+          }
+          return svg;
+        },
+        Labyrinth: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          svg += `<rect x="350" y="150" width="100" height="100" fill="${p[4]}" filter="url(#filter-blur)" />`;
+          for (let i = 0, c = rng.range(3, 6); i < c; i++) {
+            const w = 700 - i * 140,
+              h = 350 - i * 70;
+            if (w < 50 || h < 50) break;
+            const ox = 400 - w / 2,
+              oy = 200 - h / 2,
+              col = i % 2 === 0 ? p[1] : p[0];
+            svg += `<rect x="${ox}" y="${oy}" width="60" height="${h}" fill="${col}" />`;
+            svg += `<rect x="${ox + w - 60}" y="${oy}" width="60" height="${h}" fill="${col}" />`;
+            svg += `<rect x="${ox}" y="${oy}" width="${w}" height="40" fill="${col}" />`;
+            svg += `<rect x="${ox}" y="${oy + h - 40}" width="${w}" height="40" fill="${col}" />`;
+          }
+          return svg;
+        },
+        Nebula: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          svg += `<circle cx="400" cy="200" r="180" fill="${p[4]}" filter="url(#filter-blur)" opacity="0.6"/>`;
+          for (let i = 0, c = rng.range(15, 25); i < c; i++) {
+            const cx = rng.range(50, 750),
+              cy = rng.range(50, 350),
+              r = rng.range(30, 120),
+              isDark = rng.chance(0.6);
+            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${isDark ? p[0] : p[2]}" opacity="${isDark ? 0.95 : 0.4}" filter="url(#filter-blur)" />`;
+          }
+          return svg;
+        },
+      };
+
+      /** ========================================================
+       *  MASTER DOM ASSEMBLER
+       *  ======================================================== */
+      function buildDimensionCard(adjective, noun, style) {
         const fullName = `The ${adjective} ${noun}`;
         const rng = new SeededRNG(fullName);
+        const p = PALETTES[adjective] || PALETTES.Fractured;
 
-        // Setup Renderer
-        const renderer = new PixelRenderer(160, 90);
-        renderer.setPalette(PALETTES[adjective] || PALETTES.Fractured);
-
-        // Generate Base Art
-        const generator = Generators[noun];
-        if (generator) generator(renderer, rng);
-
-        // Apply Adjective-specific post-processing (Glitch)
-        if (adjective === "Fractured") renderer.applyGlitch(rng);
-
-        const canvas = renderer.present();
-
-        // Build HTML
         const card = document.createElement("div");
         card.className = "art-card";
 
@@ -535,21 +801,84 @@
         title.innerText = fullName;
 
         const container = document.createElement("div");
-        container.className = "canvas-wrapper";
+        container.className = `art-container style-${style}`;
 
-        // Add CSS animation classes if applicable
-        if (adjective === "Eldritch") canvas.classList.add("anim-eldritch");
-        if (adjective === "Neon") canvas.classList.add("anim-neon");
+        // Atmosphere Animations
+        if (adjective === "Eldritch" && style !== "pixel")
+          container.classList.add("anim-eldritch");
+        if (adjective === "Neon" && style !== "pixel")
+          container.classList.add("anim-neon");
+        if (
+          adjective === "Eldritch" &&
+          (style === "cartoon" || style === "abstract")
+        )
+          container.classList.add("anim-float");
 
-        container.appendChild(canvas);
+        // SVG Renderers
+        if (style !== "pixel") {
+          let innerSVG = "";
+
+          if (style === "cartoon" || style === "abstract") {
+            let filter = "";
+            if (adjective === "Fractured")
+              filter = `filter="url(#filter-glitch)"`;
+            if (adjective === "Overgrown")
+              filter = `filter="url(#filter-wobble)"`;
+
+            let bgMarkup = "";
+            for (let i = 0, c = rng.range(20, 50); i < c; i++) {
+              if (style === "cartoon") {
+                const x = rng.range(20, 780),
+                  y = rng.range(20, 380),
+                  s = rng.range(2, 6);
+                bgMarkup += `<path d="M ${x},${y - s} Q ${x},${y} ${x + s},${y} Q ${x},${y} ${x},${y + s} Q ${x},${y} ${x - s},${y} Q ${x},${y} ${x},${y - s} Z" fill="${p[4]}" opacity="${rng.next() * 0.5 + 0.2}" />`;
+              } else {
+                bgMarkup += `<circle cx="${rng.range(0, 800)}" cy="${rng.range(0, 400)}" r="${rng.next() * 2}" fill="${p[4]}" opacity="${rng.next()}" />`;
+              }
+            }
+
+            const midMarkup =
+              style === "cartoon"
+                ? GenCartoon[noun](rng, p)
+                : GenAbstract[noun](rng, p);
+
+            let fgMarkup = "";
+            if (style === "cartoon") {
+              fgMarkup = `<g paint-order="stroke fill" stroke="${p[1]}" stroke-width="12" fill="${p[0]}"><path d="M -20,420 C 50,340 150,380 250,420 Z" /><path d="M 820,420 C 750,330 600,370 500,420 Z" /><rect x="-10" y="390" width="820" height="20" fill="${p[1]}" /></g>`;
+            }
+
+            innerSVG = `
+              <rect width="100%" height="100%" fill="${p[0]}" />
+              <g class="background">${bgMarkup}</g>
+              <g class="midground" ${filter}>${midMarkup}</g>
+              <g class="foreground">${fgMarkup}</g>
+            `;
+          } else if (style === "vector") {
+            innerSVG =
+              `<rect width="100%" height="100%" fill="${p[0]}" />` +
+              GenVector[noun](rng, p);
+          } else if (style === "silhouette") {
+            innerSVG = GenSilhouette[noun](rng, p);
+          }
+
+          container.innerHTML = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">${innerSVG}</svg>`;
+        }
+        // Pixel Art Renderer
+        else {
+          const renderer = new PixelRenderer(160, 90);
+          renderer.setPalette(p);
+          if (GenPixel[noun]) GenPixel[noun](renderer, rng);
+          if (adjective === "Fractured") renderer.applyGlitch(rng);
+          container.appendChild(renderer.present());
+        }
+
         card.appendChild(title);
         card.appendChild(container);
-
         return card;
       }
 
       /** ========================================================
-       *  6. INIT SCRIPT: BUILD THE GALLERY
+       *  INIT SCRIPT
        *  ======================================================== */
       const ADJECTIVES = [
         "Crimson",
@@ -560,13 +889,21 @@
         "Eldritch",
       ];
       const NOUNS = ["Spire", "Wastes", "Labyrinth", "Nebula"];
-      const galleryElement = document.getElementById("gallery");
+      const gallery = document.getElementById("gallery");
+      const selector = document.getElementById("style-select");
 
-      ADJECTIVES.forEach((adjective) => {
-        NOUNS.forEach((noun) => {
-          galleryElement.appendChild(buildDimensionCard(adjective, noun));
+      function refreshGallery() {
+        gallery.innerHTML = "";
+        const style = selector.value;
+        ADJECTIVES.forEach((adj) => {
+          NOUNS.forEach((noun) => {
+            gallery.appendChild(buildDimensionCard(adj, noun, style));
+          });
         });
-      });
+      }
+
+      selector.addEventListener("change", refreshGallery);
+      refreshGallery(); // Initial render
     </script>
   </body>
 </html>
