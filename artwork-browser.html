@@ -228,7 +228,7 @@
         <select id="style-select">
           <option value="pixel">1. Procedural Pixel Art (Canvas Dither)</option>
           <option value="vector" selected>
-            2. High-Res Vector (Sleek Procedural Graphics)
+            2. Flat Faceted Vector (Low-Poly 2D Landscape)
           </option>
           <option value="diorama">
             3. Atmospheric Diorama (Distance Depth Blur & Cutout)
@@ -241,7 +241,7 @@
 
     <script>
       /** ========================================================
-       *  1. SEEDED RNG CORE
+       *  0. SEEDED RNG CORE & UNIFIED PALETTES
        *  ======================================================== */
       function generateSeed(str) {
         let h = 0xdeadbeef;
@@ -287,7 +287,12 @@
       };
 
       /** ========================================================
-       *  ENGINE 1: PIXEL ART RENDERER (CANVAS DITHER) - UNTOUCHED
+       *  ENGINE 1: PIXEL ART RENDERER (CANVAS DITHER)
+       *  RULES:
+       *  - Strict 160x90 internal resolution to maintain chunky pixel style.
+       *  - Absolute 5-color palette limit.
+       *  - 4x4 Bayer Dithering Matrix for smooth retro gradients.
+       *  - Direct Uint32Array frame-buffer manipulation for performance.
        *  ======================================================== */
       class PixelRenderer {
         constructor(width = 160, height = 90) {
@@ -493,213 +498,261 @@
         },
       };
 
-      /** ========================================================
-       *  SHARED VECTOR NOUN HELPERS (JAGGED MOUNTAIN SPIRES & PENROSE RAILROAD)
-       *  ======================================================== */
-
-      // 1. Faceted, Jagged Mountain Spire Generator (No tree-top triangles)
-      function drawVectorMountainSpire(rng, p, isDiorama = false) {
-        let svg = `<defs><linearGradient id="vSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${p[0]}"/>
-          <stop offset="60%" stop-color="${p[2]}"/>
-          <stop offset="100%" stop-color="${p[1]}"/>
-        </linearGradient></defs>`;
-        svg += `<rect width="100%" height="100%" fill="url(#vSky-${rng.seed})" />`;
-
-        // Distant moon
-        svg += `<circle cx="${rng.range(150, 650)}" cy="${rng.range(50, 120)}" r="${rng.range(30, 70)}" fill="${p[4]}" opacity="0.85" filter="drop-shadow(0 0 15px ${p[4]})" />`;
-
-        const count = rng.range(4, 7);
-        for (let i = 0; i < count; i++) {
-          const depth = i / (count - 1);
-          const cx = rng.range(60, 740);
-          const peakY = rng.range(
-            40 + (1 - depth) * 40,
-            160 + (1 - depth) * 60,
-          );
-          const baseW = rng.range(100 + depth * 40, 220 + depth * 60);
-
-          // Jagged rock points on left and right sides
-          const cragL1 = cx - baseW * 0.35 + rng.range(-15, 15);
-          const cragL2 = cx - baseW * 0.2 + rng.range(-10, 10);
-          const cragR1 = cx + baseW * 0.2 + rng.range(-10, 10);
-          const cragR2 = cx + baseW * 0.35 + rng.range(-15, 15);
-
-          const y1 = peakY + (400 - peakY) * 0.35;
-          const y2 = peakY + (400 - peakY) * 0.7;
-
-          // Left Face (Shadow)
-          const polyLeft = `${cx - baseW / 2},420 ${cragL1},${y2} ${cragL2},${y1} ${cx},${peakY} ${cx},420`;
-          // Right Face (Illuminated)
-          const polyRight = `${cx},${peakY} ${cragR1},${y1} ${cragR2},${y2} ${cx + baseW / 2},420 ${cx},420`;
-
-          const cLit = i >= count - 2 ? p[3] : p[2];
-          const cShadow = i >= count - 2 ? p[1] : p[0];
-
-          let filterAttr = "";
-          if (isDiorama) {
-            const blurAmt = Math.max(0, (1 - depth) * 6);
-            filterAttr =
-              blurAmt > 0.5
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
-                : `style="filter: drop-shadow(0px -${(i + 1) * 3}px ${(i + 1) * 3}px rgba(0,0,0,0.6));"`;
-          } else {
-            filterAttr = `opacity="${0.5 + depth * 0.5}"`;
-          }
-
-          svg += `<g ${filterAttr}>`;
-          svg += `<polygon points="${polyLeft}" fill="${cShadow}" />`;
-          svg += `<polygon points="${polyRight}" fill="${cLit}" />`;
-
-          // Vertical jagged ridge line accent
-          svg += `<polyline points="${cx},${peakY} ${cx + rng.range(-5, 5)},${y1} ${cx},420" stroke="${p[4]}" stroke-width="2" fill="none" opacity="0.6" />`;
-
-          // Horizontal rock strata seams
-          svg += `<line x1="${cragL2}" y1="${y1}" x2="${cragR1}" y2="${y1}" stroke="${p[0]}" stroke-width="2" opacity="0.4" />`;
-          svg += `<line x1="${cragL1}" y1="${y2}" x2="${cragR2}" y2="${y2}" stroke="${p[0]}" stroke-width="2" opacity="0.4" />`;
-          svg += `</g>`;
-        }
-        return svg;
-      }
-
-      // 2. Impossible Penrose Railroad Stairs Labyrinth (NO CIRCLE, ISOMETRIC & LARGER)
-      function drawPenroseRailroadLabyrinth(rng, p, isDiorama = false) {
-        let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-
-        const N = 8;
-        const corners = [
-          { x: 400, y: 40 }, // C0 (Top)
-          { x: 660, y: 185 }, // C1 (Right)
-          { x: 400, y: 330 }, // C2 (Bottom)
-          { x: 140, y: 185 }, // C3 (Left)
-        ];
-
-        const flightConfigs = [
-          {
-            d: { x: 32.5, y: 18.125 },
-            w: { x: -22, y: 12 },
-            h: 12,
-            fillStep: p[3],
-            fillRiser: p[1],
-          }, // F0
-          {
-            d: { x: -32.5, y: 18.125 },
-            w: { x: 22, y: 12 },
-            h: 12,
-            fillStep: p[2],
-            fillRiser: p[1],
-          }, // F1
-          {
-            d: { x: -32.5, y: -18.125 },
-            w: { x: 22, y: -12 },
-            h: 12,
-            fillStep: p[3],
-            fillRiser: p[2],
-          }, // F2
-          {
-            d: { x: 32.5, y: -18.125 },
-            w: { x: -22, y: -12 },
-            h: 12,
-            fillStep: p[2],
-            fillRiser: p[1],
-          }, // F3
-        ];
-
-        // Painter's Depth Render Order: Flight 0 -> Flight 1 -> Flight 2 -> Flight 3
-        // Flight 3 overlays Flight 0 at C0, creating the mathematically continuous Penrose optical illusion loop!
-        const renderOrder = [0, 1, 2, 3];
-
-        let staircaseMarkup = `<g stroke-linejoin="round" stroke-linecap="round">`;
-
-        renderOrder.forEach((f) => {
-          const start = corners[f];
-          const cfg = flightConfigs[f];
-
-          for (let s = 0; s < N; s++) {
-            const x0 = start.x + s * cfg.d.x;
-            const y0 = start.y + s * cfg.d.y;
-            const x1 = start.x + (s + 1) * cfg.d.x;
-            const y1 = start.y + (s + 1) * cfg.d.y;
-
-            const wx = cfg.w.x;
-            const wy = cfg.w.y;
-            const h = cfg.h;
-
-            // Tread (Top face of step)
-            const treadPts = `${x0},${y0} ${x1},${y1} ${x1 + wx},${y1 + wy} ${x0 + wx},${y0 + wy}`;
-            // Riser (Front/Vertical face of step)
-            const riserPts = `${x0},${y0} ${x0 + wx},${y0 + wy} ${x0 + wx},${y0 + wy + h} ${x0},${y0 + h}`;
-
-            // Step Riser
-            staircaseMarkup += `<polygon points="${riserPts}" fill="${cfg.fillRiser}" stroke="${p[0]}" stroke-width="1.5" />`;
-            // Step Tread
-            staircaseMarkup += `<polygon points="${treadPts}" fill="${cfg.fillStep}" stroke="${p[0]}" stroke-width="1.5" />`;
-
-            // Railroad Wooden Tie (Sleeper) on top of tread
-            staircaseMarkup += `<line x1="${x0 + wx * 0.2}" y1="${y0 + wy * 0.2}" x2="${x0 + wx * 0.8}" y2="${y0 + wy * 0.8}" stroke="${p[0]}" stroke-width="3.5" />`;
-
-            // Steel Rails running along the flight length
-            const r1_start_x = x0 + wx * 0.25,
-              r1_start_y = y0 + wy * 0.25;
-            const r1_end_x = x1 + wx * 0.25,
-              r1_end_y = y1 + wy * 0.25;
-            const r2_start_x = x0 + wx * 0.75,
-              r2_start_y = y0 + wy * 0.75;
-            const r2_end_x = x1 + wx * 0.75,
-              r2_end_y = y1 + wy * 0.75;
-
-            staircaseMarkup += `<line x1="${r1_start_x}" y1="${r1_start_y}" x2="${r1_end_x}" y2="${r1_end_y}" stroke="${p[4]}" stroke-width="2.5" />`;
-            staircaseMarkup += `<line x1="${r2_start_x}" y1="${r2_start_y}" x2="${r2_end_x}" y2="${r2_end_y}" stroke="${p[4]}" stroke-width="2.5" />`;
-          }
-        });
-
-        staircaseMarkup += `</g>`;
-
-        let filterAttr = isDiorama
-          ? `style="filter: drop-shadow(0px 14px 22px rgba(0,0,0,0.85));"`
-          : "";
-        svg += `<g ${filterAttr}>${staircaseMarkup}</g>`;
-
-        return svg;
-      }
-
-      /** ========================================================
-       *  ENGINE 2: HIGH-RES VECTOR ENGINE (CLEAN PROCEDURAL GRAPHICS)
-       *  ======================================================== */
+      /** ==========================================================
+       *  ENGINE 2: FLAT FACETED VECTOR ENGINE
+       *  RULES:
+       *  - Strict 2D vector art. No stroke outlines.
+       *  - Overlapping Triangles Geometry: Mountain facets must be constructed using exact triangle math (left, center, right points) to prevent vertical collision gaps.
+       *  - Layer Ordering (Painter's Alg): Drawn explicitly from background (Layer 1) to foreground (Layer 5) for clean occlusion.
+       *  - Absolutely NO structural opacity. All geometry relies on pure, solid palette colors.
+       *  ========================================================== */
       const GenVectorBG = {
-        Spire: (rng, p) => drawVectorMountainSpire(rng, p, false),
+        // 1. Spire: Faceted 2D Mountain Landscape
+        Spire: (rng, p) => {
+          let svg = `<defs>
+            <linearGradient id="vSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${p[4]}" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="${p[3]}"/>
+            </linearGradient>
+          </defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#vSky-${rng.seed})" />`;
+
+          for (let i = 0; i < 3; i++) {
+            const cy = rng.range(15, 75),
+              cx = rng.range(80, 720),
+              cw = rng.range(160, 320);
+            svg += `<polygon points="${cx - cw / 2},${cy} ${cx + cw / 2},${cy} ${cx + cw / 2 - 25},${cy + 14} ${cx - cw / 2 + 25},${cy + 14}" fill="#ffffff" opacity="0.35" />`;
+          }
+
+          // LAYER 1: Distant Snow-Capped Faceted Peaks
+          // Ordered strictly back-to-front
+          const distPeaks = [
+            { x: 450, y: rng.range(50, 90), w: rng.range(400, 500) }, // Back center
+            { x: 280, y: rng.range(80, 120), w: rng.range(300, 400) }, // Mid left
+            { x: 650, y: rng.range(90, 130), w: rng.range(300, 400) }, // Mid right
+            { x: 100, y: rng.range(120, 160), w: rng.range(250, 350) }, // Front left
+            { x: 850, y: rng.range(120, 160), w: rng.range(250, 350) }, // Front right
+          ];
+
+          for (const peak of distPeaks) {
+            const px = peak.x + rng.range(-15, 15);
+            const py = peak.y;
+            const pw = peak.w;
+            const botY = 450;
+
+            // Angled central ridge points
+            const ridgeBotX = px + rng.range(-pw * 0.1, pw * 0.1);
+
+            // True Triangle Geometry: Shadow Face (Left)
+            svg += `<polygon points="${px - pw / 2},${botY} ${px},${py} ${ridgeBotX},${botY}" fill="${p[2]}" />`;
+            // True Triangle Geometry: Lit Face (Right)
+            svg += `<polygon points="${ridgeBotX},${botY} ${px},${py} ${px + pw / 2},${botY}" fill="${p[3]}" />`;
+
+            // Solid Snow Cap Facets mapped EXACTLY to the mountain's slope ratios
+            const snowH = rng.range(40, 60);
+            const snowRatio = snowH / (botY - py);
+            const slX = px - (pw / 2) * snowRatio;
+            const srX = px + (pw / 2) * snowRatio;
+            const smX = px + (ridgeBotX - px) * snowRatio;
+            const sBotY = py + snowH;
+            const jaggedY = sBotY + rng.range(-10, 10);
+
+            svg += `<polygon points="${slX},${sBotY} ${px},${py} ${smX},${jaggedY}" fill="#f0f0f5" />`; // left snow (shaded)
+            svg += `<polygon points="${smX},${jaggedY} ${px},${py} ${srX},${sBotY}" fill="#ffffff" />`; // right snow (lit)
+          }
+
+          // LAYER 1.5: WATER RECTANGLE (Cyan lake sitting behind the midground hills)
+          const waterY = rng.range(250, 270);
+          svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
+          for (let i = 0; i < 6; i++) {
+            svg += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
+          }
+
+          // LAYER 2: Midground Left Mountain (Overlapping Triangles)
+          const mlX = rng.range(150, 250),
+            mlY = rng.range(160, 200),
+            mlW = rng.range(500, 600);
+          const mlRidge = mlX + rng.range(-30, 30);
+          svg += `<polygon points="${mlX - mlW / 2},450 ${mlX},${mlY} ${mlRidge},450" fill="${p[1]}" />`;
+          svg += `<polygon points="${mlRidge},450 ${mlX},${mlY} ${mlX + mlW / 2},450" fill="${p[2]}" />`;
+
+          // LAYER 3: Midground Right Mountain
+          const mrX = rng.range(550, 650),
+            mrY = rng.range(120, 160),
+            mrW = rng.range(600, 700);
+          const mrRidge = mrX + rng.range(-40, 40);
+          svg += `<polygon points="${mrX - mrW / 2},450 ${mrX},${mrY} ${mrRidge},450" fill="${p[1]}" />`;
+          svg += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" />`;
+
+          // LAYER 4: Foreground Mountains (Darkest Silhouettes)
+          const flX = rng.range(80, 150),
+            flY = rng.range(280, 320),
+            flW = rng.range(500, 700);
+          const flRidge = flX + rng.range(-20, 20);
+          svg += `<polygon points="${flX - flW / 2},450 ${flX},${flY} ${flRidge},450" fill="${p[0]}" />`;
+          svg += `<polygon points="${flRidge},450 ${flX},${flY} ${flX + flW / 2},450" fill="${p[1]}" />`;
+
+          const frX = rng.range(650, 750),
+            frY = rng.range(250, 300),
+            frW = rng.range(600, 800);
+          const frRidge = frX + rng.range(-20, 20);
+          svg += `<polygon points="${frX - frW / 2},450 ${frX},${frY} ${frRidge},450" fill="${p[0]}" />`;
+          svg += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" />`;
+
+          // LAYER 5: Pine Tree Silhouettes mapped exactly to foreground geometry slope lines
+          function drawTrees(startX, startY, endX, endY, count, color) {
+            let tr = "";
+            for (let i = 0; i < count; i++) {
+              const t = i / count + rng.range(-2, 2) * 0.01;
+              const tx = startX + (endX - startX) * t;
+              const ty = startY + (endY - startY) * t + rng.range(-2, 2);
+              const th = rng.range(15, 30);
+              const tw = th * 0.45;
+              tr += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${color}" />`;
+              tr += `<polygon points="${tx},${ty - th * 0.7} ${tx - tw * 0.8},${ty - th * 0.1} ${tx + tw * 0.8},${ty - th * 0.1}" fill="${color}" />`;
+            }
+            return tr;
+          }
+
+          svg += drawTrees(flX - flW / 2, 450, flX, flY, 20, p[0]);
+          svg += drawTrees(flX, flY, flX + flW / 2, 450, 25, p[0]);
+          svg += drawTrees(frX - frW / 2, 450, frX, frY, 25, p[0]);
+          svg += drawTrees(frX, frY, frX + frW / 2, 450, 20, p[0]);
+
+          return svg;
+        },
+
+        // 2. Wastes: Faceted Solid Canyons
         Wastes: (rng, p) => {
           let svg = `<defs><linearGradient id="mWasteSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="${p[4]}"/>
-            <stop offset="70%" stop-color="${p[2]}"/>
+            <stop offset="60%" stop-color="${p[2]}"/>
             <stop offset="100%" stop-color="${p[0]}"/>
           </linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#mWasteSky-${rng.seed})" />`;
 
           for (let l = 0; l < 4; l++) {
-            const sy = 120 + l * 45;
-            let pts = `-50,450 -50,${sy} `;
+            const sy = 150 + l * 60;
             let cx = -50;
+            let blocks = "";
+            const cLight = p[3 - (l % 3)];
+            const cDark = p[2 - (l % 3)] || p[0];
+
             while (cx < 850) {
-              cx += rng.range(80, 180);
-              pts += `${cx},${sy + rng.range(-35, 35)} `;
+              const w = rng.range(100, 200),
+                y = sy + rng.range(-30, 30);
+              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w},450 ${cx},450" fill="${cDark}" />`;
+              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w - 20},${y - 15} ${cx + 20},${y - 15}" fill="${cLight}" />`;
+
+              const cutX = cx + rng.range(20, w - 20);
+              blocks += `<polygon points="${cutX},${y} ${cutX + 30},${y} ${cutX + 15},${y + rng.range(30, 80)}" fill="${cLight}" opacity="0.3" />`;
+              cx += w;
             }
-            pts += `850,450`;
-            svg += `<polygon points="${pts}" fill="${p[3 - (l % 3)]}" opacity="${0.5 + l * 0.15}" />`;
+            svg += blocks;
           }
           return svg;
         },
-        Labyrinth: (rng, p) => drawPenroseRailroadLabyrinth(rng, p, false),
+
+        // 3. Labyrinth: Solid Isometric Penrose Stairs
+        Labyrinth: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+
+          const N = 8;
+          const corners = [
+            { x: 400, y: 40 },
+            { x: 660, y: 185 },
+            { x: 400, y: 330 },
+            { x: 140, y: 185 },
+          ];
+
+          const flightConfigs = [
+            {
+              d: { x: 32.5, y: 18.125 },
+              w: { x: -22, y: 12 },
+              h: 12,
+              fillStep: p[3],
+              fillRiser: p[1],
+            },
+            {
+              d: { x: -32.5, y: 18.125 },
+              w: { x: 22, y: 12 },
+              h: 12,
+              fillStep: p[2],
+              fillRiser: p[1],
+            },
+            {
+              d: { x: -32.5, y: -18.125 },
+              w: { x: 22, y: -12 },
+              h: 12,
+              fillStep: p[3],
+              fillRiser: p[2],
+            },
+            {
+              d: { x: 32.5, y: -18.125 },
+              w: { x: -22, y: -12 },
+              h: 12,
+              fillStep: p[2],
+              fillRiser: p[1],
+            },
+          ];
+
+          let penroseMarkup = `<g stroke-linejoin="round" stroke-linecap="round">`;
+          for (let f = 0; f < 4; f++) {
+            const start = corners[f];
+            const cfg = flightConfigs[f];
+
+            for (let s = 0; s < N; s++) {
+              const x0 = start.x + s * cfg.d.x,
+                y0 = start.y + s * cfg.d.y;
+              const x1 = start.x + (s + 1) * cfg.d.x,
+                y1 = start.y + (s + 1) * cfg.d.y;
+              const wx = cfg.w.x,
+                wy = cfg.w.y,
+                h = cfg.h;
+
+              const treadPts = `${x0},${y0} ${x1},${y1} ${x1 + wx},${y1 + wy} ${x0 + wx},${y0 + wy}`;
+              const riserPts = `${x0},${y0} ${x0 + wx},${y0 + wy} ${x0 + wx},${y0 + wy + h} ${x0},${y0 + h}`;
+
+              penroseMarkup += `<polygon points="${riserPts}" fill="${cfg.fillRiser}" />`;
+              penroseMarkup += `<polygon points="${treadPts}" fill="${cfg.fillStep}" />`;
+
+              penroseMarkup += `<line x1="${x0 + wx * 0.2}" y1="${y0 + wy * 0.2}" x2="${x0 + wx * 0.8}" y2="${y0 + wy * 0.8}" stroke="${p[0]}" stroke-width="3.5" />`;
+              const offsetR = 32.5 / 3;
+              penroseMarkup += `<line x1="${x0 - offsetR}" y1="${y0}" x2="${x1 - offsetR}" y2="${y1}" stroke="${p[4]}" stroke-width="2.5" />`;
+              penroseMarkup += `<line x1="${x0 + offsetR}" y1="${y0}" x2="${x1 + offsetR}" y2="${y1}" stroke="${p[4]}" stroke-width="2.5" />`;
+            }
+          }
+          penroseMarkup += `</g>`;
+          svg += penroseMarkup;
+          return svg;
+        },
+
+        // 4. Nebula: Solid Layered Geometric Clouds
         Nebula: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          for (let i = 0, c = rng.range(6, 12); i < c; i++) {
-            const cx = rng.range(100, 700),
-              cy = rng.range(40, 320),
-              r = rng.range(60, 200);
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p[(i % 3) + 1]}" opacity="0.35" filter="drop-shadow(0 0 15px ${p[(i % 3) + 1]})" />`;
+
+          for (let i = 0; i < 30; i++) {
+            const cx = rng.range(0, 800),
+              cy = rng.range(0, 400);
+            const r = rng.range(20, 100),
+              sides = rng.range(5, 8);
+            let pts = "";
+            for (let s = 0; s < sides; s++) {
+              const ang = (s / sides) * Math.PI * 2;
+              const rad = (r * rng.range(80, 120)) / 100;
+              pts += `${cx + Math.cos(ang) * rad},${cy + Math.sin(ang) * rad} `;
+            }
+
+            const col = p[Math.floor((i / 30) * 3) + 1];
+            svg += `<polygon points="${pts}" fill="${col}" />`;
+            svg += `<polygon points="${cx},${cy} ${cx + r},${cy} ${cx},${cy - r}" fill="${p[4]}" opacity="0.2" />`;
           }
+
           for (let i = 0; i < 40; i++) {
-            svg += `<circle cx="${rng.range(0, 800)}" cy="${rng.range(0, 400)}" r="${rng.next() * 2}" fill="${p[4]}" opacity="${rng.next()}" />`;
+            const sx = rng.range(0, 800),
+              sy = rng.range(0, 400),
+              s = rng.range(2, 5);
+            svg += `<polygon points="${sx},${sy - s} ${sx + s},${sy} ${sx},${sy + s} ${sx - s},${sy}" fill="${p[4]}" />`;
           }
           return svg;
         },
@@ -707,9 +760,52 @@
 
       /** ========================================================
        *  ENGINE 3: ATMOSPHERIC DIORAMA (DISTANCE BLUR & CUTOUT)
+       *  RULES:
+       *  - Layered SVG vectors drawn from back-to-front.
+       *  - Distance Fog: Background layers get heavily blurred (Gaussian blur) and washed out (opacity fades into sky).
+       *  - Ambient Occlusion: Foreground layers get crisp edges and heavy CSS drop-shadows to separate depth planes.
        *  ======================================================== */
       const GenDiorama = {
-        Spire: (rng, p) => drawVectorMountainSpire(rng, p, true),
+        Spire: (rng, p) => {
+          let svg = `<defs><linearGradient id="dSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${p[4]}"/>
+            <stop offset="50%" stop-color="${p[3]}"/>
+            <stop offset="100%" stop-color="${p[1]}"/>
+          </linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#dSky-${rng.seed})" />`;
+
+          // Soft blurred sun
+          const sunX = rng.range(150, 650),
+            sunY = rng.range(100, 220);
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(60, 120)}" fill="${p[4]}" opacity="0.6" filter="url(#filter-wobble)" />`;
+
+          const layers = 6;
+          for (let l = 0; l < layers; l++) {
+            const depth = l / (layers - 1); // 0.0 (far) to 1.0 (near)
+            const yMin = 180 - l * 20;
+            const spCount = rng.range(3, 6);
+            const col =
+              l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
+
+            // Explicit distance parameter blur calculation
+            const blurAmt = Math.max(0, (1 - depth) * 6);
+            const filterStyle =
+              blurAmt > 0.5
+                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
+                : `style="filter: drop-shadow(0px -${(l + 1) * 3}px ${(l + 1) * 3}px rgba(0,0,0,0.6));"`;
+
+            svg += `<g stroke="none" fill="${col}" ${filterStyle}>`;
+            for (let i = 0; i < spCount; i++) {
+              const cx = rng.range(50, 750),
+                sy = rng.range(yMin, yMin + 80),
+                w = rng.range(60 + l * 20, 140 + l * 30);
+              svg += `<polygon points="${cx - w / 2},420 ${cx},${sy} ${cx + w / 2},420" />`;
+            }
+            svg += `</g>`;
+          }
+          return svg;
+        },
+
         Wastes: (rng, p) => {
           let svg = `<defs><linearGradient id="dWasteSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="${p[0]}"/>
@@ -718,7 +814,6 @@
           </linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#dWasteSky-${rng.seed})" />`;
 
-          // 6 Mountain/Dune layers with DISTANCE BLUR
           const layers = 6;
           for (let l = 0; l < layers; l++) {
             const depth = l / (layers - 1);
@@ -744,9 +839,75 @@
           return svg;
         },
 
-        Labyrinth: (rng, p) => drawPenroseRailroadLabyrinth(rng, p, true),
+        Labyrinth: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
 
-        // NEBULA: Soft, Indistinct Painterly Radial Glows (Old Engine 8 Style)
+          const N = 8;
+          const corners = [
+            { x: 400, y: 40 },
+            { x: 660, y: 185 },
+            { x: 400, y: 330 },
+            { x: 140, y: 185 },
+          ];
+          const flightConfigs = [
+            {
+              d: { x: 32.5, y: 18.125 },
+              w: { x: -22, y: 12 },
+              h: 12,
+              fillStep: p[3],
+              fillRiser: p[1],
+            },
+            {
+              d: { x: -32.5, y: 18.125 },
+              w: { x: 22, y: 12 },
+              h: 12,
+              fillStep: p[2],
+              fillRiser: p[1],
+            },
+            {
+              d: { x: -32.5, y: -18.125 },
+              w: { x: 22, y: -12 },
+              h: 12,
+              fillStep: p[3],
+              fillRiser: p[2],
+            },
+            {
+              d: { x: 32.5, y: -18.125 },
+              w: { x: -22, y: -12 },
+              h: 12,
+              fillStep: p[2],
+              fillRiser: p[1],
+            },
+          ];
+
+          let penroseMarkup = `<g stroke-linejoin="round" stroke-linecap="round">`;
+          for (let f = 0; f < 4; f++) {
+            const start = corners[f];
+            const cfg = flightConfigs[f];
+
+            for (let s = 0; s < N; s++) {
+              const x0 = start.x + s * cfg.d.x,
+                y0 = start.y + s * cfg.d.y;
+              const x1 = start.x + (s + 1) * cfg.d.x,
+                y1 = start.y + (s + 1) * cfg.d.y;
+              const wx = cfg.w.x,
+                wy = cfg.w.y,
+                h = cfg.h;
+
+              const treadPts = `${x0},${y0} ${x1},${y1} ${x1 + wx},${y1 + wy} ${x0 + wx},${y0 + wy}`;
+              const riserPts = `${x0},${y0} ${x0 + wx},${y0 + wy} ${x0 + wx},${y0 + wy + h} ${x0},${y0 + h}`;
+
+              penroseMarkup += `<polygon points="${riserPts}" fill="${cfg.fillRiser}" stroke="${p[0]}" stroke-width="1.5" />`;
+              penroseMarkup += `<polygon points="${treadPts}" fill="${cfg.fillStep}" stroke="${p[0]}" stroke-width="1.5" />`;
+            }
+          }
+          penroseMarkup += `</g>`;
+
+          // Diorama specific heavy drop-shadow
+          svg += `<g style="filter: drop-shadow(0px 14px 22px rgba(0,0,0,0.85));">${penroseMarkup}</g>`;
+          return svg;
+        },
+
         Nebula: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           svg += `<defs>`;
@@ -760,16 +921,14 @@
           }
           svg += `</defs><g stroke="none">`;
 
-          // Soft blurred glowing gas clouds
           for (let i = 0; i < count; i++) {
-            const cx = rng.range(100, 700);
-            const cy = rng.range(50, 350);
-            const r = rng.range(110, 280);
-            const blurPx = rng.range(12, 30);
+            const cx = rng.range(100, 700),
+              cy = rng.range(50, 350),
+              r = rng.range(110, 280),
+              blurPx = rng.range(12, 30);
             svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#dNebGrad${i}-${rng.seed})" style="filter: blur(${blurPx}px);" />`;
           }
 
-          // Soft distant star field
           for (let i = 0; i < 35; i++) {
             svg += `<circle cx="${rng.range(0, 800)}" cy="${rng.range(0, 400)}" r="${rng.next() * 2}" fill="${p[4]}" opacity="${rng.next() * 0.75}" />`;
           }
@@ -795,46 +954,33 @@
         const container = document.createElement("div");
         container.className = `art-container style-${style}`;
 
-        // Dynamic Atmosphere Animations
         if (adjective === "Eldritch" && style !== "pixel")
           container.classList.add("anim-eldritch");
         if (adjective === "Neon" && style !== "pixel")
           container.classList.add("anim-neon");
 
-        // Engine 1: Pixel Art Canvas
         if (style === "pixel") {
           const renderer = new PixelRenderer(160, 90);
           renderer.setPalette(p);
           if (GenPixel[noun]) GenPixel[noun](renderer, rng);
           if (adjective === "Fractured") renderer.applyGlitch(rng);
           container.appendChild(renderer.present());
-        }
-        // Engine 2: High-Res Vector Engine
-        else if (style === "vector") {
+        } else if (style === "vector") {
           let filter = "";
           if (adjective === "Fractured")
             filter = `filter="url(#filter-glitch)"`;
           if (adjective === "Overgrown")
             filter = `filter="url(#filter-wobble)"`;
-
           const bgSVG = GenVectorBG[noun](rng, p);
           container.innerHTML = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filter}>${bgSVG}</g></svg>`;
-        }
-        // Engine 3: Atmospheric Diorama Engine
-        else if (style === "diorama") {
+        } else if (style === "diorama") {
           let filter = "";
           if (adjective === "Fractured")
             filter = `filter="url(#filter-glitch)"`;
           if (adjective === "Overgrown")
             filter = `filter="url(#filter-wobble)"`;
-
           const midMarkup = GenDiorama[noun](rng, p);
-
-          container.innerHTML = `
-            <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
-              <g class="midground" ${filter}>${midMarkup}</g>
-            </svg>
-          `;
+          container.innerHTML = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filter}>${midMarkup}</g></svg>`;
         }
 
         card.appendChild(title);
