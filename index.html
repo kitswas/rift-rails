@@ -625,15 +625,16 @@
             "Overgrown",
             "Frozen",
             "Neon",
+            "Shattered",
+            "Eldritch",
+            "Rusting",
           ],
-          nouns: [
-            "Wastes",
-            "Catacombs",
-            "Tundra",
-            "Expanse",
-            "Nebula",
-            "Spire",
-          ],
+          nouns: {
+            hub: ["Station", "Bazaar", "Outpost", "Nexus", "Sanctuary"],
+            hunt: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
+            res: ["Wastes", "Quarry", "Nebula", "Crags", "Fields"],
+            maze: ["Catacombs", "Labyrinth", "Spire", "Ruins", "Abyss"],
+          },
         },
 
         nodes: {
@@ -897,6 +898,7 @@
         carriage: GAME_DATA.text.noneState,
         crew: GAME_DATA.text.noneState,
         dimId: GAME_DATA.nodes.hub.id,
+        dimName: "Scrapyard",
         navChoices: [],
         yardCat: null,
       };
@@ -1097,16 +1099,6 @@
         },
 
         generateDimension: (excludedIds = []) => {
-          const adj =
-            GAME_DATA.procedural.adjectives[
-              Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
-            ];
-          const noun =
-            GAME_DATA.procedural.nouns[
-              Math.floor(Math.random() * GAME_DATA.procedural.nouns.length)
-            ];
-          const genName = `${adj} ${noun}`;
-
           let availableNodes = Object.values(GAME_DATA.nodes).filter(
             (n) => !excludedIds.includes(n.id),
           );
@@ -1125,6 +1117,15 @@
               break;
             }
           }
+
+          const adj =
+            GAME_DATA.procedural.adjectives[
+              Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
+            ];
+          const nouns = GAME_DATA.procedural.nouns[chosenId];
+          const noun = nouns[Math.floor(Math.random() * nouns.length)];
+          const genName = `${adj} ${noun}`;
+
           return { id: chosenId, name: genName };
         },
 
@@ -1172,7 +1173,8 @@
           }
 
           state.dimId = dimId;
-          DOM.locationName.innerText = GAME_DATA.text.formatDimName(dimName);
+          state.dimName = dimName;
+
           Engine.log(
             GAME_DATA.text.logLocEnter(
               dimName,
@@ -1294,6 +1296,10 @@
         },
 
         renderVitals: () => {
+          DOM.locationName.innerText = GAME_DATA.text.formatDimName(
+            state.dimName,
+          );
+
           DOM.statHull.innerText = GAME_DATA.text.formatPct(
             Math.floor(state.hull),
           );
