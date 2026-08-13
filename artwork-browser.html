@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rift Rails: Procedural Dimension Gallery</title>
+    <style>
+      :root {
+        --bg: #1a1a24;
+        --panel-bg: #2a2a36;
+        --text: #f0f0f5;
+        --border: #444455;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: "Courier New", Courier, monospace;
+        margin: 0;
+        padding: 40px;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      header h1 {
+        color: #ffcc00;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 900;
+        text-shadow: 2px 2px 0 #000;
+      }
+
+      header p {
+        color: #aaa;
+        max-width: 600px;
+        margin: 0 auto;
+        font-weight: bold;
+      }
+
+      #gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 30px;
+        width: 100%;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+
+      .art-card {
+        background: var(--panel-bg);
+        border: 3px solid #111;
+        border-radius: 12px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        box-shadow: 4px 4px 0 #111;
+      }
+
+      .art-card:hover {
+        transform: translate(-4px, -4px);
+        box-shadow: 8px 8px 0 #000;
+      }
+
+      .art-title {
+        text-transform: uppercase;
+        font-weight: 900;
+        font-size: 1.2em;
+        text-align: center;
+        margin: 0;
+        color: #fff;
+        text-shadow: 1px 1px 0 #000;
+      }
+
+      .art-container {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 4px solid #111;
+        position: relative;
+      }
+
+      /* ========================================================
+         CARTOON ADJECTIVE PALETTES
+      ======================================================== */
+
+      .dim-svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      /* Crimson: Vibrant reds, deep burgundy outlines */
+      .adj-crimson {
+        --dim-bg: #4a0d0d;
+        --dim-primary: #ff3333;
+        --dim-secondary: #ff8888;
+        --dim-stroke: #220000;
+      }
+
+      /* Neon: Bubblegum cyberpunk */
+      .adj-neon {
+        --dim-bg: #0f0f2a;
+        --dim-primary: #00ffff;
+        --dim-secondary: #ff00ff;
+        --dim-stroke: #050511;
+      }
+      .adj-neon .midground {
+        filter: drop-shadow(0 4px 10px rgba(0, 255, 255, 0.5));
+      }
+
+      /* Fractured: Stark contrasts, glitched */
+      .adj-fractured {
+        --dim-bg: #222;
+        --dim-primary: #ffffff;
+        --dim-secondary: #ffcc00;
+        --dim-stroke: #000000;
+      }
+      .adj-fractured .midground {
+        filter: url(#filter-glitch);
+      }
+
+      /* Overgrown: Lush, toxic cartoon greens */
+      .adj-overgrown {
+        --dim-bg: #0d2b14;
+        --dim-primary: #44dd44;
+        --dim-secondary: #aaffaa;
+        --dim-stroke: #061a06;
+      }
+      .adj-overgrown .midground {
+        filter: url(#filter-wobble);
+      }
+
+      /* Clockwork: Chunky brass and gold */
+      .adj-clockwork {
+        --dim-bg: #2b1f15;
+        --dim-primary: #e69900;
+        --dim-secondary: #ffe680;
+        --dim-stroke: #1a0f00;
+      }
+
+      /* Eldritch: Spooky purples, floating animation */
+      .adj-eldritch {
+        --dim-bg: #160824;
+        --dim-primary: #9933ff;
+        --dim-secondary: #d4aaff;
+        --dim-stroke: #10001a;
+      }
+      .adj-eldritch .midground {
+        animation: float 3s infinite alternate ease-in-out;
+      }
+
+      @keyframes float {
+        0% {
+          transform: translateY(0px) scale(1);
+        }
+        100% {
+          transform: translateY(-8px) scale(1.02);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- SVG FILTERS (Tuned for cartoon style) -->
+    <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
+      <defs>
+        <!-- Sharp, stepped displacement for Fractured -->
+        <filter id="filter-glitch">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.2 0.02"
+            numOctaves="1"
+            result="noise"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 -2"
+            in="noise"
+            result="steppedNoise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="steppedNoise"
+            scale="15"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+
+        <!-- Thick, bubbling distortion for Overgrown -->
+        <filter id="filter-wobble">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.04"
+            numOctaves="2"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="10"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </defs>
+    </svg>
+
+    <header>
+      <h1>Dimensional Registry</h1>
+      <p>
+        Procedural Cartoony Art Engine. Powered by SVG Bezier curves,
+        overlapping paint-orders, and Seeded RNG.
+      </p>
+    </header>
+
+    <div id="gallery"></div>
+
+    <script>
+      /**
+       * 1. HASH FUNCTION (String -> 32-bit Integer Seed)
+       */
+      function generateSeed(str) {
+        let h = 0xdeadbeef;
+        for (let i = 0; i < str.length; i++) {
+          h = Math.imul(h ^ str.charCodeAt(i), 2654435761);
+        }
+        return (h ^ (h >>> 16)) >>> 0;
+      }
+
+      /**
+       * 2. PRNG ALGORITHM (Mulberry32)
+       */
+      function mulberry32(seed) {
+        return function () {
+          let t = (seed += 0x6d2b79f5);
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      /**
+       * 3. RNG CLASS TOOLKIT
+       */
+      class SeededRNG {
+        constructor(seedString) {
+          this.seed = generateSeed(seedString);
+          this.random = mulberry32(this.seed);
+        }
+
+        next() {
+          return this.random();
+        }
+        range(min, max) {
+          return Math.floor(this.random() * (max - min + 1)) + min;
+        }
+        choice(array) {
+          return array[Math.floor(this.random() * array.length)];
+        }
+      }
+
+      /**
+       * 4. PROCEDURAL GEOMETRY GENERATORS (NOUNS - CARTOON STYLE)
+       * Utilizing `paint-order="stroke fill"` to create fused cartoon outlines.
+       */
+      const GeometryGenerators = {
+        // Tall, swooping, Dr. Seuss-style curved towers
+        Spire: (rng) => {
+          let svg = `<g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="12" stroke-linejoin="round" fill="var(--dim-primary)">`;
+          const count = rng.range(3, 5);
+
+          for (let i = 0; i < count; i++) {
+            const baseX = rng.range(150, 650);
+            const tipX = baseX + rng.range(-150, 150);
+            const tipY = rng.range(20, 150);
+            const width = rng.range(80, 160);
+            const controlY = tipY + rng.range(80, 200);
+
+            // Swooping bezier horn shape
+            svg += `<path d="M ${baseX - width / 2},450 Q ${baseX - width / 4},${controlY} ${tipX},${tipY} Q ${baseX + width / 4},${controlY} ${baseX + width / 2},450 Z" />`;
+
+            // Inner cell-shade highlight
+            svg += `<path d="M ${baseX - width / 2 + 20},450 Q ${baseX - width / 4 + 20},${controlY + 20} ${tipX},${tipY + 30} Q ${baseX},${controlY + 20} ${baseX},450 Z" fill="var(--dim-secondary)" stroke="none" opacity="0.6"/>`;
+          }
+          svg += `</g>`;
+          return svg;
+        },
+
+        // Overlapping, bubbling cartoon dunes with craters
+        Wastes: (rng) => {
+          let svg = `<g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="12" stroke-linejoin="round" fill="var(--dim-primary)">`;
+
+          // 3 layers of dunes moving foreground
+          for (let i = 0; i < 3; i++) {
+            const startY = 200 + i * 60;
+            const cp1x = rng.range(100, 300);
+            const cp1y = rng.range(startY - 120, startY + 60);
+            const cp2x = rng.range(500, 700);
+            const cp2y = rng.range(startY - 120, startY + 60);
+
+            // Wavy dune curve
+            svg += `<path d="M -50,450 L -50,${startY} C ${cp1x},${cp1y} ${cp2x},${cp2y} 850,${startY} L 850,450 Z" />`;
+
+            // Add a couple of cartoon craters to each dune
+            const craters = rng.range(1, 3);
+            for (let c = 0; c < craters; c++) {
+              const cx = rng.range(100, 700);
+              const cy = startY + rng.range(30, 80);
+              const cr = rng.range(15, 35);
+              svg += `<ellipse cx="${cx}" cy="${cy}" rx="${cr}" ry="${cr / 2.5}" fill="var(--dim-bg)" stroke="var(--dim-stroke)" stroke-width="6" opacity="0.7"/>`;
+            }
+          }
+          svg += `</g>`;
+          return svg;
+        },
+
+        // Classic dungeon crawler perspective walls
+        Labyrinth: (rng) => {
+          let svg = `<g stroke="var(--dim-stroke)" stroke-width="10" stroke-linejoin="round" fill="var(--dim-primary)">`;
+          const layers = rng.range(3, 5);
+          const cx = 400;
+          const cy = 200;
+
+          for (let i = 0; i < layers; i++) {
+            const outerW = 800 - i * 180;
+            const outerH = 450 - i * 100;
+            const innerW = 800 - (i + 1) * 180;
+            const innerH = 450 - (i + 1) * 100;
+
+            if (innerW < 50 || innerH < 50) break;
+
+            const ox = cx - outerW / 2;
+            const oy = cy - outerH / 2;
+            const ix = cx - innerW / 2;
+            const iy = cy - innerH / 2;
+
+            const color =
+              i % 2 === 0 ? "var(--dim-primary)" : "var(--dim-secondary)";
+
+            // Left Wall Trapezoid
+            svg += `<path d="M ${ox},${oy} L ${ix},${iy} L ${ix},${iy + innerH} L ${ox},${oy + outerH} Z" fill="${color}" />`;
+            // Right Wall Trapezoid
+            svg += `<path d="M ${ox + outerW},${oy} L ${ix + innerW},${iy} L ${ix + innerW},${iy + innerH} L ${ox + outerW},${oy + outerH} Z" fill="${color}" />`;
+            // Ceiling
+            svg += `<path d="M ${ox},${oy} L ${ix},${iy} L ${ix + innerW},${iy} L ${ox + outerW},${oy} Z" fill="var(--dim-bg)" opacity="0.6"/>`;
+            // Floor
+            svg += `<path d="M ${ox},${oy + outerH} L ${ix},${iy + innerH} L ${ix + innerW},${iy + innerH} L ${ox + outerW},${oy + outerH} Z" fill="var(--dim-bg)" opacity="0.3"/>`;
+          }
+          svg += `</g>`;
+          return svg;
+        },
+
+        // Overlapping cartoony space-clouds (fused together by paint-order)
+        Nebula: (rng) => {
+          let svg = `<g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="14" fill="var(--dim-primary)">`;
+          const count = rng.range(8, 15);
+
+          // Draw the main fused cloud body
+          for (let i = 0; i < count; i++) {
+            const cx = rng.range(150, 650);
+            const cy = rng.range(100, 300);
+            const r = rng.range(40, 100);
+            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" />`;
+          }
+          svg += `</g>`;
+
+          // Draw bright highlight crescents inside the clouds
+          svg += `<g fill="var(--dim-secondary)" stroke="none">`;
+          for (let i = 0; i < count; i++) {
+            // Re-run the exact same PRNG sequence to get the exact same circles
+            // (We reset the RNG slightly to match the positions)
+          }
+          // (Instead of complex state reset, just add a few random floating bubbles for highlights)
+          for (let i = 0; i < 6; i++) {
+            const cx = rng.range(250, 550);
+            const cy = rng.range(150, 250);
+            const r = rng.range(10, 30);
+            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" opacity="0.8" />`;
+          }
+          svg += `</g>`;
+
+          // Floating stars in foreground
+          for (let i = 0; i < 5; i++) {
+            let sx = rng.range(100, 700);
+            let sy = rng.range(50, 350);
+            let s = rng.range(5, 12);
+            svg += `<path d="M ${sx},${sy - s} Q ${sx},${sy} ${sx + s},${sy} Q ${sx},${sy} ${sx},${sy + s} Q ${sx},${sy} ${sx - s},${sy} Q ${sx},${sy} ${sx},${sy - s} Z" fill="var(--dim-secondary)" stroke="var(--dim-stroke)" stroke-width="4"/>`;
+          }
+
+          return svg;
+        },
+      };
+
+      /**
+       * 5. MASTER SVG ASSEMBLER
+       */
+      function buildDimensionSVG(adjective, noun) {
+        const fullName = `The ${adjective} ${noun}`;
+        const rng = new SeededRNG(fullName);
+
+        const adjClass = `adj-${adjective.toLowerCase()}`;
+        const geometryRenderer = GeometryGenerators[noun];
+        if (!geometryRenderer) return "";
+
+        // BACKGROUND: 4-Pointed Cartoon Stars
+        let backgroundMarkup = "";
+        const bgDetails = rng.range(15, 35);
+        for (let i = 0; i < bgDetails; i++) {
+          const x = rng.range(20, 780);
+          const y = rng.range(20, 380);
+          const s = rng.range(2, 6);
+          // 4 point star path
+          const starPath = `M ${x},${y - s} Q ${x},${y} ${x + s},${y} Q ${x},${y} ${x},${y + s} Q ${x},${y} ${x - s},${y} Q ${x},${y} ${x},${y - s} Z`;
+          backgroundMarkup += `<path d="${starPath}" fill="var(--dim-secondary)" opacity="${rng.next() * 0.5 + 0.2}" />`;
+        }
+
+        // MIDGROUND: The unique Noun geometry
+        const midgroundMarkup = geometryRenderer(rng);
+
+        // FOREGROUND: Chunky base sill to frame the image (replacing the rails)
+        const foregroundMarkup = `
+          <g paint-order="stroke fill" stroke="var(--dim-stroke)" stroke-width="12" fill="var(--dim-bg)">
+            <!-- Left foreground rock -->
+            <path d="M -20,420 C 50,340 150,380 250,420 Z" />
+            <!-- Right foreground rock -->
+            <path d="M 820,420 C 750,330 600,370 500,420 Z" />
+            <!-- Flat bottom border sill -->
+            <rect x="-10" y="390" width="820" height="20" fill="var(--dim-stroke)" />
+          </g>
+        `;
+
+        return `
+          <svg class="dim-svg ${adjClass}" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="var(--dim-bg)" />
+            <g class="background">${backgroundMarkup}</g>
+            <g class="midground">${midgroundMarkup}</g>
+            <g class="foreground">${foregroundMarkup}</g>
+          </svg>
+        `;
+      }
+
+      /**
+       * 6. INIT SCRIPT: BUILD THE GALLERY
+       */
+      const ADJECTIVES = [
+        "Crimson",
+        "Neon",
+        "Fractured",
+        "Overgrown",
+        "Clockwork",
+        "Eldritch",
+      ];
+      const NOUNS = ["Spire", "Wastes", "Labyrinth", "Nebula"];
+      const galleryElement = document.getElementById("gallery");
+
+      ADJECTIVES.forEach((adjective) => {
+        NOUNS.forEach((noun) => {
+          const card = document.createElement("div");
+          card.className = "art-card";
+
+          const title = document.createElement("h3");
+          title.className = "art-title";
+          title.innerText = `The ${adjective} ${noun}`;
+
+          const artContainer = document.createElement("div");
+          artContainer.className = "art-container";
+          artContainer.innerHTML = buildDimensionSVG(adjective, noun);
+
+          card.appendChild(title);
+          card.appendChild(artContainer);
+          galleryElement.appendChild(card);
+        });
+      });
+    </script>
+  </body>
+</html>
