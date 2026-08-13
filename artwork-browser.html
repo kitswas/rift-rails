@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rift Rails: 8-Engine Procedural Gallery</title>
+    <title>Rift Rails: 5-Engine Procedural Gallery</title>
     <style>
       :root {
         --bg: #111;
@@ -38,12 +38,6 @@
         margin: 10px auto 20px;
         font-weight: bold;
         line-height: 1.6;
-      }
-
-      .meta-notes {
-        font-size: 0.85em;
-        color: #777;
-        margin-bottom: 20px;
       }
 
       /* Control Panel */
@@ -118,23 +112,6 @@
         border: 2px solid #000;
         overflow: hidden;
         position: relative;
-      }
-
-      /* Vector CRT Scanlines Overlay */
-      .style-vector::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: repeating-linear-gradient(
-          rgba(0, 0, 0, 0) 0px,
-          rgba(0, 0, 0, 0) 2px,
-          rgba(0, 0, 0, 0.15) 3px,
-          rgba(0, 0, 0, 0.15) 4px
-        );
-        pointer-events: none;
       }
 
       /* Sharpen Pixel Art */
@@ -241,23 +218,7 @@
             yChannelSelector="G"
           />
         </filter>
-        <!-- Pencil/Rough outline for Sketch Engine -->
-        <filter id="filter-sketch">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.05"
-            numOctaves="3"
-            result="noise"
-          />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale="4"
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
-        </filter>
-        <!-- Heavy Blur for Nebula & Silhouette -->
+        <!-- Heavy Blur for Silhouette -->
         <filter id="filter-blur">
           <feGaussianBlur stdDeviation="25" />
         </filter>
@@ -267,38 +228,23 @@
     <header>
       <h1>Dimensional Registry</h1>
       <p>
-        All 8 engines pull from the exact same mathematical seed and 5-color
-        palette, resulting in wildly different deterministic art.
+        5 refined rendering engines pulling from the exact same mathematical
+        seed and palette.
       </p>
-      <div class="meta-notes">
-        Optimal Pairings: <b>Spires:</b> Pixel, Abstract, Silhouette |
-        <b>Wastes:</b> Pixel, Silhouette<br />
-        <b>Labyrinth:</b> Pixel, Cartoon | <b>Nebula:</b> Pixel, Abstract,
-        Silhouette
-      </div>
       <div class="controls">
         <select id="style-select">
           <option value="pixel">Engine 1: Procedural Pixel Art (Canvas)</option>
           <option value="cartoon">
             Engine 2: Cel-Shaded Cartoon (SVG Beziers)
           </option>
-          <option value="abstract">
-            Engine 3: Abstract Low-Poly (SVG Polygons)
-          </option>
-          <option value="vector">
-            Engine 4: Retro Vector CRT (SVG Wireframe)
-          </option>
           <option value="silhouette">
-            Engine 5: Shadowplay Silhouette (SVG Parallax)
+            Engine 3: Shadowplay Silhouette (SVG Parallax)
           </option>
-          <option value="flat" selected>
-            Engine 6: Modern Flat Vector (SVG Geometry)
+          <option value="flat">
+            Engine 4: Modern Flat Vector (SVG Geometry)
           </option>
-          <option value="sketch">
-            Engine 7: Hand-Drawn Sketch (SVG Pencil)
-          </option>
-          <option value="realistic">
-            Engine 8: Realistic Painterly (SVG Gradients)
+          <option value="cutout" selected>
+            Engine 5: Layered Paper Cutout (SVG Diorama)
           </option>
         </select>
       </div>
@@ -561,6 +507,28 @@
       };
 
       /** ========================================================
+       *  UNIVERSAL REALISTIC NEBULA (Used by Cartoon, Flat, Cutout)
+       *  ======================================================== */
+      const RealisticNebula = (rng, p) => {
+        let svg = `<defs>`;
+        const count = rng.range(6, 12);
+        for (let i = 0; i < count; i++) {
+          svg += `<radialGradient id="nebGrad${i}-${rng.seed}" cx="50%" cy="50%" r="50%">
+                     <stop offset="0%" stop-color="${p[(i % 4) + 1]}" stop-opacity="0.8"/>
+                     <stop offset="100%" stop-color="${p[0]}" stop-opacity="0"/>
+                   </radialGradient>`;
+        }
+        svg += `</defs><g stroke="none">`;
+        for (let i = 0; i < count; i++) {
+          const cx = rng.range(100, 700),
+            cy = rng.range(50, 350),
+            r = rng.range(100, 300);
+          svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#nebGrad${i}-${rng.seed})" />`;
+        }
+        return svg + `</g>`;
+      };
+
+      /** ========================================================
        *  ENGINE 2: CARTOON SVG (CEL-SHADED BEZIERS)
        *  ======================================================== */
       const GenCartoon = {
@@ -618,148 +586,11 @@
           }
           return svg + `</g>`;
         },
-        Nebula: (rng, p) => {
-          let svg = `<g paint-order="stroke fill" stroke="${p[1]}" stroke-width="14" fill="${p[3]}">`;
-          const count = rng.range(8, 15);
-          for (let i = 0; i < count; i++)
-            svg += `<circle cx="${rng.range(150, 650)}" cy="${rng.range(100, 300)}" r="${rng.range(40, 100)}" />`;
-          svg += `</g><g fill="${p[4]}" stroke="none">`;
-          for (let i = 0; i < 6; i++)
-            svg += `<circle cx="${rng.range(250, 550)}" cy="${rng.range(150, 250)}" r="${rng.range(10, 30)}" opacity="0.8" />`;
-          svg += `</g>`;
-          for (let i = 0; i < 5; i++) {
-            const sx = rng.range(100, 700),
-              sy = rng.range(50, 350),
-              s = rng.range(5, 12);
-            svg += `<path d="M ${sx},${sy - s} Q ${sx},${sy} ${sx + s},${sy} Q ${sx},${sy} ${sx},${sy + s} Q ${sx},${sy} ${sx - s},${sy} Q ${sx},${sy} ${sx},${sy - s} Z" fill="${p[4]}" stroke="${p[1]}" stroke-width="4"/>`;
-          }
-          return svg;
-        },
+        Nebula: RealisticNebula,
       };
 
       /** ========================================================
-       *  ENGINE 3: ABSTRACT SVG (POLYGONS & FILTERS)
-       *  ======================================================== */
-      const GenAbstract = {
-        Spire: (rng, p) => {
-          let svg = "";
-          for (let i = 0, c = rng.range(3, 7); i < c; i++) {
-            const px = rng.range(200, 600),
-              py = rng.range(50, 250),
-              w = rng.range(100, 250),
-              op = rng.next() * 0.6 + 0.4;
-            svg += `<polygon points="${px - w / 2},450 ${px},${py} ${px + w / 2},450" fill="${p[2]}" opacity="${op}" />`;
-          }
-          return svg;
-        },
-        Wastes: (rng, p) => {
-          let pts = `0,450 `;
-          let cx = 0;
-          while (cx < 800) {
-            cx += rng.range(40, 150);
-            pts += `${Math.min(cx, 800)},${rng.range(250, 350)} `;
-          }
-          pts += `800,450`;
-          return `<polygon points="${pts}" fill="${p[2]}" />`;
-        },
-        Labyrinth: (rng, p) => {
-          let svg = "";
-          for (let i = 0, c = rng.range(4, 9); i < c; i++) {
-            const w = 700 - i * rng.range(60, 100),
-              h = 350 - i * rng.range(30, 50);
-            if (w < 20 || h < 20) break;
-            svg += `<rect x="${400 - w / 2 + rng.range(-30, 30)}" y="${200 - h / 2}" width="${w}" height="${h}" fill="none" stroke="${p[2]}" stroke-width="${rng.range(2, 6)}" opacity="${1 - i * 0.1}" />`;
-          }
-          return svg;
-        },
-        Nebula: (rng, p) => {
-          let svg = "";
-          for (let i = 0, c = rng.range(4, 8); i < c; i++) {
-            svg += `<circle cx="${rng.range(100, 700)}" cy="${rng.range(50, 350)}" r="${rng.range(80, 250)}" fill="${p[2]}" opacity="${rng.next() * 0.5 + 0.2}" filter="url(#filter-blur)" />`;
-          }
-          return svg;
-        },
-      };
-
-      /** ========================================================
-       *  ENGINE 4: RETRO VECTOR CRT (WIREFRAME GLOW)
-       *  ======================================================== */
-      const GenVector = {
-        Spire: (rng, p) => {
-          let svg = `<g stroke="${p[4]}" fill="none" stroke-width="2" filter="drop-shadow(0 0 6px ${p[4]})">`;
-          svg += `<path d="M 0,330 L 800,330 M 0,360 L 800,360 M 0,390 L 800,390" stroke="${p[2]}" opacity="0.5" />`;
-          for (let i = 0, c = rng.range(3, 6); i < c; i++) {
-            const cx = rng.range(150, 650),
-              y = rng.range(50, 200),
-              w = rng.range(100, 200);
-            svg += `<polygon points="${cx - w / 2},400 ${cx},${y} ${cx + w / 2},400" />`;
-            for (let cy = y + 30; cy < 400; cy += rng.range(30, 50)) {
-              const ratio = (cy - y) / (400 - y),
-                halfW = (w / 2) * ratio;
-              svg += `<line x1="${cx - halfW}" y1="${cy}" x2="${cx + halfW}" y2="${cy}" />`;
-            }
-          }
-          return svg + `</g>`;
-        },
-        Wastes: (rng, p) => {
-          let svg = `<g stroke="${p[3]}" fill="none" stroke-width="1.5" filter="drop-shadow(0 0 5px ${p[3]})">`;
-          const f1 = rng.next() * 0.02,
-            f2 = rng.next() * 0.05,
-            p1 = rng.next() * 10;
-          for (let y = 150; y <= 400; y += 25) {
-            let pts = "";
-            for (let x = 0; x <= 800; x += 40) {
-              const depth = (y - 150) / 250;
-              const dy =
-                (Math.sin((x + y) * f1 + p1) * 20 + Math.sin(x * f2) * 10) *
-                depth;
-              pts += `${x},${y - dy} `;
-            }
-            svg += `<polyline points="${pts}" />`;
-          }
-          return svg + `</g>`;
-        },
-        Labyrinth: (rng, p) => {
-          let svg = `<g stroke="${p[4]}" fill="none" stroke-width="2" filter="drop-shadow(0 0 6px ${p[4]})">`;
-          const cx = 400,
-            cy = 200;
-          let prev = null;
-          for (let i = 0, c = rng.range(6, 10); i < c; i++) {
-            const w = 700 - i * 70,
-              h = 350 - i * 35;
-            if (w < 30 || h < 30) break;
-            const rx = cx - w / 2,
-              ry = cy - h / 2;
-            svg += `<rect x="${rx}" y="${ry}" width="${w}" height="${h}" opacity="${1 - i * 0.08}" />`;
-            if (prev) {
-              svg += `<line x1="${prev.x}" y1="${prev.y}" x2="${rx}" y2="${ry}" opacity="${1 - i * 0.08}" />`;
-              svg += `<line x1="${prev.x + prev.w}" y1="${prev.y}" x2="${rx + w}" y2="${ry}" opacity="${1 - i * 0.08}" />`;
-              svg += `<line x1="${prev.x}" y1="${prev.y + prev.h}" x2="${rx}" y2="${ry + h}" opacity="${1 - i * 0.08}" />`;
-              svg += `<line x1="${prev.x + prev.w}" y1="${prev.y + prev.h}" x2="${rx + w}" y2="${ry + h}" opacity="${1 - i * 0.08}" />`;
-            }
-            prev = { x: rx, y: ry, w: w, h: h };
-          }
-          return svg + `</g>`;
-        },
-        Nebula: (rng, p) => {
-          let svg = `<g stroke="${p[3]}" fill="none" stroke-width="1.5" filter="drop-shadow(0 0 5px ${p[3]})">`;
-          for (let i = 0, c = rng.range(3, 6); i < c; i++) {
-            const cx = rng.range(200, 600),
-              cy = rng.range(100, 300);
-            for (
-              let r = rng.range(10, 30);
-              r < rng.range(150, 250);
-              r += rng.range(15, 25)
-            ) {
-              svg += `<circle cx="${cx}" cy="${cy}" r="${r}" stroke-opacity="${1 - r / 250}" />`;
-            }
-          }
-          return svg + `</g>`;
-        },
-      };
-
-      /** ========================================================
-       *  ENGINE 5: SHADOWPLAY SILHOUETTE (GRADIENTS & FOG)
+       *  ENGINE 3: SHADOWPLAY SILHOUETTE (GRADIENTS & FOG)
        *  ======================================================== */
       const GenSilhouette = {
         Spire: (rng, p) => {
@@ -824,7 +655,7 @@
       };
 
       /** ========================================================
-       *  ENGINE 6: MODERN FLAT VECTOR (GEOMETRY & OPACITY)
+       *  ENGINE 4: MODERN FLAT VECTOR (GEOMETRY & OPACITY)
        *  ======================================================== */
       const GenFlat = {
         Spire: (rng, p) => {
@@ -872,185 +703,56 @@
           }
           return svg + `</g>`;
         },
-        Nebula: (rng, p) => {
-          let svg = `<g stroke="none">`;
-          const count = rng.range(5, 10);
-          for (let i = 0; i < count; i++) {
-            const cx = rng.range(200, 600),
-              cy = rng.range(100, 300),
-              r = rng.range(60, 180);
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p[(i % 3) + 1]}" opacity="0.4" />`;
-          }
-          return svg + `</g>`;
-        },
+        Nebula: RealisticNebula,
       };
 
       /** ========================================================
-       *  ENGINE 7: HAND-DRAWN SKETCH (ROUGH STROKES)
+       *  ENGINE 5: LAYERED PAPER CUTOUT (DROP SHADOWS)
        *  ======================================================== */
-      const GenSketch = {
+      const GenCutout = {
         Spire: (rng, p) => {
-          let svg = `<g stroke="${p[3]}" stroke-width="2" fill="none" filter="url(#filter-sketch)">`;
-          for (let i = 0, c = rng.range(3, 6); i < c; i++) {
+          let svg = `<g stroke="none">`;
+          for (let i = 0, c = rng.range(4, 7); i < c; i++) {
             const cx = rng.range(150, 650),
               y = rng.range(80, 250),
-              w = rng.range(100, 200);
-            for (let s = 0; s < 3; s++) {
-              const ox = rng.range(-5, 5),
-                oy = rng.range(-5, 5);
-              svg += `<polygon points="${cx - w / 2 + ox},400 ${cx + ox},${y + oy} ${cx + w / 2 + ox},400" />`;
-            }
-            for (let l = 0; l < 10; l++) {
-              svg += `<line x1="${cx - w / 4 + rng.range(-10, 10)}" y1="${y + 50 + l * 10}" x2="${cx + rng.range(-10, 10)}" y2="${y + 60 + l * 10}" stroke="${p[2]}" />`;
-            }
+              w = rng.range(120, 240);
+            svg += `<polygon points="${cx - w / 2},400 ${cx},${y} ${cx + w / 2},400" fill="${p[(i % 4) + 1]}" style="filter: drop-shadow(4px -4px 5px rgba(0,0,0,0.5))" />`;
           }
           return svg + `</g>`;
         },
         Wastes: (rng, p) => {
-          let svg = `<g stroke="${p[3]}" stroke-width="2" fill="none" filter="url(#filter-sketch)">`;
+          let svg = `<g stroke="none">`;
           for (let i = 0; i < 4; i++) {
             const sy = 180 + i * 50,
               c1x = rng.range(100, 300),
               c1y = rng.range(sy - 80, sy + 40),
               c2x = rng.range(500, 700),
               c2y = rng.range(sy - 80, sy + 40);
-            for (let s = 0; s < 3; s++) {
-              svg += `<path d="M -50,450 L -50,${sy + rng.range(-5, 5)} C ${c1x},${c1y + rng.range(-5, 5)} ${c2x},${c2y + rng.range(-5, 5)} 850,${sy + rng.range(-5, 5)}" />`;
-            }
+            svg += `<path d="M -50,450 L -50,${sy} C ${c1x},${c1y} ${c2x},${c2y} 850,${sy} L 850,450 Z" fill="${p[4 - (i % 4)]}" style="filter: drop-shadow(0 -6px 8px rgba(0,0,0,0.6))" />`;
           }
           return svg + `</g>`;
         },
         Labyrinth: (rng, p) => {
-          let svg = `<g stroke="${p[3]}" stroke-width="2" fill="none" filter="url(#filter-sketch)">`;
-          const layers = rng.range(3, 5),
+          const layers = rng.range(4, 7),
             cx = 400,
             cy = 200;
-          for (let i = 0; i < layers; i++) {
-            const ow = 800 - i * 150,
-              oh = 450 - i * 80,
-              iw = 800 - (i + 1) * 150,
-              ih = 450 - (i + 1) * 80;
-            if (iw < 20 || ih < 20) break;
-            const ox = cx - ow / 2,
-              oy = cy - oh / 2,
-              ix = cx - iw / 2,
-              iy = cy - ih / 2;
-            for (let s = 0; s < 2; s++) {
-              const xO = rng.range(-3, 3),
-                yO = rng.range(-3, 3);
-              svg += `<rect x="${ox + xO}" y="${oy + yO}" width="${ow}" height="${oh}" />`;
-              svg += `<line x1="${ox + xO}" y1="${oy + yO}" x2="${ix + xO}" y2="${iy + yO}" />`;
-              svg += `<line x1="${ox + ow + xO}" y1="${oy + yO}" x2="${ix + iw + xO}" y2="${iy + yO}" />`;
-              svg += `<line x1="${ox + xO}" y1="${oy + oh + yO}" x2="${ix + xO}" y2="${iy + ih + yO}" />`;
-              svg += `<line x1="${ox + ow + xO}" y1="${oy + oh + yO}" x2="${ix + iw + xO}" y2="${iy + ih + yO}" />`;
-            }
-          }
-          return svg + `</g>`;
-        },
-        Nebula: (rng, p) => {
-          let svg = `<g stroke="${p[4]}" stroke-width="2" fill="none" filter="url(#filter-sketch)">`;
-          const count = rng.range(8, 15);
-          for (let i = 0; i < count; i++) {
-            const cx = rng.range(200, 600),
-              cy = rng.range(100, 300),
-              r = rng.range(30, 100);
-            for (let s = 0; s < 3; s++) {
-              svg += `<circle cx="${cx + rng.range(-5, 5)}" cy="${cy + rng.range(-5, 5)}" r="${r + rng.range(-5, 5)}" />`;
-            }
-          }
-          return svg + `</g>`;
-        },
-      };
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
 
-      /** ========================================================
-       *  ENGINE 8: REALISTIC PAINTERLY (SVG GRADIENTS)
-       *  ======================================================== */
-      const GenRealistic = {
-        Spire: (rng, p) => {
-          let svg = `<defs>`;
-          const count = rng.range(3, 5);
-          for (let i = 0; i < count; i++) {
-            svg += `<linearGradient id="spireGrad${i}-${rng.seed}" x1="0%" y1="0%" x2="100%" y2="0%">
-                       <stop offset="0%" stop-color="${p[1]}" />
-                       <stop offset="50%" stop-color="${p[3]}" />
-                       <stop offset="100%" stop-color="${p[0]}" />
-                     </linearGradient>`;
-          }
-          svg += `</defs><g stroke="none">`;
-          for (let i = 0; i < count; i++) {
-            const cx = rng.range(150, 650),
-              y = rng.range(80, 200),
-              w = rng.range(120, 300);
-            svg += `<polygon points="${cx - w / 2},400 ${cx},${y} ${cx + w / 2},400" fill="url(#spireGrad${i}-${rng.seed})" />`;
-          }
-          return svg + `</g>`;
-        },
-        Wastes: (rng, p) => {
-          let svg = `<defs>`;
-          for (let i = 0; i < 4; i++) {
-            svg += `<linearGradient id="wasteGrad${i}-${rng.seed}" x1="0%" y1="0%" x2="0%" y2="100%">
-                       <stop offset="0%" stop-color="${p[4 - (i % 2)]}" />
-                       <stop offset="100%" stop-color="${p[1]}" />
-                     </linearGradient>`;
-          }
-          svg += `</defs><g stroke="none">`;
-          for (let i = 0; i < 4; i++) {
-            const sy = 180 + i * 50,
-              c1x = rng.range(100, 300),
-              c1y = rng.range(sy - 80, sy + 40),
-              c2x = rng.range(500, 700),
-              c2y = rng.range(sy - 80, sy + 40);
-            svg += `<path d="M -50,450 L -50,${sy} C ${c1x},${c1y} ${c2x},${c2y} 850,${sy} L 850,450 Z" fill="url(#wasteGrad${i}-${rng.seed})" />`;
-          }
-          return svg + `</g>`;
-        },
-        Labyrinth: (rng, p) => {
-          let svg = `<defs>
-                       <radialGradient id="labGradHole-${rng.seed}" cx="50%" cy="50%" r="50%">
-                          <stop offset="0%" stop-color="${p[4]}" />
-                          <stop offset="100%" stop-color="${p[0]}" />
-                       </radialGradient>
-                     </defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#labGradHole-${rng.seed})" />`;
-          const layers = rng.range(3, 5),
-            cx = 400,
-            cy = 200;
-          for (let i = 0; i < layers; i++) {
-            const ow = 800 - i * 150,
-              oh = 450 - i * 80,
-              iw = 800 - (i + 1) * 150,
-              ih = 450 - (i + 1) * 80;
-            if (iw < 20 || ih < 20) break;
-            const ox = cx - ow / 2,
-              oy = cy - oh / 2,
-              ix = cx - iw / 2,
-              iy = cy - ih / 2;
-            const op = 0.5 + i * 0.1;
-            svg += `<polygon points="${ox},${oy} ${ix},${iy} ${ix},${iy + ih} ${ox},${oy + oh}" fill="${p[1]}" opacity="${op}" />`;
-            svg += `<polygon points="${ox + ow},${oy} ${ix + iw},${iy} ${ix + iw},${iy + ih} ${ox + ow},${oy + oh}" fill="${p[2]}" opacity="${op}" />`;
-            svg += `<polygon points="${ox},${oy} ${ix},${iy} ${ix + iw},${iy} ${ox + ow},${oy}" fill="${p[3]}" opacity="${op}" />`;
-            svg += `<polygon points="${ox},${oy + oh} ${ix},${iy + ih} ${ix + iw},${iy + ih} ${ox + ow},${oy + oh}" fill="${p[0]}" opacity="${op}" />`;
+          // Draw from the back to the front (smallest hole to biggest hole)
+          for (let i = layers - 1; i >= 0; i--) {
+            const w = 800 - i * 130,
+              h = 400 - i * 65;
+            if (w < 50 || h < 50) {
+              svg += `<rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" fill="${p[4]}" style="filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5))" />`;
+              continue;
+            }
+            const ox = cx - w / 2,
+              oy = cy - h / 2;
+            svg += `<path d="M 0,0 L 800,0 L 800,400 L 0,400 Z M ${ox},${oy} L ${ox},${oy + h} L ${ox + w},${oy + h} L ${ox + w},${oy} Z" fill="${p[(i % 4) + 1]}" fill-rule="evenodd" style="filter: drop-shadow(0 15px 25px rgba(0,0,0,0.8))" />`;
           }
           return svg;
         },
-        Nebula: (rng, p) => {
-          let svg = `<defs>`;
-          const count = rng.range(6, 12);
-          for (let i = 0; i < count; i++) {
-            svg += `<radialGradient id="nebGrad${i}-${rng.seed}" cx="50%" cy="50%" r="50%">
-                       <stop offset="0%" stop-color="${p[(i % 4) + 1]}" stop-opacity="0.8"/>
-                       <stop offset="100%" stop-color="${p[0]}" stop-opacity="0"/>
-                     </radialGradient>`;
-          }
-          svg += `</defs><g stroke="none">`;
-          for (let i = 0; i < count; i++) {
-            const cx = rng.range(100, 700),
-              cy = rng.range(50, 350),
-              r = rng.range(100, 300);
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#nebGrad${i}-${rng.seed})" />`;
-          }
-          return svg + `</g>`;
-        },
+        Nebula: RealisticNebula,
       };
 
       /** ========================================================
@@ -1078,7 +780,7 @@
           container.classList.add("anim-neon");
         if (
           adjective === "Eldritch" &&
-          (style === "cartoon" || style === "abstract")
+          (style === "cartoon" || style === "flat" || style === "cutout")
         )
           container.classList.add("anim-float");
 
@@ -1086,11 +788,7 @@
         if (style !== "pixel") {
           let innerSVG = "";
 
-          if (
-            ["cartoon", "abstract", "flat", "sketch", "realistic"].includes(
-              style,
-            )
-          ) {
+          if (["cartoon", "flat", "cutout"].includes(style)) {
             let filter = "";
             if (adjective === "Fractured")
               filter = `filter="url(#filter-glitch)"`;
@@ -1099,50 +797,34 @@
 
             // Setup Sky / Stars
             let bgMarkup = "";
-            if (style === "sketch") {
-              for (let i = 0, c = rng.range(10, 30); i < c; i++) {
-                bgMarkup += `<circle cx="${rng.range(0, 800)}" cy="${rng.range(0, 400)}" r="1" fill="${p[3]}" />`;
-              }
-            } else if (style === "flat") {
+            if (style === "flat" || style === "cutout") {
               for (let i = 0, c = rng.range(20, 50); i < c; i++) {
                 const s = rng.range(2, 5);
                 bgMarkup += `<rect x="${rng.range(0, 800)}" y="${rng.range(0, 400)}" width="${s}" height="${s}" fill="${p[4]}" opacity="${rng.next()}" />`;
               }
             } else {
               for (let i = 0, c = rng.range(20, 50); i < c; i++) {
-                if (style === "cartoon") {
-                  const x = rng.range(20, 780),
-                    y = rng.range(20, 380),
-                    s = rng.range(2, 6);
-                  bgMarkup += `<path d="M ${x},${y - s} Q ${x},${y} ${x + s},${y} Q ${x},${y} ${x},${y + s} Q ${x},${y} ${x - s},${y} Q ${x},${y} ${x},${y - s} Z" fill="${p[4]}" opacity="${rng.next() * 0.5 + 0.2}" />`;
-                } else {
-                  bgMarkup += `<circle cx="${rng.range(0, 800)}" cy="${rng.range(0, 400)}" r="${rng.next() * 2}" fill="${p[4]}" opacity="${rng.next()}" />`;
-                }
+                const x = rng.range(20, 780),
+                  y = rng.range(20, 380),
+                  s = rng.range(2, 6);
+                bgMarkup += `<path d="M ${x},${y - s} Q ${x},${y} ${x + s},${y} Q ${x},${y} ${x},${y + s} Q ${x},${y} ${x - s},${y} Q ${x},${y} ${x},${y - s} Z" fill="${p[4]}" opacity="${rng.next() * 0.5 + 0.2}" />`;
               }
             }
 
             const midMarkup =
               style === "cartoon"
                 ? GenCartoon[noun](rng, p)
-                : style === "abstract"
-                  ? GenAbstract[noun](rng, p)
-                  : style === "flat"
-                    ? GenFlat[noun](rng, p)
-                    : style === "sketch"
-                      ? GenSketch[noun](rng, p)
-                      : style === "realistic"
-                        ? GenRealistic[noun](rng, p)
-                        : "";
+                : style === "flat"
+                  ? GenFlat[noun](rng, p)
+                  : style === "cutout"
+                    ? GenCutout[noun](rng, p)
+                    : "";
 
             innerSVG = `
               <rect width="100%" height="100%" fill="${p[0]}" />
               <g class="background">${bgMarkup}</g>
               <g class="midground" ${filter}>${midMarkup}</g>
             `;
-          } else if (style === "vector") {
-            innerSVG =
-              `<rect width="100%" height="100%" fill="${p[0]}" />` +
-              GenVector[noun](rng, p);
           } else if (style === "silhouette") {
             innerSVG = GenSilhouette[noun](rng, p);
           }
