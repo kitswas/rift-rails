@@ -1186,6 +1186,7 @@
         },
 
         desperateScavenge: () => {
+          if (state.hull <= GAME_DATA.config.DESPERATE_HULL_COST) return;
           state.hull -= GAME_DATA.config.DESPERATE_HULL_COST;
           state.fuel += GAME_DATA.config.DESPERATE_FUEL_YIELD;
           Engine.log(
@@ -1419,6 +1420,7 @@
               state.engineTier++;
               state.energy++;
               Engine.updateUI();
+              Engine.evaluateSurvival();
             }
           });
 
@@ -1427,6 +1429,7 @@
               state.flux -= Engine.getForgeCost(state.weaponTier);
               state.weaponTier++;
               Engine.updateUI();
+              Engine.evaluateSurvival();
             }
           });
 
@@ -1477,7 +1480,10 @@
             });
             Engine.buildMenuButton(
               GAME_DATA.text.btnYardLeave,
-              () => Engine.transitionTo(GAME_DATA.phases.encounter),
+              () => {
+                Engine.transitionTo(GAME_DATA.phases.encounter);
+                Engine.evaluateSurvival();
+              },
               GAME_DATA.dom.classes.btnDesperate,
             );
           },
