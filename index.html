@@ -917,7 +917,12 @@
         assertInvariants: () => {
           if (state.hull > GAME_DATA.config.MAX_HULL)
             console.error("INVARIANT BREACH: Hull > Max");
-          if (state.energy < 0 || state.fuel < 0 || state.flux < 0)
+          if (
+            state.hull < 0 ||
+            state.energy < 0 ||
+            state.fuel < 0 ||
+            state.flux < 0
+          )
             console.error("INVARIANT BREACH: Resource dropped below 0");
           if (!GAME_DATA.permissions[state.phase])
             console.error(
@@ -1062,9 +1067,10 @@
 
           Engine.enforceStateBounds();
 
-          if (state.hull > GAME_DATA.config.DEATH_HULL_THRESHOLD) {
-            Engine.transitionTo(GAME_DATA.phases.idle);
+          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+            Engine.transitionTo(GAME_DATA.phases.dead);
           } else {
+            Engine.transitionTo(GAME_DATA.phases.idle);
             Engine.evaluateSurvival();
           }
         },
@@ -1079,6 +1085,7 @@
             GAME_DATA.dom.classes.logEvent,
           );
           Engine.transitionTo(GAME_DATA.phases.encounter);
+          Engine.evaluateSurvival();
         },
 
         generateDimension: (excludedIds = []) => {
@@ -1185,6 +1192,7 @@
         enforceStateBounds: () => {
           if (state.hull > GAME_DATA.config.MAX_HULL)
             state.hull = GAME_DATA.config.MAX_HULL;
+          if (state.hull < 0) state.hull = 0;
           if (state.energy > Engine.getMaxEnergy())
             state.energy = Engine.getMaxEnergy();
         },
@@ -1368,7 +1376,7 @@
           Engine.renderInteractiveControls();
           Engine.renderForge();
           Engine.refreshActiveMenu();
-          Engine.assertInvariants(); // Ensure the render did not violate state rules
+          Engine.assertInvariants();
         },
 
         cacheDOM: () => {
@@ -1449,15 +1457,15 @@
         YARD_ROOT: {
           onEnter: () => {
             Engine.buildMenuButton(GAME_DATA.text.btnYardModules, () => {
-              state.yardCat = "module";
+              state.yardCat = GAME_DATA.resources.module;
               Engine.transitionTo(GAME_DATA.phases.yard_category);
             });
             Engine.buildMenuButton(GAME_DATA.text.btnYardCarriages, () => {
-              state.yardCat = "carriage";
+              state.yardCat = GAME_DATA.resources.carriage;
               Engine.transitionTo(GAME_DATA.phases.yard_category);
             });
             Engine.buildMenuButton(GAME_DATA.text.btnYardCrew, () => {
-              state.yardCat = "crew";
+              state.yardCat = GAME_DATA.resources.crew;
               Engine.transitionTo(GAME_DATA.phases.yard_category);
             });
             Engine.buildMenuButton(
