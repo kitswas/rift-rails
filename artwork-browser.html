@@ -2102,22 +2102,33 @@
         Fields: (rng, p) => {
           let svg = `<defs><linearGradient id="fldSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#fldSky-${rng.seed})" />`;
-          svg += `<circle cx="600" cy="130" r="95" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`;
 
-          for (let l = 0; l < 5; l++) {
-            const y = 160 + l * 62;
+          // Seed-driven sun position and radiant glow
+          const sunX = rng.range(250, 650),
+            sunY = rng.range(90, 150),
+            sunR = rng.range(75, 110);
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`;
+
+          // 5 Nested Parabolic Contour Terraces (Seed-Randomized Frequency, Amplitude & Cadence)
+          const layers = 5;
+          for (let l = 0; l < layers; l++) {
+            const y = 145 + l * 60 + rng.range(-6, 6);
+            const freq = 0.005 + (l % 2) * 0.002 + rng.range(-1, 1) * 0.001;
+            const amp = 22 + (l % 3) * 6 + rng.range(-4, 4);
+            const phase = l * 85 + rng.range(-15, 15);
+
             let terrace = `<g stroke-linejoin="round">`;
 
             let shelfPts = `-50,450 `;
             for (let x = -50; x <= 850; x += 50) {
-              const py = y + Math.sin((x + l * 90) * 0.007) * 28;
+              const py = y + Math.sin((x + phase) * freq) * amp;
               shelfPts += `${x},${py.toFixed(1)} `;
             }
             shelfPts += `850,450`;
 
             let riserPts = `-50,${y + 12} `;
             for (let x = -50; x <= 850; x += 50) {
-              const py = y + Math.sin((x + l * 90) * 0.007) * 28;
+              const py = y + Math.sin((x + phase) * freq) * amp;
               riserPts += `${x},${py.toFixed(1)} `;
             }
             riserPts += `850,${y + 12}`;
@@ -2125,10 +2136,16 @@
             terrace += `<polygon points="${shelfPts}" fill="${p[Math.min(4, Math.max(0, 4 - l))]}" />`;
             terrace += `<path d="M ${riserPts}" fill="none" stroke="${p[1]}" stroke-width="6" />`;
 
-            for (let f = 0; f < 6; f++) {
-              const fx = 60 + f * 120 + (l % 2) * 30;
-              const fy = y + Math.sin((fx + l * 90) * 0.007) * 28;
-              terrace += `<line x1="${fx}" y1="${fy}" x2="${fx + 40}" y2="${fy + 35}" stroke="${p[0]}" stroke-width="1.8" stroke-dasharray="6 8" />`;
+            // Perspective Furrow Stripes along Contour
+            const furrowCount = rng.range(5, 7);
+            const furrowSpacing = 720 / Math.max(1, furrowCount - 1);
+            for (let f = 0; f < furrowCount; f++) {
+              const fx =
+                40 + f * furrowSpacing + (l % 2) * 20 + rng.range(-10, 10);
+              const fy = y + Math.sin((fx + phase) * freq) * amp;
+              const fLenX = rng.range(30, 45);
+              const fLenY = rng.range(28, 38);
+              terrace += `<line x1="${fx.toFixed(1)}" y1="${fy.toFixed(1)}" x2="${(fx + fLenX).toFixed(1)}" y2="${(fy + fLenY).toFixed(1)}" stroke="${p[0]}" stroke-width="1.8" stroke-dasharray="6 8" />`;
             }
             terrace += `</g>`;
 
