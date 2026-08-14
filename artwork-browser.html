@@ -197,7 +197,7 @@
     </style>
   </head>
   <body>
-    <!-- SVG Global Post-Processing Filters -->
+    <!-- SVG Post-Processing Filters -->
     <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
       <defs>
         <filter id="filter-glitch">
@@ -280,7 +280,7 @@
 
     <script>
       /** =========================================================================
-       *  0. SEEDED PSEUDO-RANDOM NUMBER GENERATION & UNIFIED COLOR PALETTES
+       *  0. SEEDED PSEUDO-RANDOM NUMBER GENERATION & UNIFIED PALETTES
        *  ========================================================================= */
       function generateSeed(str) {
         let h = 0xdeadbeef;
@@ -315,7 +315,7 @@
         }
       }
 
-      // Palettes: [0: Deep Background/Void, 1: Shadow/Dark, 2: Midtone, 3: Light/Primary, 4: Highlight/Glow]
+      // Palettes: [0: Void/Dark, 1: Shadow, 2: Midtone, 3: Light/Primary, 4: Highlight/Glow]
       const PALETTES = {
         Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
         Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
@@ -348,16 +348,11 @@
        *  ENGINE 1: PROCEDURAL PIXEL ART (CANVAS DITHER)
        *
        *  RULES & CONSTRAINTS:
-       *  1. Fixed Low Resolution: Rendered strictly to a 160x90 virtual canvas to preserve
-       *     chunky, authentic 8/16-bit retro aesthetic across all displays.
-       *  2. Strict 5-Color Quantization: Every pixel is mapped exclusively to indices [0..4]
-       *     of the active adjective palette.
-       *  3. Ordered Dithering: Smooth gradients and lighting transitions are generated using
-       *     a deterministic 4x4 Bayer Dithering Matrix threshold function.
-       *  4. Direct Framebuffer Access: Operations manipulate a 32-bit Uint32Array directly
-       *     (ABGR format) for high-performance per-pixel rendering.
-       *  5. Post-Processing Glitch: "Fractured" and "Shattered" palettes trigger procedural
-       *     horizontal scanline displacement passes directly on the Uint32 buffer.
+       *  1. Low Native Canvas Resolution: 160x90 virtual buffer for retro aesthetic.
+       *  2. Strict 5-Color Quantization: All pixels map exclusively to palette [0..4].
+       *  3. 4x4 Bayer Ordered Dithering: Smooth gradients without floating-point colors.
+       *  4. Direct Uint32 Framebuffer Manipulation for real-time pixel streaming.
+       *  5. Upright Foliage Geometry: Tree crowns point UP (widest at base/mid, apex at top).
        *  ========================================================================= */
       class PixelRenderer {
         constructor(width = 160, height = 90) {
@@ -426,94 +421,213 @@
       }
 
       const GenPixel = {
-        Spire: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) {
-              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
-              if (y < 45 && rng.chance(0.01))
-                r.setPixel(x, y, rng.chance(0.8) ? 2 : 4);
-            }
-          }
-          const count = rng.range(4, 7);
-          for (let i = 0; i < count; i++) {
-            const isF = i >= count - 2,
-              cx = rng.range(20, r.w - 20),
-              py = isF ? rng.range(10, 40) : rng.range(30, 60),
-              bw = isF ? rng.range(35, 75) : rng.range(20, 45);
-            const cs = isF ? 1 : 0,
-              cl = isF ? 3 : 2,
-              ch = isF ? 4 : 3;
-            for (let y = py; y < r.h; y++) {
-              const d = (y - py) / (r.h - py),
-                w = d * d * bw + 2,
-                L = Math.floor(cx - w / 2),
-                R = Math.floor(cx + w / 2);
-              for (let x = L; x <= R; x++) {
-                let c = x < cx ? cs : cl;
-                if (x >= R - 1) c = ch;
-                if (Math.abs(x - cx) < 3)
-                  r.setPixelDither(x, y, cs, cl, (x - L) / w);
-                else r.setPixel(x, y, c);
-                if (isF && x < cx - 2 && rng.chance(0.02) && y % 3 === 0)
-                  r.setPixel(x, y, 4);
-              }
-            }
-          }
-        },
-        Dunes: (r, rng) => {
-          const mx = rng.range(30, r.w - 30),
-            my = rng.range(20, 35),
-            mr = rng.range(15, 25);
+        // HUB
+        Station: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               r.setPixel(x, y, 0);
-              if ((x - mx) ** 2 + (y - my) ** 2 < mr ** 2) {
-                r.setPixelDither(x, y, 2, 4, (x - mx + mr) / (mr * 2));
-              } else if (rng.chance(0.005) && y < 50) r.setPixel(x, y, 3);
+              if (rng.chance(0.008)) r.setPixel(x, y, 3);
             }
           }
-          for (let l = 0; l < 3; l++) {
-            const by = 42 + l * 18,
-              f1 = rng.next() * 0.05 + 0.02,
-              p = rng.next() * 10;
-            for (let x = 0; x < r.w; x++) {
-              const ys = Math.floor(by + Math.sin(x * f1 + p) * 10);
-              for (let y = ys; y < r.h; y++) {
-                r.setPixelDither(x, y, l + 1, l, ((y - ys) / (r.h - ys)) * 1.5);
-                if (y === ys && l === 2) r.setPixel(x, y, 4);
-              }
-            }
+          const cx = r.w / 2,
+            cy = r.h / 2;
+          for (let deg = 0; deg < 360; deg += 3) {
+            const rad = (deg * Math.PI) / 180;
+            const px = Math.floor(cx + Math.cos(rad) * 36);
+            const py = Math.floor(cy + Math.sin(rad) * 16);
+            r.setPixel(px, py, 3);
+            r.setPixel(px, py + 1, 2);
+          }
+          for (let y = cy - 22; y <= cy + 22; y++) {
+            r.setPixel(cx, y, 4);
+            r.setPixel(cx - 1, y, 2);
+            r.setPixel(cx + 1, y, 3);
           }
         },
-        Labyrinth: (r, rng) => {
+        Bazaar: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let b = 0; b < 5; b++) {
+            const bx = 10 + b * 30,
+              by = 42 + rng.range(0, 10);
+            for (let x = bx; x < bx + 28; x++) {
+              const th = Math.sin(((x - bx) / 28) * Math.PI) * 10;
+              for (let y = Math.floor(by - th); y < r.h; y++) {
+                r.setPixel(x, y, (x + y) % 4 === 0 ? 3 : 2);
+              }
+            }
+            r.setPixel(bx + 14, by + 4, 4);
+          }
+        },
+        Outpost: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++)
+              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
+          }
+          for (let x = 30; x < r.w - 30; x++) {
+            for (let y = 55; y < r.h; y++) r.setPixel(x, y, 1);
+          }
+          for (let x = 60; x < 100; x++) {
+            for (let y = 40; y < 55; y++) r.setPixel(x, y, 2);
+          }
+          for (let y = 15; y < 40; y++) r.setPixel(80, y, 4);
+          r.setPixel(79, 20, 3);
+          r.setPixel(81, 20, 3);
+        },
+        Nexus: (r, rng) => {
           const cx = r.w / 2,
             cy = r.h / 2;
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
-              const dx = Math.abs(x - cx),
-                dy = Math.abs(y - cy);
-              let d = dy * (r.w / r.h) < dx ? r.w / (dx + 1) : r.h / (dy + 1);
-              let nd = Math.max(0, Math.min(1, 1 - d / 10));
-              if (dy * (r.w / r.h) < dx) {
-                const seg = Math.floor(d * 4) % 2 === 0;
-                r.setPixelDither(x, y, seg ? 1 : 2, seg ? 2 : 3, nd);
-                if (nd > 0.3 && rng.chance(0.01)) r.setPixel(x, y, 4);
-              } else {
-                if (y > cy) {
-                  r.setPixelDither(x, y, 0, 2, nd);
-                  if (
-                    Math.floor(dx * d) % 10 === 0 ||
-                    Math.floor(d * 10) % 5 === 0
-                  )
-                    r.setPixel(x, y, 1);
-                } else r.setPixel(x, y, 0);
+              const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+              r.setPixelDither(x, y, 0, 1, Math.min(1, d / 60));
+            }
+          }
+          for (let y = cy - 25; y <= cy + 25; y++) {
+            const w = 25 - Math.abs(y - cy);
+            for (let x = cx - w; x <= cx + w; x++) {
+              r.setPixel(x, y, Math.abs(x - cx) < 2 ? 4 : 3);
+            }
+          }
+        },
+        Sanctuary: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          const cx = r.w / 2;
+          for (let y = 10; y < r.h; y++) {
+            const archW = Math.sin((y / r.h) * Math.PI) * 35;
+            for (let x = cx - archW; x <= cx + archW; x++) {
+              if (
+                Math.abs(x - (cx - archW)) < 3 ||
+                Math.abs(x - (cx + archW)) < 3
+              ) {
+                r.setPixel(Math.floor(x), y, 3);
               }
             }
           }
-          for (let y = cy - 10; y < cy + 15; y++) {
-            for (let x = cx - 10; x < cx + 10; x++) {
-              const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-              if (dist < 8) r.setPixelDither(x, y, 3, 4, 1 - dist / 8);
+          r.setPixel(cx, 35, 4);
+        },
+
+        // HUNT
+        Wilds: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let i = 0; i < 35; i++) {
+            const tx = rng.range(10, r.w - 10),
+              ty = rng.range(45, r.h - 10),
+              th = rng.range(15, 30),
+              bw = Math.floor(th * 0.45);
+            for (let y = ty; y < ty + 4 && y < r.h; y++) r.setPixel(tx, y, 1);
+            for (let y = ty; y > ty - th; y--) {
+              const progress = (y - (ty - th)) / th;
+              const tw = Math.max(0, Math.floor(progress * bw));
+              for (let x = tx - tw; x <= tx + tw; x++) {
+                r.setPixel(x, y, x === tx || y % 2 === 0 ? 3 : 2);
+              }
+            }
+          }
+        },
+        Expanse: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) {
+              r.setPixelDither(x, y, 0, 1, y < 45 ? y / 45 : (y - 45) / 45);
+            }
+          }
+          const cx = r.w / 2;
+          for (let deg = 0; deg <= 180; deg += 4) {
+            const rad = (deg * Math.PI) / 180;
+            const px = Math.floor(cx + Math.cos(rad) * 40);
+            const py = Math.floor(55 - Math.sin(rad) * 28);
+            r.setPixel(px, py, 4);
+            r.setPixel(px, py + 1, 3);
+          }
+        },
+        Tundra: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let b = 0; b < 6; b++) {
+            const bx = rng.range(15, r.w - 30),
+              by = 40 + b * 8,
+              bw = rng.range(16, 35),
+              bh = rng.range(8, 18);
+            for (let y = by; y < by + bh && y < r.h; y++) {
+              const prog = (y - by) / bh;
+              const w = Math.floor((1 - Math.abs(prog - 0.5) * 2) * bw);
+              for (let x = bx - w / 2; x <= bx + w / 2; x++) {
+                r.setPixel(Math.floor(x), y, x > bx ? 4 : 3);
+              }
+            }
+          }
+        },
+        Jungle: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let i = 0; i < 25; i++) {
+            const tx = rng.range(10, r.w - 10),
+              ty = rng.range(35, r.h - 5),
+              rad = rng.range(8, 16);
+            for (let y = ty; y < ty + 8 && y < r.h; y++) r.setPixel(tx, y, 1);
+            for (let dy = -rad; dy <= rad; dy++) {
+              for (let dx = -rad; dx <= rad; dx++) {
+                if (dx * dx + dy * dy <= rad * rad) {
+                  r.setPixel(tx + dx, ty - rad + dy, dy < 0 ? 3 : 2);
+                }
+              }
+            }
+          }
+        },
+        Dominion: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let x = 20; x < r.w - 20; x++) {
+            const h = x % 12 < 6 ? 35 : 42;
+            for (let y = h; y < r.h; y++) r.setPixel(x, y, 1);
+          }
+          for (let y = 0; y < 40; y++) {
+            r.setPixel(r.w / 2 - y / 2, y, 4);
+            r.setPixel(r.w / 2 + y / 2, y, 4);
+          }
+        },
+
+        // RES
+        Wastes: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let l = 0; l < 4; l++) {
+            const sy = 35 + l * 14;
+            for (let x = 0; x < r.w; x++) {
+              const y = Math.floor(sy + Math.sin(x * 0.05 + l) * 6);
+              for (let yy = y; yy < r.h; yy++)
+                r.setPixelDither(x, yy, l, l + 1, (yy - y) / (r.h - y));
+            }
+          }
+        },
+        Quarry: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
+          }
+          for (let s = 0; s < 5; s++) {
+            const inset = s * 14,
+              y = 30 + s * 11;
+            for (let x = inset; x < r.w - inset; x++) {
+              for (let yy = y; yy < r.h; yy++) {
+                r.setPixel(
+                  x,
+                  yy,
+                  x === inset || x === r.w - inset - 1 || yy === y
+                    ? 3
+                    : s % 2 === 0
+                      ? 1
+                      : 2,
+                );
+              }
             }
           }
         },
@@ -541,87 +655,102 @@
               else if (v < 0.6) r.setPixelDither(x, y, 1, 2, (v - 0.3) / 0.3);
               else if (v < 0.9) r.setPixelDither(x, y, 2, 3, (v - 0.6) / 0.3);
               else r.setPixelDither(x, y, 3, 4, Math.min(1, (v - 0.9) / 0.3));
-              if (rng.chance(0.003)) {
-                r.setPixel(x, y, 4);
-                if (rng.chance(0.5)) {
-                  r.setPixel(x - 1, y, 4);
-                  r.setPixel(x + 1, y, 4);
-                  r.setPixel(x, y - 1, 4);
-                  r.setPixel(x, y + 1, 4);
-                }
+              if (rng.chance(0.003)) r.setPixel(x, y, 4);
+            }
+          }
+        },
+        Crags: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++)
+              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.4);
+          }
+          for (let i = 0; i < 7; i++) {
+            const cx = 15 + i * 22 + rng.range(-5, 5),
+              py = rng.range(15, 35),
+              w = rng.range(8, 16);
+            for (let y = py; y < r.h; y++) {
+              const prog = (y - py) / (r.h - py);
+              const ww = Math.floor(prog * w);
+              for (let x = cx - ww; x <= cx + ww; x++) {
+                r.setPixel(x, y, x < cx ? 2 : 4);
               }
             }
           }
         },
-        Station: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) {
-              r.setPixel(x, y, 0);
-              if (rng.chance(0.008)) r.setPixel(x, y, 3);
-            }
-          }
-          const cx = r.w / 2,
-            cy = r.h / 2;
-          for (let deg = 0; deg < 360; deg += 4) {
-            const rad = (deg * Math.PI) / 180;
-            const px = Math.floor(cx + Math.cos(rad) * 35);
-            const py = Math.floor(cy + Math.sin(rad) * 16);
-            r.setPixel(px, py, 3);
-            r.setPixel(px, py + 1, 2);
-          }
-          for (let y = cy - 20; y <= cy + 20; y++) {
-            r.setPixel(cx, y, 4);
-            r.setPixel(cx - 1, y, 2);
-            r.setPixel(cx + 1, y, 3);
-          }
-        },
-        Bazaar: (r, rng) => {
+        Fields: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
-          for (let b = 0; b < 5; b++) {
-            const bx = 15 + b * 30,
-              by = 40 + rng.range(0, 15);
-            for (let x = bx; x < bx + 25; x++) {
-              const th = Math.sin(((x - bx) / 25) * Math.PI) * 8;
-              for (let y = Math.floor(by - th); y < r.h; y++) {
-                r.setPixel(x, y, (x + y) % 4 === 0 ? 3 : 2);
-              }
-            }
-            r.setPixel(bx + 12, by + 5, 4);
-          }
-        },
-        Nexus: (r, rng) => {
-          const cx = r.w / 2,
-            cy = r.h / 2;
-          for (let y = 0; y < r.h; y++) {
+          for (let y = 45; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
-              const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-              r.setPixelDither(x, y, 0, 1, Math.min(1, d / 60));
-            }
-          }
-          for (let y = cy - 25; y <= cy + 25; y++) {
-            const w = 25 - Math.abs(y - cy);
-            for (let x = cx - w; x <= cx + w; x++) {
-              r.setPixel(x, y, Math.abs(x - cx) < 2 ? 4 : 3);
+              const stripe = (x * 2 + y * 3) % 8 < 4;
+              r.setPixel(x, y, stripe ? 2 : 3);
             }
           }
         },
-        Wilds: (r, rng) => {
+        Vale: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+            for (let x = 0; x < r.w; x++)
+              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
           }
-          for (let i = 0; i < 40; i++) {
-            const tx = rng.range(0, r.w),
-              ty = rng.range(30, r.h - 10),
-              th = rng.range(10, 25);
+          // Distant mountains
+          for (let x = 0; x < r.w; x++) {
+            const my = Math.floor(25 + Math.abs(Math.sin(x * 0.03)) * 25);
+            for (let y = my; y < r.h; y++) r.setPixel(x, y, 2);
+          }
+          // Valley Lake
+          for (let y = 52; y < 68; y++) {
+            for (let x = 0; x < r.w; x++)
+              r.setPixel(x, y, (x + y) % 6 === 0 ? 3 : 4);
+          }
+          // Foreground dark hills & upright pines
+          for (let x = 0; x < r.w; x++) {
+            const fy = Math.floor(65 + Math.sin(x * 0.05) * 8);
+            for (let y = fy; y < r.h; y++) r.setPixel(x, y, 0);
+          }
+          for (let i = 0; i < 15; i++) {
+            const tx = 10 + i * 11,
+              ty = 70 + rng.range(-3, 8),
+              th = rng.range(10, 18),
+              tw = Math.floor(th * 0.45);
             for (let y = ty; y > ty - th; y--) {
-              const tw = Math.floor(((ty - y) / th) * 6);
-              for (let x = tx - tw; x <= tx + tw; x++)
-                r.setPixel(x, y, rng.chance(0.3) ? 3 : 2);
+              const progress = (y - (ty - th)) / th;
+              const w = Math.max(0, Math.floor(progress * tw));
+              for (let x = tx - w; x <= tx + w; x++) r.setPixel(x, y, 1);
             }
           }
         },
+        Canyon: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
+          }
+          for (let l = 0; l < 4; l++) {
+            const y = 30 + l * 15;
+            for (let x = 0; x < r.w; x++) {
+              if (Math.abs(x - r.w / 2) > 15 + l * 8) {
+                for (let yy = y; yy < r.h; yy++) r.setPixel(x, yy, l + 1);
+              }
+            }
+          }
+        },
+        Dunes: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
+          }
+          for (let l = 0; l < 3; l++) {
+            const by = 42 + l * 18,
+              f1 = rng.next() * 0.05 + 0.02,
+              p = rng.next() * 10;
+            for (let x = 0; x < r.w; x++) {
+              const ys = Math.floor(by + Math.sin(x * f1 + p) * 10);
+              for (let y = ys; y < r.h; y++) {
+                r.setPixelDither(x, y, l + 1, l, ((y - ys) / (r.h - ys)) * 1.5);
+              }
+            }
+          }
+        },
+
+        // MAZE
         Catacombs: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
@@ -630,214 +759,255 @@
               else r.setPixelDither(x, y, 0, 2, (y - wall) / (r.h - wall * 2));
             }
           }
-          r.setPixel(r.w / 2, r.h / 2, 4);
+        },
+        Labyrinth: (r, rng) => {
+          const cx = r.w / 2,
+            cy = r.h / 2;
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) {
+              const dx = Math.abs(x - cx),
+                dy = Math.abs(y - cy);
+              let d = dy * (r.w / r.h) < dx ? r.w / (dx + 1) : r.h / (dy + 1);
+              let nd = Math.max(0, Math.min(1, 1 - d / 10));
+              if (dy * (r.w / r.h) < dx) {
+                const seg = Math.floor(d * 4) % 2 === 0;
+                r.setPixelDither(x, y, seg ? 1 : 2, seg ? 2 : 3, nd);
+              } else {
+                if (y > cy) r.setPixelDither(x, y, 0, 2, nd);
+                else r.setPixel(x, y, 0);
+              }
+            }
+          }
+        },
+        Spire: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++)
+              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
+          }
+          const cx = r.w / 2;
+          for (let y = 8; y < r.h; y++) {
+            const w = Math.floor(((y - 8) / (r.h - 8)) ** 2 * 35 + 4);
+            for (let x = cx - w; x <= cx + w; x++)
+              r.setPixel(x, y, x < cx ? 2 : 3);
+          }
+        },
+        Ruins: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let c = 0; c < 5; c++) {
+            const cx = 20 + c * 28,
+              top = 25 + (c % 3) * 12;
+            for (let x = cx; x < cx + 10; x++) {
+              for (let y = top; y < r.h; y++)
+                r.setPixel(x, y, x === cx ? 4 : 2);
+            }
+          }
         },
         Abyss: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               const riftW = (y / r.h) * 40 + 10;
               const distToEdge = Math.abs(x - r.w / 2);
-              if (distToEdge < riftW) {
-                r.setPixelDither(x, y, 0, 4, y / r.h);
-              } else {
-                r.setPixel(x, y, distToEdge < riftW + 6 ? 2 : 1);
-              }
+              if (distToEdge < riftW) r.setPixelDither(x, y, 0, 4, y / r.h);
+              else r.setPixel(x, y, distToEdge < riftW + 6 ? 2 : 1);
+            }
+          }
+        },
+        Woods: (r, rng) => {
+          for (let y = 0; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
+          }
+          for (let i = 0; i < 40; i++) {
+            const tx = rng.range(0, r.w),
+              ty = rng.range(20, 50);
+            for (let y = ty; y < r.h; y++) {
+              r.setPixel(tx, y, rng.chance(0.5) ? 2 : 3);
+              r.setPixel(tx + 1, y, 1);
             }
           }
         },
       };
 
-      // Map remaining noun queries to appropriate aesthetic foundations
-      GenPixel.Outpost = GenPixel.Station;
-      GenPixel.Sanctuary = GenPixel.Nexus;
-      GenPixel.Expanse = GenPixel.Dunes;
-      GenPixel.Tundra = GenPixel.Dunes;
-      GenPixel.Jungle = GenPixel.Wilds;
-      GenPixel.Dominion = GenPixel.Spire;
-      GenPixel.Wastes = GenPixel.Dunes;
-      GenPixel.Quarry = GenPixel.Labyrinth;
-      GenPixel.Crags = GenPixel.Spire;
-      GenPixel.Fields = GenPixel.Dunes;
-      GenPixel.Ruins = GenPixel.Labyrinth;
-      GenPixel.Vale = GenPixel.Wilds;
-      GenPixel.Canyon = GenPixel.Dunes;
-      GenPixel.Woods = GenPixel.Wilds;
-
       /** =========================================================================
-       *  ENGINE 2: FACETED VECTOR DIORAMA (HYBRID ENGINE 2 + 3 RULES)
+       *  ENGINE 2: FACETED VECTOR DIORAMA (ENGINE 2 + 3 RULES)
        *
        *  RULES & CONSTRAINTS:
-       *  1. Low-Poly Triangle & Polygon Math: Terrestrial geometry (mountains, canyons, stairs)
-       *     is constructed using exact closed polygon vertices to prevent vertical gaps.
-       *  2. Strict Back-to-Front Painter's Algorithm: Depth planes are partitioned into distinct
-       *     layers (Layer 0 Background Sky $\rightarrow$ Layer N Foreground Silhouettes).
-       *  3. Atmospheric Distance Fog: Background tiers receive distance-proportional Gaussian
-       *     blur (`filter: blur(Npx)`) and opacity wash out into the horizon color.
-       *  4. Physical Cutout Shadows: Midground and foreground architectural/terrestrial planes
-       *     receive progressive ambient occlusion drop-shadows (`filter: drop-shadow(...)`).
-       *  5. Astronomical Infinite Distance Optics: Deep space nebulae operate under real-world
-       *     physical optics: gas sheets are volumetrically blurred (up to 28px) with point-source
-       *     diffraction bloom, strictly omitting false cardboard drop-shadows.
+       *  1. Low-Poly Closed Polygon Math: All mountains, canyons, and architectural structures
+       *     use exact polygon vertex coordinates to prevent vertical occlusion seams.
+       *  2. Strict Back-to-Front Painter's Algorithm: Rendered plane-by-plane from sky to foreground.
+       *  3. Distance-Proportional Gaussian Fog: Distant planes receive `filter: blur(Npx)` and opacity wash.
+       *  4. Ambient Occlusion Layering: Foreground planes receive heavy drop-shadows (`filter: drop-shadow(...)`).
+       *  5. Astronomical Nebula Optics: Deep interstellar gas uses multi-plane blur (up to 28px) with diffraction bloom.
+       *  6. Upright Trees: Polygons strictly anchor at bottom `(tx-w, ty)` to `(tx+w, ty)` with apex pointing UP to `(tx, ty-th)`.
        *  ========================================================================= */
       const GenVectorBG = {
-        // Vale (Formerly Engine 2 Spire): Low-Poly Valley, Snow Peaks, Cyan Lake & Pines
-        Vale: (rng, p) => {
-          let svg = `<defs>
-            <linearGradient id="vSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="${p[4]}" stop-opacity="0.8"/>
-              <stop offset="50%" stop-color="${p[3]}"/>
-              <stop offset="100%" stop-color="${p[1]}"/>
-            </linearGradient>
-          </defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#vSky-${rng.seed})" />`;
-
-          // Distant fog clouds
-          svg += `<g style="filter: blur(4px); opacity: 0.4;">`;
-          for (let i = 0; i < 3; i++) {
-            const cy = rng.range(15, 75),
-              cx = rng.range(80, 720),
-              cw = rng.range(160, 320);
-            svg += `<polygon points="${cx - cw / 2},${cy} ${cx + cw / 2},${cy} ${cx + cw / 2 - 25},${cy + 14} ${cx - cw / 2 + 25},${cy + 14}" fill="#ffffff" />`;
-          }
+        // HUB
+        Station: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          svg += `<circle cx="400" cy="650" r="400" fill="${p[1]}" style="filter: drop-shadow(0 -10px 25px ${p[3]});" />`;
+          svg += `<g style="filter: drop-shadow(0 15px 15px rgba(0,0,0,0.8));">`;
+          svg += `<ellipse cx="400" cy="180" rx="220" ry="40" fill="none" stroke="${p[3]}" stroke-width="12" />`;
+          svg += `<circle cx="400" cy="180" r="30" fill="${p[4]}" />`;
+          svg += `<line x1="180" y1="180" x2="620" y2="180" stroke="${p[2]}" stroke-width="4" />`;
           svg += `</g>`;
-
-          // LAYER 1: Distant Low-Poly Peaks with Distance Blur
-          const distPeaks = [
-            { x: 450, y: rng.range(50, 90), w: rng.range(400, 500) },
-            { x: 280, y: rng.range(80, 120), w: rng.range(300, 400) },
-            { x: 650, y: rng.range(90, 130), w: rng.range(300, 400) },
-            { x: 100, y: rng.range(120, 160), w: rng.range(250, 350) },
-            { x: 850, y: rng.range(120, 160), w: rng.range(250, 350) },
-          ];
-          let distMarkup = "";
-          for (const peak of distPeaks) {
-            const px = peak.x + rng.range(-15, 15),
-              py = peak.y,
-              pw = peak.w,
-              botY = 450;
-            const ridgeBotX = px + rng.range(-pw * 0.1, pw * 0.1);
-            distMarkup += `<polygon points="${px - pw / 2},${botY} ${px},${py} ${ridgeBotX},${botY}" fill="${p[2]}" />`;
-            distMarkup += `<polygon points="${ridgeBotX},${botY} ${px},${py} ${px + pw / 2},${botY}" fill="${p[3]}" />`;
-            const snowH = rng.range(40, 60),
-              snowRatio = snowH / (botY - py);
-            const slX = px - (pw / 2) * snowRatio,
-              srX = px + (pw / 2) * snowRatio,
-              smX = px + (ridgeBotX - px) * snowRatio;
-            const sBotY = py + snowH,
-              jaggedY = sBotY + rng.range(-10, 10);
-            distMarkup += `<polygon points="${slX},${sBotY} ${px},${py} ${smX},${jaggedY}" fill="#f0f0f5" />`;
-            distMarkup += `<polygon points="${smX},${jaggedY} ${px},${py} ${srX},${sBotY}" fill="#ffffff" />`;
+          return svg;
+        },
+        Bazaar: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          for (let l = 0; l < 4; l++) {
+            const depth = l / 3,
+              y = 140 + l * 65;
+            let tents = "";
+            for (let i = 0; i < 5; i++) {
+              const tx = i * 180 - 40 + rng.range(-20, 20),
+                w = rng.range(120, 180);
+              tents += `<polygon points="${tx},450 ${tx + w / 2},${y} ${tx + w},450" fill="${p[l + 1]}" />`;
+              tents += `<circle cx="${tx + w / 2}" cy="${y + 20}" r="6" fill="${p[4]}" />`;
+            }
+            const filter =
+              depth < 0.5
+                ? `style="filter: blur(2px);"`
+                : `style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.7));"`;
+            svg += `<g ${filter}>${tents}</g>`;
           }
-          svg += `<g style="filter: blur(3px); opacity: 0.75;">${distMarkup}</g>`;
+          return svg;
+        },
+        Outpost: (rng, p) => {
+          let svg = `<defs><linearGradient id="outpostSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#outpostSky-${rng.seed})" />`;
+          svg += `<polygon points="0,450 200,200 450,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.6;" />`;
+          svg += `<polygon points="350,450 600,180 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.6;" />`;
+          svg += `<g style="filter: drop-shadow(0 -8px 15px rgba(0,0,0,0.8));">`;
+          svg += `<polygon points="100,450 200,280 650,280 750,450" fill="${p[1]}" />`;
+          svg += `<polygon points="250,280 280,210 520,210 550,280" fill="${p[0]}" />`;
+          svg += `<line x1="320" y1="210" x2="320" y2="110" stroke="${p[4]}" stroke-width="4" />`;
+          svg += `<ellipse cx="450" cy="180" rx="35" ry="18" fill="${p[3]}" />`;
+          svg += `</g>`;
+          return svg;
+        },
+        Nexus: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          svg += `<circle cx="400" cy="200" r="140" fill="${p[3]}" opacity="0.3" style="filter: blur(30px);" />`;
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            svg += `<line x1="400" y1="200" x2="${400 + Math.cos(a) * 450}" y2="${200 + Math.sin(a) * 300}" stroke="${p[2]}" stroke-width="2" />`;
+          }
+          svg += `<g style="filter: drop-shadow(0 0 15px ${p[4]});">`;
+          svg += `<polygon points="400,80 470,200 400,320 330,200" fill="${p[4]}" />`;
+          svg += `<polygon points="400,80 400,320 330,200" fill="${p[2]}" opacity="0.6" />`;
+          svg += `</g>`;
+          return svg;
+        },
+        Sanctuary: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          svg += `<circle cx="400" cy="180" r="90" fill="${p[4]}" opacity="0.5" style="filter: blur(20px);" />`;
+          for (let i = 4; i >= 0; i--) {
+            const pad = i * 45,
+              col = p[i];
+            svg += `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
+          }
+          return svg;
+        },
 
-          // LAYER 2: Cyan Valley Lake
-          const waterY = rng.range(250, 270);
-          svg += `<g style="filter: drop-shadow(0px -3px 6px rgba(0,0,0,0.3)); opacity: 0.9;">`;
-          svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
+        // HUNT
+        Wilds: (rng, p) => {
+          let svg = `<defs><linearGradient id="wildsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#wildsSky-${rng.seed})" />`;
+          svg += `<polygon points="0,450 0,220 400,160 800,240 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.6;" />`;
+          let mid = `<polygon points="0,450 0,280 500,220 800,310 800,450" fill="${p[1]}" />`;
+          for (let i = 0; i < 20; i++) {
+            const tx = i * 42 + rng.range(-5, 5),
+              ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
+            const th = rng.range(25, 45),
+              tw = th * 0.45;
+            mid += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${p[0]}" />`;
+          }
+          svg += `<g style="filter: drop-shadow(0 -6px 10px rgba(0,0,0,0.5));">${mid}</g>`;
+          let fore = `<polygon points="0,450 0,360 800,340 800,450" fill="${p[0]}" />`;
+          for (let i = 0; i < 12; i++) {
+            const tx = i * 70 + rng.range(-10, 10),
+              ty = 360 + rng.range(-10, 20);
+            const th = rng.range(50, 85),
+              tw = th * 0.45;
+            fore += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${p[0]}" />`;
+          }
+          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${fore}</g>`;
+          return svg;
+        },
+        Expanse: (rng, p) => {
+          let svg = `<defs><linearGradient id="expSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#expSky-${rng.seed})" />`;
+          svg += `<polygon points="0,450 0,250 800,250 800,450" fill="${p[2]}" style="filter: blur(2px); opacity: 0.8;" />`;
+          svg += `<g style="filter: drop-shadow(0 -4px 8px rgba(0,0,0,0.6));">`;
+          svg += `<polygon points="200,250 215,140 230,250" fill="${p[1]}" />`;
+          svg += `<polygon points="250,250 265,160 280,250" fill="${p[1]}" />`;
+          svg += `<path d="M 360,250 Q 400,100 440,250 L 460,250 Q 400,80 340,250 Z" fill="${p[0]}" />`;
+          svg += `</g>`;
+          svg += `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" style="filter: drop-shadow(0 -8px 14px rgba(0,0,0,0.8));" />`;
+          return svg;
+        },
+        Tundra: (rng, p) => {
+          let svg = `<defs><linearGradient id="tunSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#tunSky-${rng.seed})" />`;
+          svg += `<polygon points="0,450 0,200 800,180 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.7;" />`;
+          let ice = "";
+          for (let i = 0; i < 5; i++) {
+            const x = i * 160 + 20,
+              y = 240 + rng.range(-15, 15),
+              w = rng.range(120, 180),
+              h = rng.range(60, 110);
+            ice += `<polygon points="${x},${y} ${x + w * 0.4},${y - h} ${x + w},${y} ${x + w * 0.8},${y + 40} ${x + w * 0.2},${y + 40}" fill="${p[3]}" />`;
+            ice += `<polygon points="${x},${y} ${x + w * 0.4},${y - h} ${x + w * 0.5},${y}" fill="${p[4]}" />`;
+          }
+          svg += `<g style="filter: drop-shadow(0 -5px 10px rgba(0,0,0,0.5));">${ice}</g>`;
+          svg += `<polygon points="0,450 0,360 300,320 550,380 800,340 800,450" fill="${p[0]}" style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.8));" />`;
+          return svg;
+        },
+        Jungle: (rng, p) => {
+          let svg = `<defs><linearGradient id="junSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#junSky-${rng.seed})" />`;
+          svg += `<circle cx="200" cy="220" r="140" fill="${p[2]}" style="filter: blur(6px); opacity: 0.7;" />`;
+          svg += `<circle cx="600" cy="200" r="160" fill="${p[2]}" style="filter: blur(6px); opacity: 0.7;" />`;
+          let mid = "";
           for (let i = 0; i < 6; i++) {
-            svg += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
+            const cx = i * 140 + 30,
+              cy = 250 + rng.range(-20, 20),
+              r = rng.range(60, 100);
+            mid += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p[1]}" />`;
+            mid += `<path d="M ${cx - 40},${cy} Q ${cx},${cy + 80} ${cx + 40},${cy}" fill="none" stroke="${p[0]}" stroke-width="4" />`;
           }
-          svg += `</g>`;
-
-          // LAYER 3: Midground Faceted Ridges (Soft Drop Shadow)
-          const mlX = rng.range(150, 250),
-            mlY = rng.range(160, 200),
-            mlW = rng.range(500, 600),
-            mlRidge = mlX + rng.range(-30, 30);
-          let midMountains = `<polygon points="${mlX - mlW / 2},450 ${mlX},${mlY} ${mlRidge},450" fill="${p[1]}" />`;
-          midMountains += `<polygon points="${mlRidge},450 ${mlX},${mlY} ${mlX + mlW / 2},450" fill="${p[2]}" />`;
-          const mrX = rng.range(550, 650),
-            mrY = rng.range(120, 160),
-            mrW = rng.range(600, 700),
-            mrRidge = mrX + rng.range(-40, 40);
-          midMountains += `<polygon points="${mrX - mrW / 2},450 ${mrX},${mrY} ${mrRidge},450" fill="${p[1]}" />`;
-          midMountains += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" />`;
-          svg += `<g style="filter: blur(1px) drop-shadow(0px -5px 10px rgba(0,0,0,0.45)); opacity: 0.95;">${midMountains}</g>`;
-
-          // LAYER 4: Foreground Mountain Silhouettes & Tree Cutouts
-          const flX = rng.range(80, 150),
-            flY = rng.range(280, 320),
-            flW = rng.range(500, 700),
-            flRidge = flX + rng.range(-20, 20);
-          let fore = `<polygon points="${flX - flW / 2},450 ${flX},${flY} ${flRidge},450" fill="${p[0]}" />`;
-          fore += `<polygon points="${flRidge},450 ${flX},${flY} ${flX + flW / 2},450" fill="${p[1]}" />`;
-          const frX = rng.range(650, 750),
-            frY = rng.range(250, 300),
-            frW = rng.range(600, 800),
-            frRidge = frX + rng.range(-20, 20);
-          fore += `<polygon points="${frX - frW / 2},450 ${frX},${frY} ${frRidge},450" fill="${p[0]}" />`;
-          fore += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" />`;
-          svg += `<g style="filter: drop-shadow(0px -10px 18px rgba(0,0,0,0.7));">${fore}</g>`;
-
-          function drawTrees(startX, startY, endX, endY, count, color) {
-            let tr = "";
-            for (let i = 0; i < count; i++) {
-              const t = i / count;
-              const tx = startX + (endX - startX) * t,
-                ty = startY + (endY - startY) * t;
-              const th = rng.range(15, 30),
-                tw = th * 0.45;
-              tr += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${color}" />`;
-            }
-            return tr;
-          }
-          let trees =
-            drawTrees(flX - flW / 2, 450, flX, flY, 18, p[0]) +
-            drawTrees(frX, frY, frX + frW / 2, 450, 18, p[0]);
-          svg += `<g style="filter: drop-shadow(0px -4px 8px rgba(0,0,0,0.85));">${trees}</g>`;
-
+          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.6));">${mid}</g>`;
+          let fore = `<polygon points="0,450 0,350 800,350 800,450" fill="${p[0]}" />`;
+          fore += `<circle cx="100" cy="320" r="110" fill="${p[0]}" />`;
+          fore += `<circle cx="700" cy="300" r="130" fill="${p[0]}" />`;
+          svg += `<g style="filter: drop-shadow(0 -12px 20px rgba(0,0,0,0.9));">${fore}</g>`;
+          return svg;
+        },
+        Dominion: (rng, p) => {
+          let svg = `<defs><linearGradient id="domSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#domSky-${rng.seed})" />`;
+          svg += `<polygon points="250,450 150,0 220,0" fill="${p[4]}" opacity="0.25" style="filter: blur(5px);" />`;
+          svg += `<polygon points="550,450 650,0 580,0" fill="${p[4]}" opacity="0.25" style="filter: blur(5px);" />`;
+          svg += `<polygon points="0,450 0,220 180,220 200,250 600,250 620,220 800,220 800,450" fill="${p[2]}" style="filter: blur(2px); opacity: 0.8;" />`;
+          let fort = `<polygon points="0,450 0,300 280,300 300,450" fill="${p[0]}" />`;
+          fort += `<polygon points="280,300 320,160 480,160 520,300" fill="${p[0]}" />`;
+          fort += `<polygon points="500,450 520,300 800,300 800,450" fill="${p[0]}" />`;
+          fort += `<rect x="360" y="200" width="80" height="25" fill="${p[3]}" />`;
+          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.9));">${fort}</g>`;
           return svg;
         },
 
-        // Canyon (Formerly Engine 2 Wastes): Stepped Low-Poly Terraces with Depth Blur
-        Canyon: (rng, p) => {
-          let svg = `<defs><linearGradient id="canyonSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${p[4]}"/>
-            <stop offset="60%" stop-color="${p[2]}"/>
-            <stop offset="100%" stop-color="${p[0]}"/>
-          </linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#canyonSky-${rng.seed})" />`;
-
-          const layers = 5;
-          for (let l = 0; l < layers; l++) {
-            const depth = l / (layers - 1);
-            const sy = 130 + l * 55;
-            let cx = -50,
-              blocks = "";
-            const cLight = p[Math.min(4, Math.max(1, 4 - l))];
-            const cDark = p[Math.min(3, Math.max(0, 3 - l))];
-            while (cx < 850) {
-              const w = rng.range(100, 200),
-                y = sy + rng.range(-25, 25);
-              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w},450 ${cx},450" fill="${cDark}" />`;
-              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w - 20},${y - 15} ${cx + 20},${y - 15}" fill="${cLight}" />`;
-              cx += w;
-            }
-            const blurAmt = Math.max(0, (1 - depth) * 5.5);
-            const filterStyle =
-              blurAmt > 0.6
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
-                : `style="filter: drop-shadow(0px -${(l + 1) * 3.5}px ${(l + 1) * 4}px rgba(0,0,0,0.7));"`;
-            svg += `<g ${filterStyle}>${blocks}</g>`;
-          }
-          return svg;
-        },
-
-        // Wastes (Formerly Engine 3 Wastes): Organic Atmospheric Ridge Cutouts
+        // RES
         Wastes: (rng, p) => {
-          let svg = `<defs><linearGradient id="wasteSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${p[0]}"/>
-            <stop offset="60%" stop-color="${p[2]}"/>
-            <stop offset="100%" stop-color="${p[4]}"/>
-          </linearGradient></defs>`;
+          let svg = `<defs><linearGradient id="wasteSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[0]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#wasteSky-${rng.seed})" />`;
-
           const layers = 6;
           for (let l = 0; l < layers; l++) {
-            const depth = l / (layers - 1);
-            const sy = 120 + l * 45;
-            let pts = `-50,450 -50,${sy} `;
-            let cx = -50;
+            const depth = l / (layers - 1),
+              sy = 120 + l * 45;
+            let pts = `-50,450 -50,${sy} `,
+              cx = -50;
             while (cx < 850) {
               cx += rng.range(80, 180);
               pts += `${cx},${sy + rng.range(-40, 40)} `;
@@ -854,49 +1024,24 @@
           }
           return svg;
         },
-
-        // Woods (Formerly Engine 3 Spire): Layered Vertical Silhouette Forest Cutout
-        Woods: (rng, p) => {
-          let svg = `<defs><linearGradient id="woodsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${p[4]}"/>
-            <stop offset="50%" stop-color="${p[3]}"/>
-            <stop offset="100%" stop-color="${p[1]}"/>
-          </linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#woodsSky-${rng.seed})" />`;
-
-          const sunX = rng.range(150, 650),
-            sunY = rng.range(100, 220);
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(60, 120)}" fill="${p[4]}" opacity="0.6" filter="url(#filter-wobble)" />`;
-
-          const layers = 6;
-          for (let l = 0; l < layers; l++) {
-            const depth = l / (layers - 1);
-            const yMin = 180 - l * 20,
-              spCount = rng.range(3, 6);
-            const col =
-              l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
-            const blurAmt = Math.max(0, (1 - depth) * 6);
-            const filterStyle =
-              blurAmt > 0.5
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
-                : `style="filter: drop-shadow(0px -${(l + 1) * 3}px ${(l + 1) * 3}px rgba(0,0,0,0.6));"`;
-
-            svg += `<g stroke="none" fill="${col}" ${filterStyle}>`;
-            for (let i = 0; i < spCount; i++) {
-              const cx = rng.range(50, 750),
-                sy = rng.range(yMin, yMin + 80),
-                w = rng.range(60 + l * 20, 140 + l * 30);
-              svg += `<polygon points="${cx - w / 2},420 ${cx},${sy} ${cx + w / 2},420" />`;
-            }
-            svg += `</g>`;
+        Quarry: (rng, p) => {
+          let svg = `<defs><linearGradient id="quarrySky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#quarrySky-${rng.seed})" />`;
+          for (let s = 0; s < 5; s++) {
+            const pad = s * 70,
+              y = 140 + s * 55;
+            let step = `<polygon points="${pad},450 ${pad + 40},${y} ${800 - pad - 40},${y} ${800 - pad},450" fill="${p[Math.min(4, Math.max(0, 4 - s))]}" />`;
+            step += `<polygon points="${pad + 40},${y} ${pad + 70},${y + 35} ${800 - pad - 70},${y + 35} ${800 - pad - 40},${y}" fill="${p[Math.min(3, Math.max(0, 3 - s))]}" />`;
+            const filter =
+              s === 0
+                ? `style="filter: blur(3px);"`
+                : `style="filter: drop-shadow(0 -6px 10px rgba(0,0,0,0.6));"`;
+            svg += `<g ${filter}>${step}</g>`;
           }
           return svg;
         },
-
-        // Nebula: Deep Space Infinite Distance Blurring & Star Halation (No Drop Shadows)
         Nebula: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          // Deep dust sheets
           let deepPolys = "";
           for (let i = 0; i < 16; i++) {
             const cx = rng.range(40, 760),
@@ -912,8 +1057,6 @@
             deepPolys += `<polygon points="${pts}" fill="${p[Math.floor((i / 16) * 3) + 1]}" opacity="0.45" />`;
           }
           svg += `<g style="filter: blur(28px); opacity: 0.75;">${deepPolys}</g>`;
-
-          // Luminous filaments
           let midPolys = "";
           for (let i = 0; i < 20; i++) {
             const cx = rng.range(20, 780),
@@ -929,8 +1072,6 @@
             midPolys += `<polygon points="${pts}" fill="${p[Math.floor((i / 20) * 3) + 2]}" opacity="0.6" />`;
           }
           svg += `<g style="filter: blur(14px); opacity: 0.85;">${midPolys}</g>`;
-
-          // Stars & optical diffraction spikes
           let stars = "";
           for (let i = 0; i < 55; i++) {
             const sx = rng.range(0, 800),
@@ -946,8 +1087,227 @@
           svg += `<g style="filter: drop-shadow(0 0 3px ${p[4]});">${stars}</g>`;
           return svg;
         },
+        Crags: (rng, p) => {
+          let svg = `<defs><linearGradient id="cragSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#cragSky-${rng.seed})" />`;
+          let dist = "";
+          for (let i = 0; i < 6; i++) {
+            const x = 50 + i * 130 + rng.range(-20, 20),
+              h = rng.range(180, 260),
+              w = rng.range(40, 80);
+            dist += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[2]}" />`;
+          }
+          svg += `<g style="filter: blur(3px); opacity: 0.6;">${dist}</g>`;
+          let fore = "";
+          for (let i = 0; i < 5; i++) {
+            const x = 80 + i * 160 + rng.range(-30, 30),
+              h = rng.range(260, 380),
+              w = rng.range(70, 120);
+            fore += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x},450" fill="${p[0]}" />`;
+            fore += `<polygon points="${x},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[1]}" />`;
+          }
+          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${fore}</g>`;
+          return svg;
+        },
+        Fields: (rng, p) => {
+          let svg = `<defs><linearGradient id="fldSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#fldSky-${rng.seed})" />`;
+          for (let l = 0; l < 4; l++) {
+            const y = 180 + l * 65;
+            let pts = `-50,450 `;
+            for (let x = -50; x <= 850; x += 100) {
+              pts += `${x},${y + Math.sin((x + l * 80) * 0.01) * 25} `;
+            }
+            pts += `850,450`;
+            const col = p[3 - l] || p[0];
+            svg += `<polygon points="${pts}" fill="${col}" style="filter: drop-shadow(0 -5px 10px rgba(0,0,0,0.5));" />`;
+          }
+          svg += `<g style="filter: drop-shadow(0 0 8px rgba(0,0,0,0.7));">`;
+          svg += `<line x1="600" y1="360" x2="600" y2="140" stroke="${p[4]}" stroke-width="4" />`;
+          svg += `<circle cx="600" cy="140" r="6" fill="${p[4]}" />`;
+          svg += `<line x1="600" y1="140" x2="560" y2="90" stroke="${p[4]}" stroke-width="3" />`;
+          svg += `<line x1="600" y1="140" x2="640" y2="90" stroke="${p[4]}" stroke-width="3" />`;
+          svg += `<line x1="600" y1="140" x2="600" y2="200" stroke="${p[4]}" stroke-width="3" />`;
+          svg += `</g>`;
+          return svg;
+        },
 
-        // Labyrinth: Isometric Impossible Loop with Multi-Plane Ambient Occlusion
+        // VALE: Complete Restored Faceted Alpine Landscape with Engine 3 Depth Diorama Rules
+        Vale: (rng, p) => {
+          let svg = `<defs>
+            <linearGradient id="vSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${p[4]}" stop-opacity="0.8"/>
+              <stop offset="50%" stop-color="${p[3]}"/>
+              <stop offset="100%" stop-color="${p[1]}"/>
+            </linearGradient>
+          </defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#vSky-${rng.seed})" />`;
+
+          // Ambient Background Clouds (Blurred Distance Fog)
+          svg += `<g style="filter: blur(4px); opacity: 0.4;">`;
+          for (let i = 0; i < 3; i++) {
+            const cy = rng.range(15, 75),
+              cx = rng.range(80, 720),
+              cw = rng.range(160, 320);
+            svg += `<polygon points="${cx - cw / 2},${cy} ${cx + cw / 2},${cy} ${cx + cw / 2 - 25},${cy + 14} ${cx - cw / 2 + 25},${cy + 14}" fill="#ffffff" />`;
+          }
+          svg += `</g>`;
+
+          // LAYER 1: Distant Snow-Capped Faceted Peaks (Distance Blur & Atmospheric Washout)
+          const distPeaks = [
+            { x: 450, y: rng.range(50, 90), w: rng.range(400, 500) }, // Back center
+            { x: 280, y: rng.range(80, 120), w: rng.range(300, 400) }, // Mid left
+            { x: 650, y: rng.range(90, 130), w: rng.range(300, 400) }, // Mid right
+            { x: 100, y: rng.range(120, 160), w: rng.range(250, 350) }, // Front left
+            { x: 850, y: rng.range(120, 160), w: rng.range(250, 350) }, // Front right
+          ];
+
+          let distMarkup = "";
+          for (const peak of distPeaks) {
+            const px = peak.x + rng.range(-15, 15);
+            const py = peak.y;
+            const pw = peak.w;
+            const botY = 450;
+            const ridgeBotX = px + rng.range(-pw * 0.1, pw * 0.1);
+
+            // Shaded face & Lit face
+            distMarkup += `<polygon points="${px - pw / 2},${botY} ${px},${py} ${ridgeBotX},${botY}" fill="${p[2]}" />`;
+            distMarkup += `<polygon points="${ridgeBotX},${botY} ${px},${py} ${px + pw / 2},${botY}" fill="${p[3]}" />`;
+
+            // Solid Snow Cap Facets mapped EXACTLY to slope ratios
+            const snowH = rng.range(40, 60);
+            const snowRatio = snowH / (botY - py);
+            const slX = px - (pw / 2) * snowRatio;
+            const srX = px + (pw / 2) * snowRatio;
+            const smX = px + (ridgeBotX - px) * snowRatio;
+            const sBotY = py + snowH;
+            const jaggedY = sBotY + rng.range(-10, 10);
+
+            distMarkup += `<polygon points="${slX},${sBotY} ${px},${py} ${smX},${jaggedY}" fill="#f0f0f5" />`;
+            distMarkup += `<polygon points="${smX},${jaggedY} ${px},${py} ${srX},${sBotY}" fill="#ffffff" />`;
+          }
+          svg += `<g style="filter: blur(3px); opacity: 0.75;">${distMarkup}</g>`;
+
+          // LAYER 1.5: Water Layer (Cyan valley lake behind midground ridges)
+          const waterY = rng.range(250, 270);
+          svg += `<g style="filter: drop-shadow(0px -3px 6px rgba(0,0,0,0.3)); opacity: 0.9;">`;
+          svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
+          for (let i = 0; i < 6; i++) {
+            svg += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
+          }
+          svg += `</g>`;
+
+          // LAYER 2 & 3: Midground Left & Right Faceted Mountains (Soft Ambient Drop-Shadow)
+          const mlX = rng.range(150, 250),
+            mlY = rng.range(160, 200),
+            mlW = rng.range(500, 600);
+          const mlRidge = mlX + rng.range(-30, 30);
+          let midLeft = `<polygon points="${mlX - mlW / 2},450 ${mlX},${mlY} ${mlRidge},450" fill="${p[1]}" />`;
+          midLeft += `<polygon points="${mlRidge},450 ${mlX},${mlY} ${mlX + mlW / 2},450" fill="${p[2]}" />`;
+
+          const mrX = rng.range(550, 650),
+            mrY = rng.range(120, 160),
+            mrW = rng.range(600, 700);
+          const mrRidge = mrX + rng.range(-40, 40);
+          let midRight = `<polygon points="${mrX - mrW / 2},450 ${mrX},${mrY} ${mrRidge},450" fill="${p[1]}" />`;
+          midRight += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" />`;
+
+          svg += `<g style="filter: blur(1px) drop-shadow(0px -5px 10px rgba(0,0,0,0.45)); opacity: 0.95;">${midLeft}${midRight}</g>`;
+
+          // LAYER 4: Foreground Dark Mountains (Crisp Edges & Ambient Occlusion)
+          const flX = rng.range(80, 150),
+            flY = rng.range(280, 320),
+            flW = rng.range(500, 700);
+          const flRidge = flX + rng.range(-20, 20);
+          let foreLeft = `<polygon points="${flX - flW / 2},450 ${flX},${flY} ${flRidge},450" fill="${p[0]}" />`;
+          foreLeft += `<polygon points="${flRidge},450 ${flX},${flY} ${flX + flW / 2},450" fill="${p[1]}" />`;
+
+          const frX = rng.range(650, 750),
+            frY = rng.range(250, 300),
+            frW = rng.range(600, 800);
+          const frRidge = frX + rng.range(-20, 20);
+          let foreRight = `<polygon points="${frX - frW / 2},450 ${frX},${frY} ${frRidge},450" fill="${p[0]}" />`;
+          foreRight += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" />`;
+
+          svg += `<g style="filter: drop-shadow(0px -10px 18px rgba(0,0,0,0.7));">${foreLeft}${foreRight}</g>`;
+
+          // LAYER 5: Pine Tree Silhouettes mapped along slope lines
+          function drawTrees(startX, startY, endX, endY, count, color) {
+            let tr = "";
+            for (let i = 0; i < count; i++) {
+              const t = i / count + rng.range(-2, 2) * 0.01;
+              const tx = startX + (endX - startX) * t;
+              const ty = startY + (endY - startY) * t + rng.range(-2, 2);
+              const th = rng.range(15, 30);
+              const tw = th * 0.45;
+              tr += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${color}" />`;
+              tr += `<polygon points="${tx},${ty - th * 0.7} ${tx - tw * 0.8},${ty - th * 0.1} ${tx + tw * 0.8},${ty - th * 0.1}" fill="${color}" />`;
+            }
+            return tr;
+          }
+
+          let trees = "";
+          trees += drawTrees(flX - flW / 2, 450, flX, flY, 20, p[0]);
+          trees += drawTrees(flX, flY, flX + flW / 2, 450, 25, p[0]);
+          trees += drawTrees(frX - frW / 2, 450, frX, frY, 25, p[0]);
+          trees += drawTrees(frX, frY, frX + frW / 2, 450, 20, p[0]);
+
+          svg += `<g style="filter: drop-shadow(0px -4px 8px rgba(0,0,0,0.85));">${trees}</g>`;
+
+          return svg;
+        },
+
+        Canyon: (rng, p) => {
+          let svg = `<defs><linearGradient id="canyonSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#canyonSky-${rng.seed})" />`;
+          const layers = 5;
+          for (let l = 0; l < layers; l++) {
+            const depth = l / (layers - 1),
+              sy = 130 + l * 55;
+            let cx = -50,
+              blocks = "";
+            while (cx < 850) {
+              const w = rng.range(100, 200),
+                y = sy + rng.range(-25, 25);
+              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w},450 ${cx},450" fill="${p[Math.min(3, Math.max(0, 3 - l))]}" />`;
+              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w - 20},${y - 15} ${cx + 20},${y - 15}" fill="${p[Math.min(4, Math.max(1, 4 - l))]}" />`;
+              cx += w;
+            }
+            const blurAmt = Math.max(0, (1 - depth) * 5.5);
+            const filterStyle =
+              blurAmt > 0.6
+                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
+                : `style="filter: drop-shadow(0px -${(l + 1) * 3.5}px ${(l + 1) * 4}px rgba(0,0,0,0.7));"`;
+            svg += `<g ${filterStyle}>${blocks}</g>`;
+          }
+          return svg;
+        },
+        Dunes: (rng, p) => {
+          let svg = `<defs><linearGradient id="duneSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#duneSky-${rng.seed})" />`;
+          for (let l = 0; l < 4; l++) {
+            const y = 160 + l * 65;
+            let d = `M -50,450 L -50,${y} `;
+            for (let x = 0; x <= 850; x += 150) {
+              d += `Q ${x + 75},${y + rng.range(-30, 30)} ${x + 150},${y} `;
+            }
+            d += `L 850,450 Z`;
+            svg += `<path d="${d}" fill="${p[3 - l] || p[0]}" style="filter: drop-shadow(0 -5px 10px rgba(0,0,0,0.5));" />`;
+          }
+          return svg;
+        },
+
+        // MAZE
+        Catacombs: (rng, p) => {
+          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          for (let i = 4; i >= 0; i--) {
+            const pad = i * 45,
+              col = p[i];
+            svg += `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="18" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
+          }
+          svg += `<circle cx="400" cy="240" r="12" fill="${p[4]}" style="filter: blur(2px);" />`;
+          return svg;
+        },
         Labyrinth: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           svg += `<circle cx="400" cy="200" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(25px);" />`;
@@ -1012,20 +1372,13 @@
           svg += `<g style="filter: drop-shadow(0px 14px 20px rgba(0,0,0,0.85));">${flights[2]}</g>`;
           return svg;
         },
-
-        // Spire: Towering Monolith Piercing Clouds
         Spire: (rng, p) => {
-          let svg = `<defs><linearGradient id="spireSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${p[1]}"/>
-            <stop offset="100%" stop-color="${p[4]}"/>
-          </linearGradient></defs>`;
+          let svg = `<defs><linearGradient id="spireSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#spireSky-${rng.seed})" />`;
-          // Distant spires
           svg += `<g style="filter: blur(4px); opacity: 0.5;">`;
           svg += `<polygon points="200,450 220,100 240,450" fill="${p[2]}" />`;
           svg += `<polygon points="560,450 580,80 600,450" fill="${p[2]}" />`;
           svg += `</g>`;
-          // Foreground Megalith Spire with Crisp Drop Shadow
           svg += `<g style="filter: drop-shadow(0 0 25px rgba(0,0,0,0.9));">`;
           svg += `<polygon points="360,450 400,20 400,450" fill="${p[0]}" />`;
           svg += `<polygon points="400,20 440,450 400,450" fill="${p[1]}" />`;
@@ -1033,115 +1386,61 @@
           svg += `</g>`;
           return svg;
         },
-
-        // Station: Orbital Habitat with Planetary Horizon
-        Station: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          // Planet limb
-          svg += `<circle cx="400" cy="650" r="400" fill="${p[1]}" style="filter: drop-shadow(0 -10px 25px ${p[3]});" />`;
-          // Station Ring
-          svg += `<g style="filter: drop-shadow(0 15px 15px rgba(0,0,0,0.8));">`;
-          svg += `<ellipse cx="400" cy="180" rx="220" ry="40" fill="none" stroke="${p[3]}" stroke-width="12" />`;
-          svg += `<circle cx="400" cy="180" r="30" fill="${p[4]}" />`;
-          svg += `<line x1="180" y1="180" x2="620" y2="180" stroke="${p[2]}" stroke-width="4" />`;
+        Ruins: (rng, p) => {
+          let svg = `<defs><linearGradient id="ruinSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#ruinSky-${rng.seed})" />`;
+          svg += `<g style="filter: blur(3px); opacity: 0.6;">`;
+          svg += `<rect x="250" y="160" width="300" height="20" fill="${p[2]}" />`;
+          svg += `<rect x="280" y="180" width="25" height="150" fill="${p[2]}" />`;
+          svg += `<rect x="495" y="180" width="25" height="150" fill="${p[2]}" />`;
           svg += `</g>`;
-          return svg;
-        },
-
-        // Bazaar: Overlapping Layered Tent Silhouettes with Warm Lantern Nodes
-        Bazaar: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          for (let l = 0; l < 4; l++) {
-            const depth = l / 3,
-              y = 140 + l * 65;
-            let tents = "";
-            for (let i = 0; i < 5; i++) {
-              const tx = i * 180 - 40 + rng.range(-20, 20),
-                w = rng.range(120, 180);
-              tents += `<polygon points="${tx},450 ${tx + w / 2},${y} ${tx + w},450" fill="${p[l + 1]}" />`;
-              tents += `<circle cx="${tx + w / 2}" cy="${y + 20}" r="6" fill="${p[4]}" />`;
-            }
-            const filter =
-              depth < 0.5
-                ? `style="filter: blur(2px);"`
-                : `style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.7));"`;
-            svg += `<g ${filter}>${tents}</g>`;
+          let cols = `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" />`;
+          for (let i = 0; i < 5; i++) {
+            const cx = 100 + i * 140,
+              h = 180 + (i % 3) * 35;
+            cols += `<rect x="${cx}" y="${330 - h}" width="36" height="${h}" fill="${p[1]}" />`;
+            cols += `<polygon points="${cx - 8},${330 - h} ${cx + 18},${310 - h} ${cx + 44},${330 - h}" fill="${p[2]}" />`;
           }
+          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${cols}</g>`;
           return svg;
         },
-
-        // Nexus: Radiant Polyhedral Energy Core
-        Nexus: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          svg += `<circle cx="400" cy="200" r="140" fill="${p[3]}" opacity="0.3" style="filter: blur(30px);" />`;
-          // Power lines
-          for (let i = 0; i < 8; i++) {
-            const a = (i / 8) * Math.PI * 2;
-            svg += `<line x1="400" y1="200" x2="${400 + Math.cos(a) * 450}" y2="${200 + Math.sin(a) * 300}" stroke="${p[2]}" stroke-width="2" />`;
-          }
-          // Floating Core
-          svg += `<g style="filter: drop-shadow(0 0 15px ${p[4]});">`;
-          svg += `<polygon points="400,80 470,200 400,320 330,200" fill="${p[4]}" />`;
-          svg += `<polygon points="400,80 400,320 330,200" fill="${p[2]}" opacity="0.6" />`;
-          svg += `</g>`;
-          return svg;
-        },
-
-        // Dunes: Sweeping Low-Poly Sand Ridges
-        Dunes: (rng, p) => {
-          let svg = `<defs><linearGradient id="duneSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${p[4]}"/>
-            <stop offset="100%" stop-color="${p[2]}"/>
-          </linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#duneSky-${rng.seed})" />`;
-          for (let l = 0; l < 4; l++) {
-            const y = 160 + l * 65;
-            let d = `M -50,450 L -50,${y} `;
-            for (let x = 0; x <= 850; x += 150) {
-              d += `Q ${x + 75},${y + rng.range(-30, 30)} ${x + 150},${y} `;
-            }
-            d += `L 850,450 Z`;
-            svg += `<path d="${d}" fill="${p[3 - l] || p[0]}" style="filter: drop-shadow(0 -5px 10px rgba(0,0,0,0.5));" />`;
-          }
-          return svg;
-        },
-
-        // Catacombs: Deep Vaulted Crypt Arches
-        Catacombs: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          for (let i = 4; i >= 0; i--) {
-            const pad = i * 45,
-              col = p[i];
-            svg += `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="18" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
-          }
-          svg += `<circle cx="400" cy="240" r="12" fill="${p[4]}" style="filter: blur(2px);" />`;
-          return svg;
-        },
-
-        // Abyss: Sheer Tectonic Chasm into Radiant Core
         Abyss: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           svg += `<rect x="350" y="0" width="100" height="450" fill="${p[4]}" opacity="0.4" style="filter: blur(20px);" />`;
-          // Left Wall
           svg += `<polygon points="0,0 360,0 280,450 0,450" fill="${p[1]}" style="filter: drop-shadow(10px 0 15px rgba(0,0,0,0.9));" />`;
-          // Right Wall
           svg += `<polygon points="800,0 440,0 520,450 800,450" fill="${p[2]}" style="filter: drop-shadow(-10px 0 15px rgba(0,0,0,0.9));" />`;
           return svg;
         },
+        Woods: (rng, p) => {
+          let svg = `<defs><linearGradient id="woodsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          svg += `<rect width="100%" height="100%" fill="url(#woodsSky-${rng.seed})" />`;
+          const sunX = rng.range(150, 650),
+            sunY = rng.range(100, 220);
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(60, 120)}" fill="${p[4]}" opacity="0.6" filter="url(#filter-wobble)" />`;
+          const layers = 6;
+          for (let l = 0; l < layers; l++) {
+            const depth = l / (layers - 1),
+              yMin = 180 - l * 20,
+              spCount = rng.range(3, 6);
+            const col =
+              l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
+            const blurAmt = Math.max(0, (1 - depth) * 6);
+            const filterStyle =
+              blurAmt > 0.5
+                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
+                : `style="filter: drop-shadow(0px -${(l + 1) * 3}px ${(l + 1) * 3}px rgba(0,0,0,0.6));"`;
+            svg += `<g stroke="none" fill="${col}" ${filterStyle}>`;
+            for (let i = 0; i < spCount; i++) {
+              const cx = rng.range(50, 750),
+                sy = rng.range(yMin, yMin + 80),
+                w = rng.range(60 + l * 20, 140 + l * 30);
+              svg += `<polygon points="${cx - w / 2},420 ${cx},${sy} ${cx + w / 2},420" />`;
+            }
+            svg += `</g>`;
+          }
+          return svg;
+        },
       };
-
-      // Vector archetype mappings for remaining nouns
-      GenVectorBG.Outpost = GenVectorBG.Station;
-      GenVectorBG.Sanctuary = GenVectorBG.Catacombs;
-      GenVectorBG.Wilds = GenVectorBG.Vale;
-      GenVectorBG.Expanse = GenVectorBG.Dunes;
-      GenVectorBG.Tundra = GenVectorBG.Vale;
-      GenVectorBG.Jungle = GenVectorBG.Woods;
-      GenVectorBG.Dominion = GenVectorBG.Spire;
-      GenVectorBG.Quarry = GenVectorBG.Canyon;
-      GenVectorBG.Crags = GenVectorBG.Vale;
-      GenVectorBG.Fields = GenVectorBG.Dunes;
-      GenVectorBG.Ruins = GenVectorBG.Labyrinth;
 
       /** =========================================================================
        *  MASTER DOM ASSEMBLER & CONTROLLER
@@ -1205,7 +1504,6 @@
       const categorySelect = document.getElementById("category-select");
       const adjectiveSelect = document.getElementById("adjective-select");
 
-      // Populate adjective palette dropdown
       Object.keys(PALETTES).forEach((adj) => {
         const opt = document.createElement("option");
         opt.value = adj;
@@ -1241,7 +1539,7 @@
       categorySelect.addEventListener("change", renderGallery);
       adjectiveSelect.addEventListener("change", renderGallery);
 
-      renderGallery(); // Initial bootstrap render
+      renderGallery();
     </script>
   </body>
 </html>
