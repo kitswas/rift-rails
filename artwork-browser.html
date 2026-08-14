@@ -2784,30 +2784,67 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Woods (Multi-Layered Faceted Pine Forest)
+         * - 6-layer depth structure from original Woods
+         * - Replaced solid triangles with clean 3-tier faceted pines (Wilds geometry)
+         * ------------------------------------------------------------------------- */
         Woods: (rng, p) => {
           let svg = `<defs><linearGradient id="woodsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#woodsSky-${rng.seed})" />`;
-          const sunX = rng.range(150, 650),
-            sunY = rng.range(100, 220);
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(60, 120)}" fill="${p[4]}" opacity="0.6" filter="url(#filter-wobble)" />`;
+
+          // Perfectly Round Moon with Radiant Atmospheric Glow Halo
+          const moonX = rng.range(200, 600),
+            moonY = rng.range(90, 170),
+            moonR = rng.range(70, 105);
+          svg += `<circle cx="${moonX}" cy="${moonY}" r="${moonR + 32}" fill="${p[4]}" opacity="0.32" style="filter: blur(25px);" />`;
+          svg += `<circle cx="${moonX}" cy="${moonY}" r="${moonR}" fill="${p[4]}" opacity="0.92" />`;
+
+          function drawPineTree(tx, ty, th, col, tiers = 3) {
+            let tr = `<g stroke-linejoin="round">`;
+            for (let t = 0; t < tiers; t++) {
+              const tierApexY = ty - th + t * (th * 0.25);
+              const tierBotY = ty - th * 0.45 + t * (th * 0.28);
+              const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
+              tr += `<polygon points="${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} ${tx},${tierApexY.toFixed(1)} ${(tx + Number(halfW)).toFixed(1)},${tierBotY.toFixed(1)}" fill="${col}" />`;
+            }
+            tr += `</g>`;
+            return tr;
+          }
+
           const layers = 6;
+          let prevPositions = [];
+
           for (let l = 0; l < layers; l++) {
             const depth = l / (layers - 1),
-              yMin = 180 - l * 20,
-              spCount = rng.range(3, 6);
+              yMin = 180 - l * 20;
+            // Tree count progression: 8 in BG (l=0) -> 2 in FG (l=5)
+            const spCount = Math.round(8 - l * (6 / (layers - 1)));
+            const step = 800 / spCount;
+
+            // Random initial start offset guaranteed to not coincide with previous layer
+            let baseOffset = rng.rangeFloat(0.1, 0.4) * step;
+            if (l > 0 && prevPositions.length > 0) {
+              // Stagger by half-step from previous layer to guarantee gap alignment
+              baseOffset = (prevPositions[l - 1] + 0.5 * step) % step;
+            }
+            prevPositions.push(baseOffset);
+
             const col =
               l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
-            const blurAmt = Math.max(0, (1 - depth) * 6);
+            const blurAmt = Math.max(0, (1 - depth) * 5.5);
             const filterStyle =
-              blurAmt > 0.5
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
-                : `style="filter: drop-shadow(0px -${(l + 1) * 3}px ${(l + 1) * 3}px rgba(0,0,0,0.6));"`;
-            svg += `<g stroke="none" fill="${col}" ${filterStyle}>`;
+              blurAmt > 0.6
+                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.65 + depth * 0.35).toFixed(2)};"`
+                : ``;
+            svg += `<g ${filterStyle}>`;
             for (let i = 0; i < spCount; i++) {
-              const cx = rng.range(50, 750),
-                sy = rng.range(yMin, yMin + 80),
-                w = rng.range(60 + l * 20, 140 + l * 30);
-              svg += `<polygon points="${cx - w / 2},420 ${cx},${sy} ${cx + w / 2},420" />`;
+              // Evenly distributed across the canvas width
+              const cx =
+                (baseOffset + (i + 0.5) * step + rng.range(-6, 6)) % 800;
+              const sy = rng.range(yMin, yMin + 70);
+              const th = 450 - sy;
+              svg += drawPineTree(cx, 450, th, col, 3);
             }
             svg += `</g>`;
           }
