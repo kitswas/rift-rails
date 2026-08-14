@@ -1,28 +1,38 @@
-# Core Diorama Rules *(Original Guidelines)*
+# Core Diorama Rules
 
-1. **No Gaps in Shapes (Exact Vertex Math)**
-Connect all low-poly shapes (mountains, cliffs, stairs) using exact, shared corner points and edges so there are never accidental cracks or gaps between polygons.
+1. **2D Silhouettes First, 3D Only When Needed**
+Use clean 2D cutout shapes by default. Use 3D faceted shading only when 2D is not enough to show form. Simplicity and mystery are preferred over complex detail.
+
 2. **Strict Back-to-Front Drawing (Painter’s Algorithm)**
-Always draw layers in order from furthest to closest: start with the sky in the very back, build up the midground, and finish with the foreground at the very front.
+Always draw layers from back to front: sky first, then distant background, midground, and finally foreground silhouettes.
+
 3. **Distance Fog on Far Layers**
-Give distant background mountains and ridges a soft blur (`filter: blur(...)`) and lower opacity so they fade naturally into the horizon.
+Add a soft blur (`filter: blur(...)`) and lower opacity to distant shapes so they fade into the horizon.
+
 4. **Paper-Cutout Drop Shadows**
-Add drop-shadows (`filter: drop-shadow(...)`) to midground structures and foreground shapes so each layer pops like stacked paper art.
-5. **Geometric Flow & Curves**
-Use overlapping shapes that share edges and corners, repeat elements with even spacing, and use smooth mathematical curves (parabolas and arches) for dunes, fields, and vaults.
-6. **The 5-Tone Color Rule (`p[0]` to `p[4]`)**
-    Color every scene using a strict 5-tier palette hierarchy:
-    - **`p[0]` (Deepest Dark):** Foreground silhouettes and deep crevice shadows.
-    - **`p[1]` (Shadow):** Shaded sides of terrain and architecture.
-    - **`p[2]` (Midtone):** Distant mountains and neutral base surfaces.
-    - **`p[3]` (Light):** Sunlit faces, illuminated ground, and upper sky.
-    - **`p[4]` (Glow / Highlight):** Celestial bodies, sun coronas, crystals, and bright light points.
-7. **Faceted 3D Shading (Lit vs. Shadow Split)**
-    To give flat 2D shapes a low-poly 3D look, split every mountain, tree, or tower down a central spine line:
-    - Fill the **lit side** (usually left/top) with bright tones (`p[3]` or `p[4]`).
-    - Fill the **shadow side** (usually right/bottom) with dark tones (`p[1]` or `p[0]`).
-8. **2D Shapes are good as well**
-Especially when it uses the viewer's imagination or provides a sense of mystic. Simplicity has its own charm.
-9. Water/Fluid should be a layer with a filled rectangle, not specific shapes. It will naturally fill gaps.
-10 **Real depth rendering**
-Closest objects are detailed, farther objects are simplified. Distance is based on real world perspective and physics, not layer depth.
+Add drop-shadows (`filter: drop-shadow(...)`) to midground and foreground layers so they look like stacked paper art.
+
+5. **Layer Shapes & Shared Edges**
+Draw terrain as overlapping layer cutouts. When splitting a single shape into light and shadow facets, share exact corner points to avoid cracks.
+
+6. **Random Placement Over Rigid Grids**
+Scatter repeated elements (tents, trees, ruins) with seed-based variety and natural spacing instead of placing them on a rigid grid. Keep all elements within screen bounds.
+
+7. **The 5-Tone Color Rule (`p[0]` to `p[4]`)**
+Color every scene with 5 strict tones:
+    - **`p[0]` (Deep Dark):** Foreground silhouettes and deep shadows.
+    - **`p[1]` (Shadow):** Shaded sides of terrain and buildings.
+    - **`p[2]` (Midtone):** Distant hills and neutral base ground.
+    - **`p[3]` (Light):** Sunlit surfaces and upper sky.
+    - **`p[4]` (Glow):** Sun, moon, stars, crystals, and light points.
+
+8. **Faceted 3D Shading (When Used)**
+When 3D is needed, split the shape down the center:
+    - **Lit side:** Bright tones (`p[3]` or `p[4]`).
+    - **Shadow side:** Dark tones (`p[1]` or `p[0]`).
+
+9. **Water as a Full-Width Layer**
+Draw water as a simple filled rectangle across the scene so terrain naturally sits on it.
+
+10. **Real Depth Rendering**
+Make foreground objects sharp and detailed. Make distant objects soft, faded, and simplified.
