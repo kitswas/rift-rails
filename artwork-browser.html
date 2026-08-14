@@ -2291,85 +2291,257 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Dunes (Aeolian Sand Sea: 3-4-1 Layer Architecture)
+         * - Background: 3 Distant Sinusoidal Wave Layers
+         * - Midground: 4 Layers, exactly 1 clean Dune per layer
+         * - Foreground: 1 Sinusoidal Sand Shelf Wave Layer
+         * ------------------------------------------------------------------------- */
         Dunes: (rng, p) => {
-          let svg = `<defs><linearGradient id="duneSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
+          let svg = `<defs><linearGradient id="duneSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="48%" stop-color="#ffffff"/><stop offset="100%" stop-color="#ffffff"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#duneSky-${rng.seed})" />`;
 
-          svg += `<circle cx="450" cy="120" r="100" fill="${p[4]}" opacity="0.3" style="filter: blur(25px);" />`;
+          // Desert Sun & Atmosphere Corona
+          const sunX = rng.range(260, 560),
+            sunY = rng.range(80, 130),
+            sunR = rng.range(80, 110);
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.32" style="filter: blur(24px);" />`;
 
-          function generateNestedParabolaDune(
-            startX,
-            startY,
-            peakX,
-            peakY,
-            endX,
-            endY,
-            botY,
-            colLit,
-            colShadow,
+          // 1. Helper: Sinusoidal Wave Layer (Full Width -50..850)
+          function generateSineWave(
+            yBase,
+            amp,
+            freq,
+            phase,
+            fillCol,
+            filterAttr = "",
           ) {
-            let dune = `<g stroke-linejoin="round">`;
-            dune += `<path d="M ${startX},${botY} L ${startX},${startY} Q ${peakX},${peakY - 25} ${peakX},${peakY} Q ${peakX},${peakY + 15} ${endX},${endY} L ${endX},${botY} Z" fill="${colLit}" />`;
-            dune += `<path d="M ${startX},${startY} Q ${peakX},${peakY} ${peakX + (endX - startX) * 0.15},${peakY + 40} L ${startX + (endX - startX) * 0.3},${botY} L ${startX},${botY} Z" fill="${colShadow}" />`;
-            dune += `<path d="M ${peakX - 60},${botY} Q ${peakX - 30},${peakY + 20} ${peakX + 40},${botY} Z" fill="${colShadow}" opacity="0.7" />`;
-            dune += `</g>`;
-            return dune;
+            let pts = `-50,450 `;
+            for (let x = -50; x <= 850; x += 30) {
+              const py = yBase + Math.sin((x + phase) * freq) * amp;
+              pts += `${x},${py.toFixed(1)} `;
+            }
+            pts += `850,450`;
+            return `<g ${filterAttr}><polygon points="${pts}" fill="${fillCol}" /></g>`;
           }
 
-          let distDunes = "";
-          distDunes += generateNestedParabolaDune(
-            -50,
-            190,
-            220,
-            130,
-            520,
-            210,
-            450,
-            p[3],
-            p[2],
-          );
-          distDunes += generateNestedParabolaDune(
-            300,
-            210,
-            600,
-            150,
-            850,
-            230,
-            450,
-            p[3],
-            p[2],
-          );
-          svg += `<g style="filter: blur(3px); opacity: 0.7;">${distDunes}</g>`;
+          // 2. Helper: Triangle Dune Layer with Multi-Segment Chained S-Curve Divider
+          // - Base triangle: (-50, yStart) -> (peakX, peakY) -> (850, yEnd) down to 450
+          // - Chained 2-to-3 segment S-curve with wildly varying serpentine curvatures
+          function generateSingleDune(
+            yStart,
+            peakX,
+            peakY,
+            yEnd,
+            colLit,
+            colShadow,
+            isRightShadow,
+            rng,
+            filterAttr = "",
+          ) {
+            let dune = `<g stroke-linejoin="round">`;
+            // Base Triangle Dune Silhouette
+            dune += `<polygon points="-50,450 -50,${yStart} ${peakX},${peakY} 850,${yEnd} 850,450" fill="${colLit}" />`;
 
-          let midDunes = "";
-          midDunes += generateNestedParabolaDune(
-            -50,
-            270,
-            360,
-            180,
-            850,
-            290,
-            450,
+            const dir = isRightShadow ? 1 : -1;
+            const spineBaseX = isRightShadow
+              ? peakX + (850 - peakX) * rng.rangeFloat(0.25, 0.45)
+              : peakX - (peakX - -50) * rng.rangeFloat(0.25, 0.45);
+
+            // Chained S-Curve Generation (2 to 3 chained cubic Bézier curves with varying curvature)
+            const numSegments = rng.chance(0.5) ? 2 : 3;
+            let chainedCurve = "";
+
+            if (numSegments === 2) {
+              // 2 Chained Cubic Beziers (1 major inflection point)
+              const midY = peakY + (450 - peakY) * rng.rangeFloat(0.42, 0.58);
+              const swing1 = rng.range(40, 110) * dir;
+              const midX = peakX + (spineBaseX - peakX) * 0.45 + swing1;
+
+              // Curve 1: Peak -> Mid
+              const c1x = peakX + rng.range(-20, 30) * dir;
+              const c1y = peakY + (midY - peakY) * rng.rangeFloat(0.3, 0.5);
+              const c2x = midX + rng.range(30, 80) * dir;
+              const c2y = peakY + (midY - peakY) * rng.rangeFloat(0.6, 0.85);
+
+              // Curve 2: Mid -> Base (Opposing inflection)
+              const swing2 = rng.range(30, 90) * -dir;
+              const c3x = midX + swing2;
+              const c3y = midY + (450 - midY) * rng.rangeFloat(0.3, 0.5);
+              const c4x = spineBaseX + rng.range(-30, 30) * dir;
+              const c4y = midY + (450 - midY) * rng.rangeFloat(0.65, 0.9);
+
+              chainedCurve =
+                `C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${midX.toFixed(1)},${midY.toFixed(1)} ` +
+                `C ${c3x.toFixed(1)},${c3y.toFixed(1)} ${c4x.toFixed(1)},${c4y.toFixed(1)} ${spineBaseX.toFixed(1)},450`;
+            } else {
+              // 3 Chained Cubic Beziers (Serpentine 2-inflection snaking ridge)
+              const y1 = peakY + (450 - peakY) * 0.33;
+              const y2 = peakY + (450 - peakY) * 0.67;
+
+              const s1 = rng.range(45, 120) * dir;
+              const s2 = rng.range(40, 105) * -dir;
+
+              const m1x = peakX + (spineBaseX - peakX) * 0.3 + s1;
+              const m2x = peakX + (spineBaseX - peakX) * 0.7 + s2;
+
+              const cp1x = peakX + rng.range(-15, 30) * dir,
+                cp1y = peakY + (y1 - peakY) * 0.4;
+              const cp2x = m1x + rng.range(20, 60) * dir,
+                cp2y = peakY + (y1 - peakY) * 0.8;
+
+              const cp3x = m1x - rng.range(25, 60) * dir,
+                cp3y = y1 + (y2 - y1) * 0.4;
+              const cp4x = m2x + rng.range(25, 60) * -dir,
+                cp4y = y1 + (y2 - y1) * 0.8;
+
+              const cp5x = m2x + rng.range(-30, 30) * dir,
+                cp5y = y2 + (450 - y2) * 0.4;
+              const cp6x = spineBaseX + rng.range(-25, 25) * dir,
+                cp6y = y2 + (450 - y2) * 0.85;
+
+              chainedCurve =
+                `C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${m1x.toFixed(1)},${y1.toFixed(1)} ` +
+                `C ${cp3x.toFixed(1)},${cp3y.toFixed(1)} ${cp4x.toFixed(1)},${cp4y.toFixed(1)} ${m2x.toFixed(1)},${y2.toFixed(1)} ` +
+                `C ${cp5x.toFixed(1)},${cp5y.toFixed(1)} ${cp6x.toFixed(1)},${cp6y.toFixed(1)} ${spineBaseX.toFixed(1)},450`;
+            }
+
+            if (!isRightShadow) {
+              // Left shadow facet
+              dune += `<path d="M -50,${yStart} L ${peakX},${peakY} ${chainedCurve} L -50,450 Z" fill="${colShadow}" />`;
+            } else {
+              // Right shadow facet
+              dune += `<path d="M ${peakX},${peakY} ${chainedCurve} L 850,450 L 850,${yEnd} Z" fill="${colShadow}" />`;
+            }
+
+            dune += `</g>`;
+            return `<g ${filterAttr}>${dune}</g>`;
+          }
+
+          // -------------------------------------------------------------------------
+          // SECTION 1: BACKGROUND (3 Layers with High-Variance Sinusoidal Waves)
+          // -------------------------------------------------------------------------
+          // BG Wave 1 (Far horizon - 2x crest placement variance)
+          const bg1Y = 145 + rng.range(-14, 14);
+          const bg1Amp = rng.range(14, 28);
+          const bg1Freq = rng.rangeFloat(0.0045, 0.0085);
+          const bg1Phase = rng.range(0, 1200);
+          svg += generateSineWave(
+            bg1Y,
+            bg1Amp,
+            bg1Freq,
+            bg1Phase,
+            p[2],
+            `style="filter: blur(3.5px); opacity: 0.7;"`,
+          );
+
+          // BG Wave 2 (Mid horizon - 2x crest placement variance)
+          const bg2Y = 175 + rng.range(-14, 14);
+          const bg2Amp = rng.range(18, 34);
+          const bg2Freq = rng.rangeFloat(0.0055, 0.0095);
+          const bg2Phase = rng.range(0, 1200);
+          svg += generateSineWave(
+            bg2Y,
+            bg2Amp,
+            bg2Freq,
+            bg2Phase,
+            p[3],
+            `style="filter: blur(2.5px); opacity: 0.85;"`,
+          );
+
+          // BG Wave 3 (Near horizon - 2x crest placement variance)
+          const bg3Y = 205 + rng.range(-14, 14);
+          const bg3Amp = rng.range(22, 40);
+          const bg3Freq = rng.rangeFloat(0.0065, 0.011);
+          const bg3Phase = rng.range(0, 1200);
+          svg += generateSineWave(
+            bg3Y,
+            bg3Amp,
+            bg3Freq,
+            bg3Phase,
+            p[2],
+            `style="filter: blur(1.5px); opacity: 0.95;"`,
+          );
+
+          // -------------------------------------------------------------------------
+          // SECTION 2: MIDGROUND (4 Layers, Exactly 1 Dune per Layer, Alternating Direction)
+          // - Back two mid dunes: 2 colour shade contrast (p3, p1) & (p4, p2)
+          // - Front two mid dunes: 1 colour shade contrast (p3, p2) & (p4, p3)
+          // -------------------------------------------------------------------------
+          // Mid Dune 1 (Back Mid 1 - 2-shade contrast: p3 lit, p1 shadow)
+          const m1PeakX = rng.range(240, 360);
+          const m1PeakY = rng.range(175, 205);
+          svg += generateSingleDune(
+            245,
+            m1PeakX,
+            m1PeakY,
+            260,
             p[3],
             p[1],
+            false,
+            rng,
+            `style="filter: drop-shadow(0 -4px 8px rgba(0,0,0,0.4));"`,
           );
-          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.45));">${midDunes}</g>`;
 
-          let foreDunes = "";
-          foreDunes += generateNestedParabolaDune(
-            -50,
-            360,
-            440,
-            240,
-            850,
-            350,
-            450,
+          // Mid Dune 2 (Back Mid 2 - 2-shade contrast: p4 lit, p2 shadow)
+          const m2PeakX = rng.range(500, 640);
+          const m2PeakY = rng.range(210, 240);
+          svg += generateSingleDune(
+            280,
+            m2PeakX,
+            m2PeakY,
+            295,
             p[4],
-            p[0],
+            p[2],
+            true,
+            rng,
+            `style="filter: drop-shadow(0 -6px 11px rgba(0,0,0,0.5));"`,
           );
-          foreDunes += `<polygon points="0,450 0,390 280,310 800,400 800,450" fill="${p[1]}" />`;
-          foreDunes += `<polygon points="0,390 280,310 180,450 0,450" fill="${p[0]}" />`;
-          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.8));">${foreDunes}</g>`;
+
+          // Mid Dune 3 (Front Mid 1 - 1-shade contrast: p3 lit, p2 shadow)
+          const m3PeakX = rng.range(280, 420);
+          const m3PeakY = rng.range(250, 280);
+          svg += generateSingleDune(
+            320,
+            m3PeakX,
+            m3PeakY,
+            335,
+            p[3],
+            p[2],
+            false,
+            rng,
+            `style="filter: drop-shadow(0 -8px 14px rgba(0,0,0,0.6));"`,
+          );
+
+          // Mid Dune 4 (Front Mid 2 - 1-shade contrast: p4 lit, p3 shadow)
+          const m4PeakX = rng.range(520, 660);
+          const m4PeakY = rng.range(290, 320);
+          svg += generateSingleDune(
+            360,
+            m4PeakX,
+            m4PeakY,
+            375,
+            p[4],
+            p[3],
+            true,
+            rng,
+            `style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.7));"`,
+          );
+
+          // -------------------------------------------------------------------------
+          // SECTION 3: FOREGROUND (1 Layer with Sinusoidal Wave - Pure Lit, No Shadow)
+          // -------------------------------------------------------------------------
+          const fgY = 405 + rng.range(-5, 5);
+          const fgAmp = 16 + rng.range(-3, 3);
+          const fgPhase = rng.range(80, 180);
+          svg += generateSineWave(
+            fgY,
+            fgAmp,
+            0.009,
+            fgPhase,
+            p[4],
+            `style="filter: drop-shadow(0 -12px 22px rgba(0,0,0,0.85));"`,
+          );
 
           return svg;
         },
