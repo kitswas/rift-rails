@@ -547,17 +547,25 @@
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
-          for (let b = 0; b < 6; b++) {
-            const bx = rng.range(15, r.w - 30),
-              by = 40 + b * 8,
-              bw = rng.range(16, 35),
-              bh = rng.range(8, 18);
-            for (let y = by; y < by + bh && y < r.h; y++) {
-              const prog = (y - by) / bh;
-              const w = Math.floor((1 - Math.abs(prog - 0.5) * 2) * bw);
-              for (let x = bx - w / 2; x <= bx + w / 2; x++) {
-                r.setPixel(Math.floor(x), y, x > bx ? 4 : 3);
+          const waterY = 52;
+          for (let b = 0; b < 4; b++) {
+            const bx = 15 + b * 36,
+              bw = rng.range(26, 42),
+              bh = rng.range(16, 28);
+            const peakX = bx + Math.floor(bw * 0.4);
+            for (let y = waterY - bh; y <= waterY; y++) {
+              const prog = (waterY - y) / bh;
+              const xL = bx + Math.floor((peakX - bx) * (1 - prog));
+              const xR = bx + bw - Math.floor((bx + bw - peakX) * (1 - prog));
+              for (let x = xL; x <= xR; x++) {
+                r.setPixel(x, y, x < peakX ? 4 : 3);
               }
+            }
+          }
+          for (let y = waterY; y < r.h; y++) {
+            for (let x = 0; x < r.w; x++) {
+              r.setPixelDither(x, y, 1, 2, (y - waterY) / (r.h - waterY));
+              if (y === waterY && x % 4 === 0) r.setPixel(x, y, 4);
             }
           }
         },
@@ -583,16 +591,26 @@
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
+          for (let x = 20; x < r.w - 20; x++) {
+            const isMerlon = x % 8 < 4;
+            const wallTop = isMerlon ? 48 : 54;
+            for (let y = wallTop; y < r.h; y++) r.setPixel(x, y, 1);
+          }
+          for (let x = 32; x < 52; x++) {
+            for (let y = 30; y < 60; y++) r.setPixel(x, y, x < 42 ? 3 : 2);
+          }
+          for (let x = r.w - 52; x < r.w - 32; x++) {
+            for (let y = 30; y < 60; y++)
+              r.setPixel(x, y, x < r.w - 42 ? 3 : 2);
+          }
           const cx = r.w / 2;
-          for (let x = 30; x < r.w - 30; x++) {
-            const h = x % 10 < 5 ? 42 : 48;
-            for (let y = h; y < r.h; y++) r.setPixel(x, y, 1);
+          for (let x = cx - 14; x <= cx + 14; x++) {
+            for (let y = 20; y < 65; y++) r.setPixel(x, y, x < cx ? 4 : 2);
           }
-          for (let y = 10; y < 42; y++) {
-            const w = Math.floor((y - 10) * 0.3);
-            for (let x = cx - w; x <= cx + w; x++) r.setPixel(x, y, 2);
+          for (let y = 5; y < 20; y++) {
+            const w = Math.floor(((20 - y) / 15) * 10);
+            for (let x = cx - w; x <= cx + w; x++) r.setPixel(x, y, 3);
           }
-          r.setPixel(cx, 12, 4);
         },
 
         // RES
@@ -664,15 +682,23 @@
             for (let x = 0; x < r.w; x++)
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.4);
           }
-          for (let i = 0; i < 7; i++) {
-            const cx = 15 + i * 22 + rng.range(-5, 5),
-              py = rng.range(15, 35),
-              w = rng.range(8, 16);
-            for (let y = py; y < r.h; y++) {
-              const prog = (y - py) / (r.h - py);
-              const ww = Math.floor(prog * w);
-              for (let x = cx - ww; x <= cx + ww; x++) {
-                r.setPixel(x, y, x < cx ? 2 : 4);
+          for (let i = 0; i < 5; i++) {
+            const peakX = 18 + i * 32 + rng.range(-6, 6),
+              peakY = rng.range(12, 28);
+            const baseL = peakX - rng.range(12, 20),
+              baseR = peakX + rng.range(10, 18);
+            const ridgeX = peakX - rng.range(2, 6);
+            for (let y = peakY; y < r.h; y++) {
+              const prog = (y - peakY) / (r.h - peakY);
+              const curL = peakX - Math.floor((peakX - baseL) * prog);
+              const curR = peakX + Math.floor((baseR - peakX) * prog);
+              const curRidge = peakX - Math.floor((peakX - ridgeX) * prog);
+              for (let x = curL; x <= curR; x++) {
+                r.setPixel(
+                  x,
+                  y,
+                  x < curRidge ? 4 : x === curRidge ? 3 : y % 3 === 0 ? 1 : 2,
+                );
               }
             }
           }
@@ -1017,28 +1043,65 @@
         },
 
         /* -------------------------------------------------------------------------
-         * NOUN: Tundra (Glacial Ice Floes, Auroral Curtains & Icebergs)
-         * - Layer 0 [Sky]: Polar auroral sky curtains
-         * - Layer 1 [Distant Plane]: Distant ice shelf (blur)
-         * - Layer 2 [Midground Plane]: Angular floating icebergs with lit/shadow facets
-         * - Layer 3 [Foreground Plane]: Broken foreground pack-ice shelf
+         * NOUN: Tundra (Glacial Waterline Icebergs & Layered Ice Sheets)
+         * - Layer 0 [Sky]: Polar auroral glow & mist
+         * - Layer 1 [Distant Plane]: Far ice shelf cliffs (blur)
+         * - Water Plane: Clean horizontal frozen sea waterline (no upward drop-shadows)
+         * - Layer 2 [Midground Icebergs]: Interlocking faceted ice towers anchored at waterline
+         * - Layer 3 [Foreground Plane]: High-contrast broken pack ice floes with shelf bevel
          * ------------------------------------------------------------------------- */
         Tundra: (rng, p) => {
           let svg = `<defs><linearGradient id="tunSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#tunSky-${rng.seed})" />`;
-          svg += `<path d="M 0,100 Q 200,40 400,120 T 800,80 L 800,200 L 0,200 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(15px);" />`;
-          svg += `<polygon points="0,450 0,200 800,180 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.7;" />`;
-          let ice = "";
+
+          // Layer 0: Aurora Curtain
+          svg += `<path d="M 0,80 Q 200,20 400,90 T 800,60 L 800,180 L 0,180 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(16px);" />`;
+
+          // Layer 1: Distant Misty Glacial Massif
+          svg += `<polygon points="0,450 0,220 200,150 450,230 650,140 800,210 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
+
+          // Waterline Base (Drawn before icebergs to avoid muddy upward shadow casting)
+          const waterY = 270;
+          svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[1]}" />`;
           for (let i = 0; i < 5; i++) {
-            const x = i * 160 + 20,
-              y = 240 + rng.range(-15, 15),
-              w = rng.range(120, 180),
-              h = rng.range(60, 110);
-            ice += `<polygon points="${x},${y} ${x + w * 0.4},${y - h} ${x + w},${y} ${x + w * 0.8},${y + 40} ${x + w * 0.2},${y + 40}" fill="${p[3]}" />`;
-            ice += `<polygon points="${x},${y} ${x + w * 0.4},${y - h} ${x + w * 0.5},${y}" fill="${p[4]}" />`;
+            svg += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(8, 45)}" width="${rng.range(30, 100)}" height="2" fill="${p[3]}" opacity="0.5" />`;
           }
-          svg += `<g style="filter: drop-shadow(0 -5px 10px rgba(0,0,0,0.5));">${ice}</g>`;
-          svg += `<polygon points="0,450 0,360 300,320 550,380 800,340 800,450" fill="${p[0]}" style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.8));" />`;
+
+          // Layer 2: Faceted Midground Icebergs (Shared Spine Vertices, Anchored at waterY)
+          let icebergs = `<g stroke-linejoin="round">`;
+          const bergs = [
+            { x: 130, w: 180, h: 130, peakOffset: -20 },
+            { x: 400, w: 260, h: 170, peakOffset: 15 },
+            { x: 670, w: 190, h: 125, peakOffset: -10 },
+          ];
+          for (const b of bergs) {
+            const bx = b.x,
+              bw = b.w,
+              bh = b.h;
+            const px = bx + b.peakOffset,
+              py = waterY - bh;
+            const ridgeX = px + bw * 0.12;
+            const subL = bx - bw / 2,
+              subR = bx + bw / 2;
+            const midL = subL + (px - subL) * 0.5,
+              midY = py + bh * 0.45;
+
+            // Main Lit Face (Left)
+            icebergs += `<polygon points="${subL},${waterY} ${px},${py} ${ridgeX},${waterY}" fill="#ffffff" />`;
+            // Upper Highlight Crest
+            icebergs += `<polygon points="${midL},${midY} ${px},${py} ${ridgeX},${py + bh * 0.35}" fill="${p[4]}" />`;
+            // Main Shadow Face (Right)
+            icebergs += `<polygon points="${ridgeX},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[3]}" />`;
+            // Deep Shadow Flank (Rightmost Crevasse)
+            icebergs += `<polygon points="${ridgeX + (subR - ridgeX) * 0.4},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[2]}" />`;
+          }
+          icebergs += `</g>`;
+          svg += `<g style="filter: drop-shadow(0 -4px 8px rgba(0,0,0,0.45));">${icebergs}</g>`;
+
+          // Layer 3: Foreground Pack Ice Slab
+          let floe = `<polygon points="0,450 0,345 280,310 520,355 800,315 800,450" fill="${p[0]}" />`;
+          floe += `<polygon points="0,345 280,310 520,355 800,315 800,330 520,370 280,325 0,360" fill="${p[3]}" />`; // Ice edge thickness
+          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${floe}</g>`;
           return svg;
         },
 
@@ -1071,25 +1134,72 @@
         },
 
         /* -------------------------------------------------------------------------
-         * NOUN: Dominion (Dark Fantasy Citadel Castle & Spired Bastions)
-         * - Layer 0 [Sky]: Eclipse/blood-sun sky gradient
-         * - Layer 1 [Distant Plane]: Distant curtain walls & towers (blur)
-         * - Layer 2 [Midground Plane]: High-fantasy citadel keep with conical spires
-         * - Layer 3 [Foreground Plane]: Imposing fortified gatehouse wall
+         * NOUN: Dominion (Grand Medieval Citadel Castle, Interlocking Spires & Parapets)
+         * - Layer 0 [Sky]: Eclipse blood sun & deep mountain pass sky
+         * - Layer 1 [Distant Plane]: Distant curtain wall ridges & spires (blur)
+         * - Layer 2 [Midground Citadel]: Vertical tower shafts + Conical roofs (No stacked triangles)
+         * - Layer 3 [Foreground Gatehouse]: Heavy crenelated curtain wall with portcullis arch
          * ------------------------------------------------------------------------- */
         Dominion: (rng, p) => {
           let svg = `<defs><linearGradient id="domSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#domSky-${rng.seed})" />`;
-          svg += `<circle cx="400" cy="130" r="80" fill="${p[3]}" opacity="0.5" style="filter: blur(15px);" />`;
-          svg += `<circle cx="400" cy="130" r="50" fill="${p[0]}" />`;
-          svg += `<polygon points="0,450 0,220 180,220 200,260 600,260 620,220 800,220 800,450" fill="${p[2]}" style="filter: blur(2px); opacity: 0.8;" />`;
-          let castle = `<polygon points="150,450 180,260 320,260 350,450" fill="${p[1]}" />`;
-          castle += `<polygon points="450,450 480,260 620,260 650,450" fill="${p[1]}" />`;
-          castle += `<polygon points="300,450 340,160 460,160 500,450" fill="${p[0]}" />`;
-          castle += `<polygon points="180,260 250,140 320,260" fill="${p[2]}" />`;
-          castle += `<polygon points="480,260 550,140 620,260" fill="${p[2]}" />`;
-          castle += `<polygon points="340,160 400,40 460,160" fill="${p[3]}" />`;
-          svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.9));">${castle}</g>`;
+
+          // Layer 0: Solar Eclipse Halo
+          svg += `<circle cx="400" cy="120" r="90" fill="${p[3]}" opacity="0.4" style="filter: blur(18px);" />`;
+          svg += `<circle cx="400" cy="120" r="45" fill="${p[0]}" />`;
+
+          // Layer 1: Distant Mountain Curtain Walls
+          svg += `<polygon points="0,450 0,200 240,160 560,160 800,210 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.75;" />`;
+
+          // Layer 2: Main Faceted Castle Citadel (Vertical Shafts + Clean Conical Roofs)
+          let citadel = `<g stroke-linejoin="round">`;
+
+          function drawTower(
+            baseL,
+            baseR,
+            topY,
+            roofApexY,
+            colShaftLit,
+            colShaftDark,
+            colRoof,
+          ) {
+            const midX = (baseL + baseR) / 2;
+            let t = "";
+            // Tower Shaft - Lit Left Half
+            t += `<polygon points="${baseL},340 ${baseL},${topY} ${midX},${topY} ${midX},340" fill="${colShaftLit}" />`;
+            // Tower Shaft - Shadow Right Half
+            t += `<polygon points="${midX},340 ${midX},${topY} ${baseR},${topY} ${baseR},340" fill="${colShaftDark}" />`;
+            // Conical Roof sitting cleanly on top
+            t += `<polygon points="${baseL - 4},${topY} ${midX},${roofApexY} ${baseR + 4},${topY}" fill="${colRoof}" />`;
+            return t;
+          }
+
+          // Outer Flank Towers
+          citadel += drawTower(170, 230, 200, 110, p[2], p[1], p[3]);
+          citadel += drawTower(570, 630, 200, 110, p[2], p[1], p[3]);
+
+          // Inner Mid Towers
+          citadel += drawTower(260, 330, 160, 70, p[3], p[1], p[4]);
+          citadel += drawTower(470, 540, 160, 70, p[3], p[1], p[4]);
+
+          // Central High Keep (Body + Roof)
+          citadel += `<polygon points="340,340 340,120 400,120 400,340" fill="${p[3]}" />`;
+          citadel += `<polygon points="400,340 400,120 460,120 460,340" fill="${p[1]}" />`;
+          citadel += `<polygon points="334,120 400,20 466,120" fill="${p[4]}" />`;
+
+          citadel += `</g>`;
+          svg += `<g style="filter: drop-shadow(0 -8px 16px rgba(0,0,0,0.7));">${citadel}</g>`;
+
+          // Layer 3: Foreground Fortified Gatehouse & Crenelated Ramparts
+          let gate = `<polygon points="0,450 0,310 800,310 800,450" fill="${p[0]}" />`;
+          for (let x = 40; x <= 760; x += 30) {
+            gate += `<rect x="${x}" y="290" width="16" height="20" fill="${p[0]}" />`;
+          }
+          // Arched Gate Portal
+          gate += `<path d="M 360,450 L 360,360 Q 400,330 440,360 L 440,450 Z" fill="${p[4]}" opacity="0.25" />`;
+          gate += `<path d="M 370,450 L 370,370 Q 400,345 430,370 L 430,450 Z" fill="${p[1]}" />`;
+
+          svg += `<g style="filter: drop-shadow(0 -12px 22px rgba(0,0,0,0.9));">${gate}</g>`;
           return svg;
         },
 
@@ -1206,31 +1316,69 @@
         },
 
         /* -------------------------------------------------------------------------
-         * NOUN: Crags (Razor-Sharp Mountain Needles with Lit/Shaded Ridges)
-         * - Layer 0 [Sky]: Vertical crag sky gradient
-         * - Layer 1 [Distant Plane]: Distant spire needles (blur)
-         * - Layer 2 [Foreground Plane]: Giant jagged split-tone rock blades
+         * NOUN: Crags (Interlocking Multi-Faceted Rock Needles with Shared Ridges)
+         * - Layer 0 [Sky]: Vertical gorge sky gradient
+         * - Layer 1 [Distant Plane]: Far misty spires (blur)
+         * - Layer 2 [Midground Crags]: Secondary leaning faceted rock pillars
+         * - Layer 3 [Foreground Crags]: Massive foreground interlocking rock blades with shared vertices
          * ------------------------------------------------------------------------- */
         Crags: (rng, p) => {
           let svg = `<defs><linearGradient id="cragSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#cragSky-${rng.seed})" />`;
+
+          // Layer 1: Distant Misty Needle Spires (Blur)
           let dist = "";
-          for (let i = 0; i < 6; i++) {
-            const x = 50 + i * 130 + rng.range(-20, 20),
-              h = rng.range(180, 260),
-              w = rng.range(40, 80);
+          for (let i = 0; i < 5; i++) {
+            const x = 70 + i * 160 + rng.range(-20, 20),
+              h = rng.range(200, 290),
+              w = rng.range(70, 110);
             dist += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[2]}" />`;
           }
-          svg += `<g style="filter: blur(3px); opacity: 0.6;">${dist}</g>`;
-          let fore = "";
-          for (let i = 0; i < 5; i++) {
-            const x = 80 + i * 160 + rng.range(-30, 30),
-              h = rng.range(260, 380),
-              w = rng.range(70, 120);
-            fore += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x},450" fill="${p[0]}" />`;
-            fore += `<polygon points="${x},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[1]}" />`;
+          svg += `<g style="filter: blur(4px); opacity: 0.65;">${dist}</g>`;
+
+          // Function to generate multi-faceted rock needles with shared interior vertices
+          function generateCragCluster(
+            cx,
+            topY,
+            width,
+            colLit,
+            colMid,
+            colDark,
+          ) {
+            const botY = 450;
+            const midY = topY + (botY - topY) * 0.45;
+            const spineX = cx - width * 0.12;
+            const leftX = cx - width / 2;
+            const rightX = cx + width / 2;
+            const shelfX = cx + width * 0.25;
+
+            let rock = `<g stroke-linejoin="round">`;
+            // Primary Lit Face (Top to Spine)
+            rock += `<polygon points="${leftX},${botY} ${cx},${topY} ${spineX},${midY}" fill="${colLit}" />`;
+            // Lower Lit Flank
+            rock += `<polygon points="${leftX},${botY} ${spineX},${midY} ${cx},${botY}" fill="${colMid}" />`;
+            // Primary Shadow Face (Top to Ridge)
+            rock += `<polygon points="${cx},${topY} ${rightX},${botY} ${shelfX},${midY}" fill="${colDark}" />`;
+            // Secondary Shadow Shelf
+            rock += `<polygon points="${spineX},${midY} ${shelfX},${midY} ${cx},${botY}" fill="${colDark}" opacity="0.85" />`;
+            rock += `<polygon points="${shelfX},${midY} ${rightX},${botY} ${cx},${botY}" fill="${colDark}" />`;
+            rock += `</g>`;
+            return rock;
           }
-          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${fore}</g>`;
+
+          // Layer 2: Midground Leaning Rock Pillars
+          let midCrags = "";
+          midCrags += generateCragCluster(220, 160, 160, p[3], p[2], p[1]);
+          midCrags += generateCragCluster(580, 140, 180, p[3], p[2], p[1]);
+          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.6));">${midCrags}</g>`;
+
+          // Layer 3: Foreground Giant Interlocking Rock Needles
+          let foreCrags = "";
+          foreCrags += generateCragCluster(100, 100, 220, p[3], p[1], p[0]);
+          foreCrags += generateCragCluster(380, 60, 260, p[4], p[2], p[0]);
+          foreCrags += generateCragCluster(700, 80, 240, p[3], p[1], p[0]);
+          svg += `<g style="filter: drop-shadow(0 -12px 24px rgba(0,0,0,0.9));">${foreCrags}</g>`;
+
           return svg;
         },
 
