@@ -1128,16 +1128,26 @@
         },
 
         /* -------------------------------------------------------------------------
-         * NOUN: Jungle (Sacred Primordial Banyan, Bounded Randomness & Depth Gradient)
-         * - Background [Z ~ inf, Blur 4.5-6px]: Sun halo, diffused god rays, distant Kapok ridge
-         * - Far Midground [Z ~ 500m, Blur 1.8px]: Waterfall cascade, river source & splash haze
-         * - Midground [Z ~ 100m, Blur 0px, High Detail]: Banyan cathedral, carved stone shrine, faceted buttresses
-         * - Near Midground [Z ~ 20m, Blur 0px, Rich Detail]: Ribbed fan palms, Victoria amazonica lotus pads
-         * - Foreground [Z ~ 2m, Blur 0px, Maximum Detail]: Monstera fenestrations, braided lianas, firefly swarm
+         * NOUN: Jungle (Procedural Asymmetric Primordial Rainforest & Titan Tree)
+         * - Depth Plane 1 [Background | Blur 5-6px]: Soft sun glow at infinity, diagonal god rays & ridge
+         * - Depth Plane 2 [Far Midground | Blur 1.8px]: Mountain waterfall & splash mist
+         * - Depth Plane 2.5 [Water Layer | Lowered Level]: Full-width water plane at y=270..285
+         * - Depth Plane 3 [Midground | Blur 0-2px]: Blurred organic canopy masses, Titan Tree & landmasses
+         * - Depth Plane 4 [Near Midground | Blur 0px]: Sunny bank fan palms & Victoria amazonica lilies
+         * - Depth Plane 5 [Foreground | Blur 0px]: Lianas strictly connecting canopy nodes, macro fronds & fireflies
          * ------------------------------------------------------------------------- */
         Jungle: (rng, p) => {
+          // Dynamic Seed-Driven Composition Flip (Left-dominant vs Right-dominant)
+          const isLeftDominant = rng.chance(0.5);
+
+          // Sun position and diagonal ray direction
+          const sunX = isLeftDominant
+            ? rng.range(600, 680)
+            : rng.range(120, 200);
+          const sunY = rng.range(55, 80);
+
           let svg = `<defs>
-            <linearGradient id="junSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="junSky-${rng.seed}" x1="${isLeftDominant ? 0 : 1}" y1="0" x2="${isLeftDominant ? 1 : 0}" y2="1">
               <stop offset="0%" stop-color="${p[4]}"/>
               <stop offset="50%" stop-color="${p[3]}"/>
               <stop offset="100%" stop-color="${p[1]}"/>
@@ -1150,209 +1160,267 @@
           svg += `<rect width="100%" height="100%" fill="url(#junSky-${rng.seed})" />`;
 
           // -------------------------------------------------------------------------
-          // DEPTH PLANE 1: BACKGROUND (Z ~ Infinity | Blur: 5-6px | Atmospheric Light)
+          // DEPTH PLANE 1: BACKGROUND (Z ~ Infinity | Blur 5-6px | Soft Glow & Rays)
           // -------------------------------------------------------------------------
-          const sunX = 390 + rng.range(-20, 20);
-          const sunY = 65 + rng.range(-10, 10);
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="120" fill="${p[4]}" opacity="0.35" style="filter: blur(28px);" />`;
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="55" fill="${p[4]}" opacity="0.6" style="filter: blur(12px);" />`;
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="28" fill="#ffffff" opacity="0.95" />`;
+          // Soft atmospheric sun glow at distance infinity
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(130, 160)}" fill="${p[4]}" opacity="0.3" style="filter: blur(36px);" />`;
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(70, 90)}" fill="${p[4]}" opacity="0.55" style="filter: blur(18px);" />`;
+          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(40, 50)}" fill="${p[4]}" opacity="0.8" style="filter: blur(10px);" />`;
 
-          // Volumetric God Rays (Diffused atmospheric shafts)
-          let rays = `<g style="filter: blur(6px); opacity: 0.36;">`;
-          const rayCount = 9;
+          // Volumetric God Rays Streaming across the gorge toward the opposite side
+          const rayCount = rng.range(7, 10);
+          let rays = `<g style="filter: blur(6px); opacity: 0.38;">`;
           for (let r = 0; r < rayCount; r++) {
-            const ang =
-              ((r - (rayCount - 1) / 2) / rayCount) * (Math.PI * 0.6) +
-              rng.range(-2, 2) * 0.01;
-            const xFar = sunX + Math.sin(ang) * 620;
-            const yFar = sunY + Math.cos(ang) * 460;
-            const w = 32 + (r % 3) * 6;
+            const ang = isLeftDominant
+              ? Math.PI * 0.58 + (r / (rayCount - 1)) * (Math.PI * 0.42)
+              : Math.PI * 0.42 - (r / (rayCount - 1)) * (Math.PI * 0.42);
+            const xFar = sunX - Math.cos(ang) * 850;
+            const yFar = sunY + Math.sin(ang) * 650;
+            const w = rng.range(28, 45);
             rays += `<polygon points="${sunX},${sunY} ${xFar - w},${yFar} ${xFar + w},${yFar}" fill="${p[4]}" />`;
           }
           rays += `</g>`;
           svg += rays;
 
-          // Birds in Flight (Crisp against sky opening, zero blur for silhouette clarity)
-          const birds = [
-            { x: sunX - 110 + rng.range(-15, 15), y: 75 + rng.range(-10, 10), s: 18, ang: 18 },
-            { x: sunX - 45 + rng.range(-10, 10), y: 55 + rng.range(-8, 8), s: 14, ang: 12 },
-            { x: sunX + 95 + rng.range(-15, 15), y: 85 + rng.range(-10, 10), s: 16, ang: -22 },
-          ];
+          // Birds in Flight along the light corridor
+          const birdCount = rng.range(2, 5);
           let birdSvg = `<g stroke-linejoin="round">`;
-          for (const b of birds) {
-            birdSvg += `<g transform="translate(${b.x},${b.y}) rotate(${b.ang})">`;
-            birdSvg += `<polygon points="0,0 -${b.s * 0.9},-${b.s * 0.55} 0,-${b.s * 0.25} ${b.s * 0.9},-${b.s * 0.55}" fill="${p[0]}" />`;
-            birdSvg += `<polygon points="0,0 -${b.s * 0.75},-${b.s * 0.65} 0,-${b.s * 0.35}" fill="${p[1]}" />`;
-            birdSvg += `<polygon points="0,0 ${b.s * 0.75},-${b.s * 0.65} 0,-${b.s * 0.35}" fill="${p[2]}" />`;
-            birdSvg += `<polygon points="0,-${b.s * 0.35} ${b.s * 0.12},${b.s * 0.3} 0,${b.s * 1.0} -${b.s * 0.12},${b.s * 0.3}" fill="${p[0]}" />`;
-            birdSvg += `<polygon points="0,-${b.s * 0.35} ${b.s * 0.1},-${b.s * 0.55} 0,-${b.s * 0.5}" fill="${p[4]}" />`;
+          for (let b = 0; b < birdCount; b++) {
+            const startX = isLeftDominant ? 340 : 460;
+            const dirX = isLeftDominant ? 1 : -1;
+            const bx =
+              startX +
+              dirX * b * (170 / Math.max(1, birdCount - 1)) +
+              rng.range(-15, 15);
+            const by = 55 + b * 22 + rng.range(-8, 8);
+            const bs = rng.range(14, 19);
+            const bang = isLeftDominant
+              ? -14 - b * 4 + rng.range(-6, 6)
+              : 14 + b * 4 + rng.range(-6, 6);
+            birdSvg += `<g transform="translate(${bx},${by}) rotate(${bang})">`;
+            birdSvg += `<polygon points="0,0 -${bs * 0.9},-${bs * 0.55} 0,-${bs * 0.25} ${bs * 0.9},-${bs * 0.55}" fill="${p[0]}" />`;
+            birdSvg += `<polygon points="0,0 -${bs * 0.75},-${bs * 0.65} 0,-${bs * 0.35}" fill="${p[1]}" />`;
+            birdSvg += `<polygon points="0,0 ${bs * 0.75},-${bs * 0.65} 0,-${bs * 0.35}" fill="${p[2]}" />`;
+            birdSvg += `<polygon points="0,-${bs * 0.35} ${bs * 0.12},${bs * 0.3} 0,${bs * 1.0} -${bs * 0.12},${bs * 0.3}" fill="${p[0]}" />`;
+            birdSvg += `<polygon points="0,-${bs * 0.35} ${bs * 0.1},-${bs * 0.55} 0,-${bs * 0.5}" fill="${p[4]}" />`;
             birdSvg += `</g>`;
           }
           birdSvg += `</g>`;
           svg += birdSvg;
 
-          // Distant Rainforest Canopy Ridge (Z ~ 1000m | Blur: 5px)
+          // Distant Sloping Rainforest Ridge (Descending toward sun side)
           let distRidge = `<g style="filter: blur(5px); opacity: 0.65;">`;
-          const ridgeNodes = [
-            { x: 30, y: 165, r: 85 },
-            { x: 145, y: 155, r: 95 },
-            { x: 270, y: 170, r: 80 },
-            { x: 390, y: 180, r: 75 },
-            { x: 510, y: 170, r: 80 },
-            { x: 635, y: 155, r: 95 },
-            { x: 755, y: 165, r: 85 },
-          ];
-          for (const n of ridgeNodes) {
-            const rx = n.x + rng.range(-10, 10);
-            const ry = n.y + rng.range(-8, 8);
-            distRidge += `<ellipse cx="${rx}" cy="${ry + 12}" rx="${n.r}" ry="${n.r * 0.45}" fill="${p[1]}" />`;
-            distRidge += `<circle cx="${rx}" cy="${ry}" r="${n.r}" fill="${p[2]}" />`;
-            distRidge += `<ellipse cx="${rx}" cy="${ry - n.r * 0.35}" rx="${n.r * 0.8}" ry="${n.r * 0.38}" fill="${p[3]}" />`;
+          const ridgeCount = 7;
+          for (let i = 0; i < ridgeCount; i++) {
+            const rx = (i / (ridgeCount - 1)) * 760 + 20 + rng.range(-10, 10);
+            const t = isLeftDominant
+              ? i / (ridgeCount - 1)
+              : (ridgeCount - 1 - i) / (ridgeCount - 1);
+            const ry = 135 + t * 70 + rng.range(-8, 8);
+            const rr = rng.range(65, 95);
+            distRidge += `<ellipse cx="${rx}" cy="${ry + 10}" rx="${rr}" ry="${rr * 0.45}" fill="${p[1]}" />`;
+            distRidge += `<circle cx="${rx}" cy="${ry}" r="${rr}" fill="${p[2]}" />`;
+            distRidge += `<ellipse cx="${rx}" cy="${ry - rr * 0.35}" rx="${rr * 0.8}" ry="${rr * 0.38}" fill="${p[3]}" />`;
           }
           distRidge += `</g>`;
           svg += distRidge;
 
-          // Upper Atmospheric Vapor Ribbon (Z ~ 700m | Blur: 14px)
-          svg += `<path d="M -50,175 Q 200,130 400,180 T 850,150 L 850,230 Q 600,260 400,220 T -50,250 Z" fill="${p[4]}" opacity="0.32" style="filter: blur(14px);" />`;
+          // Atmospheric Mist Blanket across Far Gorge
+          svg += `<path d="M -50,160 Q 250,135 520,185 T 850,170 L 850,240 Q 550,260 250,225 T -50,240 Z" fill="${p[4]}" opacity="0.32" style="filter: blur(14px);" />`;
 
           // -------------------------------------------------------------------------
-          // DEPTH PLANE 2: FAR MIDGROUND (Z ~ 500m | Blur: 1.8px | Waterfall & Splash)
+          // DEPTH PLANE 2: FAR MIDGROUND (Z ~ 500m | Blur 1.8px | Gorge Waterfall)
           // -------------------------------------------------------------------------
-          const cascadeX = sunX + rng.range(-10, 10);
+          const fallX = isLeftDominant
+            ? rng.range(230, 290)
+            : rng.range(510, 570);
           let farMid = `<g stroke-linejoin="round" style="filter: blur(1.8px);">`;
-          // Stepped Waterfall Cascade
-          farMid += `<polygon points="${cascadeX - 35},195 ${cascadeX + 35},195 ${cascadeX + 40},215 ${cascadeX - 40},215" fill="${p[4]}" />`;
-          farMid += `<polygon points="${cascadeX - 42},215 ${cascadeX + 42},215 ${cascadeX + 48},238 ${cascadeX - 48},238" fill="#ffffff" opacity="0.9" />`;
-          farMid += `<polygon points="${cascadeX - 50},238 ${cascadeX + 50},238 ${cascadeX + 58},265 ${cascadeX - 58},265" fill="${p[3]}" />`;
+          farMid += `<polygon points="${fallX - 30},180 ${fallX + 30},180 ${fallX + 35},205 ${fallX - 35},205" fill="${p[4]}" />`;
+          farMid += `<polygon points="${fallX - 38},205 ${fallX + 38},205 ${fallX + 44},235 ${fallX - 44},235" fill="#ffffff" opacity="0.92" />`;
+          farMid += `<polygon points="${fallX - 48},235 ${fallX + 48},235 ${fallX + 55},268 ${fallX - 55},268" fill="${p[3]}" />`;
           farMid += `</g>`;
           svg += farMid;
 
-          // Waterfall Splash Mist
-          svg += `<ellipse cx="${cascadeX}" cy="265" rx="75" ry="18" fill="#ffffff" opacity="0.45" style="filter: blur(8px);" />`;
+          // Waterfall Splash Foam Mist
+          svg += `<ellipse cx="${fallX}" cy="268" rx="72" ry="18" fill="#ffffff" opacity="0.45" style="filter: blur(8px);" />`;
 
           // -------------------------------------------------------------------------
-          // DEPTH PLANE 3: MIDGROUND (Z ~ 100m | Blur: 0px | Banyan & Sacred Shrine)
+          // DEPTH PLANE 2.5: WATER LAYER (Lowered Level intersecting land margins)
           // -------------------------------------------------------------------------
-          // River Surface & Terraced Banks (Sharp perspective convergence)
-          let riverFloor = `<g stroke-linejoin="round">`;
-          riverFloor += `<path d="M ${cascadeX - 45},265 Q 450,305 330,355 T 490,450 L 270,450 Q 190,360 310,305 T ${cascadeX - 45},265 Z" fill="url(#junWater-${rng.seed})" />`;
-
-          // Water Reflection Glints (Bounded to river channel)
-          const glints = [
-            { y: 285, xOff: 5, w: 22 },
-            { y: 315, xOff: -12, w: 32 },
-            { y: 350, xOff: 18, w: 42 },
-            { y: 390, xOff: -8, w: 55 },
-            { y: 430, xOff: 10, w: 68 },
-          ];
-          for (const g of glints) {
-            const gx = 380 + g.xOff + rng.range(-6, 6);
-            riverFloor += `<ellipse cx="${gx}" cy="${g.y}" rx="${g.w}" ry="2.6" fill="#ffffff" opacity="0.6" />`;
+          const waterY = rng.range(270, 285);
+          let water = `<g style="filter: drop-shadow(0px -3px 8px rgba(0,0,0,0.35));">`;
+          water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="url(#junWater-${rng.seed})" />`;
+          for (let i = 0; i < 6; i++) {
+            const gy = waterY + 16 + i * 26 + rng.range(-3, 3);
+            const gx = 220 + (i % 3) * 80 + rng.range(-20, 30);
+            const gw = rng.range(50, 95);
+            water += `<rect x="${gx}" y="${gy}" width="${gw}" height="2.2" rx="1.1" fill="#ffffff" opacity="${(0.4 + (i % 3) * 0.15).toFixed(2)}" />`;
           }
-
-          // Riverbank Terraces
-          riverFloor += `<polygon points="0,450 0,310 260,290 310,360 210,450" fill="${p[1]}" />`;
-          riverFloor += `<polygon points="800,450 800,300 540,290 470,360 590,450" fill="${p[1]}" />`;
-          // Moss Shelf Overhangs
-          riverFloor += `<polygon points="0,310 260,290 300,315 0,335" fill="${p[2]}" />`;
-          riverFloor += `<polygon points="800,300 540,290 500,315 800,325" fill="${p[2]}" />`;
-          riverFloor += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.45));">${riverFloor}</g>`;
-
-          // Sacred Stone Pyramid Shrine (Embedded cleanly inside hollow arch)
-          const shrineX = cascadeX;
-          const shrineY = 350;
-          svg += `<circle cx="${shrineX}" cy="${shrineY - 25}" r="50" fill="${p[4]}" opacity="0.38" style="filter: blur(14px);" />`;
-
-          let shrine = `<g stroke-linejoin="round">`;
-          // Tier 1 Base
-          shrine += `<polygon points="${shrineX - 52},${shrineY} ${shrineX - 32},${shrineY - 65} ${shrineX + 32},${shrineY - 65} ${shrineX + 52},${shrineY}" fill="${p[2]}" stroke="${p[0]}" stroke-width="1.5" />`;
-          // Carved Step Blocks
-          shrine += `<polygon points="${shrineX - 44},${shrineY - 18} ${shrineX - 28},${shrineY - 65} ${shrineX + 28},${shrineY - 65} ${shrineX + 44},${shrineY - 18}" fill="${p[3]}" />`;
-          // Tier 2 Altar Top
-          shrine += `<polygon points="${shrineX - 25},${shrineY - 65} ${shrineX - 12},${shrineY - 105} ${shrineX + 12},${shrineY - 105} ${shrineX + 25},${shrineY - 65}" fill="${p[3]}" stroke="${p[0]}" stroke-width="1.2" />`;
-          shrine += `<polygon points="${shrineX - 12},${shrineY - 105} ${shrineX},${shrineY - 130} ${shrineX + 12},${shrineY - 105}" fill="${p[4]}" />`;
-          // Sanctum Chamber & Glowing Gem
-          shrine += `<path d="M ${shrineX - 10},${shrineY} L ${shrineX - 10},${shrineY - 45} Q ${shrineX},${shrineY - 58} ${shrineX + 10},${shrineY - 45} L ${shrineX + 10},${shrineY} Z" fill="${p[0]}" />`;
-          shrine += `<path d="M ${shrineX - 7},${shrineY} L ${shrineX - 7},${shrineY - 40} Q ${shrineX},${shrineY - 50} ${shrineX + 7},${shrineY - 40} L ${shrineX + 7},${shrineY} Z" fill="${p[4]}" opacity="0.9" />`;
-          shrine += `<polygon points="${shrineX},${shrineY - 22} ${shrineX + 3},${shrineY - 28} ${shrineX + 6},${shrineY - 22} ${shrineX + 3},${shrineY - 16}" fill="#ffffff" />`;
-          shrine += `</g>`;
-
-          // Sacred Hollow Cathedral Banyan (Structured Composition, Zero Blur, Faceted Bark)
-          const banyanX = cascadeX;
-          const banyanY = 140;
-
-          let banyan = `<g stroke-linejoin="round">`;
-          // 1. Upper Canopy Crowns with Cast Shadows (Structured Nodes)
-          const canopyNodes = [
-            { x: 50, y: 100, r: 85 },
-            { x: 160, y: 88, r: 95 },
-            { x: 280, y: 82, r: 105 },
-            { x: 390, y: 78, r: 115 },
-            { x: 500, y: 82, r: 105 },
-            { x: 620, y: 88, r: 95 },
-            { x: 740, y: 100, r: 85 },
-          ];
-          for (const cn of canopyNodes) {
-            const cx = cn.x + rng.range(-8, 8);
-            const cy = cn.y + rng.range(-6, 6);
-            // Under-Canopy Shadow Hull
-            banyan += `<path d="M ${cx - cn.r},${cy} Q ${cx},${cy + cn.r * 0.7} ${cx + cn.r},${cy} Q ${cx},${cy + cn.r * 0.4} ${cx - cn.r},${cy} Z" fill="${p[0]}" opacity="0.8" />`;
-            // Deep Volume
-            banyan += `<circle cx="${cx}" cy="${cy}" r="${cn.r}" fill="${p[1]}" />`;
-            // Midtone Volume
-            banyan += `<ellipse cx="${cx + rng.range(-4, 4)}" cy="${cy - 8}" rx="${cn.r * 0.88}" ry="${cn.r * 0.62}" fill="${p[2]}" />`;
-            // Lit Sunward Crest
-            banyan += `<ellipse cx="${cx + rng.range(-3, 3)}" cy="${cy - 18}" rx="${cn.r * 0.72}" ry="${cn.r * 0.42}" fill="${p[3]}" />`;
-            banyan += `<circle cx="${cx}" cy="${cy - 25}" r="${cn.r * 0.32}" fill="${p[4]}" opacity="0.55" />`;
-          }
-
-          // 2. Main Cathedral Split Trunk Pillars (Framing the Shrine)
-          // Left Pillar
-          banyan += `<path d="M ${banyanX - 70},${banyanY} Q ${banyanX - 60},230 ${shrineX - 65},${shrineY + 15} L ${shrineX - 15},${shrineY + 15} Q ${banyanX - 15},245 ${banyanX - 25},${banyanY} Z" fill="${p[3]}" />`;
-          banyan += `<path d="M ${banyanX - 50},${banyanY} Q ${banyanX - 38},230 ${shrineX - 35},${shrineY + 15} L ${shrineX - 15},${shrineY + 15} Q ${banyanX - 5},245 ${banyanX - 15},${banyanY} Z" fill="${p[2]}" />`;
-          // Right Pillar
-          banyan += `<path d="M ${banyanX + 25},${banyanY} Q ${banyanX + 15},245 ${shrineX + 15},${shrineY + 15} L ${shrineX + 65},${shrineY + 15} Q ${banyanX + 60},230 ${banyanX + 70},${banyanY} Z" fill="${p[1]}" />`;
-          banyan += `<path d="M ${banyanX + 45},${banyanY} Q ${banyanX + 38},230 ${shrineX + 35},${shrineY + 15} L ${shrineX + 75},${shrineY + 15} Q ${banyanX + 80},230 ${banyanX + 85},${banyanY} Z" fill="${p[0]}" />`;
-
-          // 3. Four Bounded Sweeping Buttress Root Flanges
-          const buttressData = [
-            { startX: banyanX - 50, startY: banyanY + 25, endX: 90 + rng.range(-15, 15), midX: banyanX - 130, col: p[3], w: 65 },
-            { startX: banyanX - 30, startY: banyanY + 30, endX: 220 + rng.range(-15, 15), midX: banyanX - 55, col: p[4], w: 60 },
-            { startX: banyanX + 30, startY: banyanY + 30, endX: 535 + rng.range(-15, 15), midX: banyanX + 55, col: p[1], w: 60 },
-            { startX: banyanX + 50, startY: banyanY + 25, endX: 710 + rng.range(-15, 15), midX: banyanX + 130, col: p[0], w: 65 },
-          ];
-          for (const b of buttressData) {
-            banyan += `<path d="M ${b.startX},${b.startY} Q ${b.midX},290 ${b.endX},450 L ${b.endX + b.w},450 Q ${b.midX + 50},310 ${b.startX + 20},${b.startY} Z" fill="${b.col}" />`;
-          }
-
-          // 4. Vertical Aerial Stilt Roots (Anchored from canopy nodes into ground)
-          const aerialRoots = [
-            { x: banyanX - 190, yTop: 105, yBot: 340, w: 6, col: p[2] },
-            { x: banyanX - 130, yTop: 120, yBot: 370, w: 5, col: p[3] },
-            { x: banyanX + 130, yTop: 120, yBot: 370, w: 5, col: p[1] },
-            { x: banyanX + 190, yTop: 105, yBot: 340, w: 6, col: p[0] },
-          ];
-          for (const ar of aerialRoots) {
-            banyan += `<polygon points="${ar.x - ar.w / 2},${ar.yTop} ${ar.x + ar.w / 2},${ar.yTop} ${ar.x + ar.w * 0.7},${ar.yBot} ${ar.x - ar.w * 0.7},${ar.yBot}" fill="${ar.col}" />`;
-          }
-          banyan += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -8px 20px rgba(0,0,0,0.7));">${shrine}${banyan}</g>`;
+          water += `</g>`;
+          svg += water;
 
           // -------------------------------------------------------------------------
-          // DEPTH PLANE 4: NEAR MIDGROUND (Z ~ 20m | Blur: 0px | Detailed Flora & Lilies)
+          // DEPTH PLANE 3: MIDGROUND TERRAIN & TITAN TREE
           // -------------------------------------------------------------------------
-          // High-Detail Curved Fan Palm Generator (Faceted leaf pinnae + distinct rib)
-          function drawDetailedPalm(cx, cy, radius, numBlades, rotDeg, curveSign, colLit, colDark) {
+          let landmasses = `<g stroke-linejoin="round">`;
+          if (isLeftDominant) {
+            // Left High Bank under Titan Tree
+            landmasses += `<polygon points="0,450 0,265 240,255 290,345 160,450" fill="${p[1]}" />`;
+            landmasses += `<polygon points="0,265 240,255 280,280 0,300" fill="${p[2]}" />`;
+            // Right Sloping Bank
+            landmasses += `<polygon points="800,450 800,285 530,275 450,355 590,450" fill="${p[1]}" />`;
+            landmasses += `<polygon points="800,285 530,275 490,300 800,315" fill="${p[2]}" />`;
+          } else {
+            // Right High Bank under Titan Tree
+            landmasses += `<polygon points="800,450 800,265 560,255 510,345 640,450" fill="${p[1]}" />`;
+            landmasses += `<polygon points="800,265 560,255 520,280 800,300" fill="${p[2]}" />`;
+            // Left Sloping Bank
+            landmasses += `<polygon points="0,450 0,285 270,275 350,355 210,450" fill="${p[1]}" />`;
+            landmasses += `<polygon points="0,285 270,275 310,300 0,315" fill="${p[2]}" />`;
+          }
+          landmasses += `</g>`;
+          svg += `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.45));">${landmasses}</g>`;
+
+          // MONUMENTAL TITAN TREE (Left or Right Rooted)
+          const treeX = isLeftDominant
+            ? rng.range(130, 170)
+            : rng.range(630, 670);
+          const treeY = rng.range(105, 120);
+
+          // 1. Organic Multi-Lobed Blurred Canopy Foliage Masses (Stored in array so lianas can anchor directly to them)
+          const canopyCount = rng.range(5, 7);
+          const canopyNodes = [];
+          let canopySvg = `<g style="filter: blur(2.2px); opacity: 0.95;">`;
+          for (let c = 0; c < canopyCount; c++) {
+            const startX = isLeftDominant ? 30 : 770;
+            const spanX = isLeftDominant ? 480 : -480;
+            const cx =
+              startX + c * (spanX / (canopyCount - 1)) + rng.range(-12, 12);
+            const cy = 55 + Math.abs(c - 2) * 14 + rng.range(-8, 8);
+            const cr = rng.range(75, 105);
+            canopyNodes.push({ x: cx, y: cy, r: cr });
+
+            // Under-canopy shadow base
+            canopySvg += `<ellipse cx="${cx}" cy="${cy + 12}" rx="${cr}" ry="${cr * 0.6}" fill="${p[0]}" opacity="0.85" />`;
+            // Midtone foliage volume
+            canopySvg += `<ellipse cx="${cx}" cy="${cy}" rx="${cr * 0.92}" ry="${cr * 0.58}" fill="${p[1]}" />`;
+            canopySvg += `<ellipse cx="${cx + (isLeftDominant ? 6 : -6)}" cy="${cy - 6}" rx="${cr * 0.78}" ry="${cr * 0.48}" fill="${p[2]}" />`;
+            // Sunlit crest
+            canopySvg += `<ellipse cx="${cx + (isLeftDominant ? 14 : -14)}" cy="${cy - 14}" rx="${cr * 0.62}" ry="${cr * 0.38}" fill="${p[3]}" />`;
+          }
+          canopySvg += `</g>`;
+          svg += canopySvg;
+
+          // 2. Heavy Main Trunk & Cantilever Boughs
+          let titanTrunk = `<g stroke-linejoin="round">`;
+          const dir = isLeftDominant ? 1 : -1;
+          // Main Trunk Column
+          titanTrunk += `<path d="M ${treeX - 50 * dir},${treeY} Q ${treeX - 30 * dir},240 ${treeX - 90 * dir},420 L ${treeX},420 Q ${treeX + 40 * dir},260 ${treeX + 30 * dir},${treeY} Z" fill="${p[3]}" />`;
+          titanTrunk += `<path d="M ${treeX - 10 * dir},${treeY} Q ${treeX + 10 * dir},240 ${treeX - 20 * dir},420 L ${treeX + 50 * dir},420 Q ${treeX + 70 * dir},260 ${treeX + 60 * dir},${treeY} Z" fill="${p[2]}" />`;
+
+          // Cantilever Bough reaching out over the river toward open canopy
+          titanTrunk += `<path d="M ${treeX + 10 * dir},115 Q ${treeX + 170 * dir},105 ${treeX + 330 * dir},125 L ${treeX + 320 * dir},145 Q ${treeX + 160 * dir},130 ${treeX + 20 * dir},150 Z" fill="${p[1]}" />`;
+          titanTrunk += `<path d="M ${treeX + 20 * dir},115 Q ${treeX + 170 * dir},110 ${treeX + 325 * dir},130 L ${treeX + 320 * dir},138 Q ${treeX + 170 * dir},120 ${treeX + 30 * dir},135 Z" fill="${p[3]}" />`;
+
+          // 3. Sweeping Buttress Root Outriggers
+          const roots = isLeftDominant
+            ? [
+                {
+                  startX: treeX - 40,
+                  startY: 160,
+                  endX: 20 + rng.range(-10, 10),
+                  midX: 40,
+                  col: p[3],
+                  w: 60,
+                },
+                {
+                  startX: treeX,
+                  startY: 170,
+                  endX: 120 + rng.range(-10, 10),
+                  midX: 110,
+                  col: p[4],
+                  w: 55,
+                },
+                {
+                  startX: treeX + 40,
+                  startY: 165,
+                  endX: 260 + rng.range(-10, 10),
+                  midX: 220,
+                  col: p[1],
+                  w: 65,
+                },
+              ]
+            : [
+                {
+                  startX: treeX + 40,
+                  startY: 160,
+                  endX: 780 + rng.range(-10, 10),
+                  midX: 760,
+                  col: p[3],
+                  w: 60,
+                },
+                {
+                  startX: treeX,
+                  startY: 170,
+                  endX: 680 + rng.range(-10, 10),
+                  midX: 690,
+                  col: p[4],
+                  w: 55,
+                },
+                {
+                  startX: treeX - 40,
+                  startY: 165,
+                  endX: 540 + rng.range(-10, 10),
+                  midX: 580,
+                  col: p[1],
+                  w: 65,
+                },
+              ];
+          for (const r of roots) {
+            titanTrunk += `<path d="M ${r.startX},${r.startY} Q ${r.midX},290 ${r.endX},450 L ${r.endX + r.w * dir},450 Q ${r.midX + 45 * dir},310 ${r.startX + 22 * dir},${r.startY} Z" fill="${r.col}" />`;
+          }
+
+          // 4. Vertical Aerial Stilt Roots dropping from overhanging bough into water
+          const stiltRoots = isLeftDominant
+            ? [
+                { x: 260, yTop: 115, yBot: 330, w: 5, col: p[2] },
+                { x: 330, yTop: 112, yBot: 350, w: 5, col: p[3] },
+                { x: 420, yTop: 120, yBot: 320, w: 4.5, col: p[1] },
+              ]
+            : [
+                { x: 540, yTop: 115, yBot: 330, w: 5, col: p[2] },
+                { x: 470, yTop: 112, yBot: 350, w: 5, col: p[3] },
+                { x: 380, yTop: 120, yBot: 320, w: 4.5, col: p[1] },
+              ];
+          for (const sr of stiltRoots) {
+            titanTrunk += `<polygon points="${sr.x - sr.w / 2},${sr.yTop} ${sr.x + sr.w / 2},${sr.yTop} ${sr.x + sr.w * 0.7},${sr.yBot} ${sr.x - sr.w * 0.7},${sr.yBot}" fill="${sr.col}" />`;
+          }
+          titanTrunk += `</g>`;
+          svg += `<g style="filter: drop-shadow(0 -8px 20px rgba(0,0,0,0.7));">${titanTrunk}</g>`;
+
+          // -------------------------------------------------------------------------
+          // DEPTH PLANE 4: NEAR MIDGROUND (Z ~ 20m | Blur 0px | Palms & Lilies)
+          // -------------------------------------------------------------------------
+          function drawDetailedPalm(
+            cx,
+            cy,
+            radius,
+            numBlades,
+            rotDeg,
+            curveSign,
+            colLit,
+            colDark,
+          ) {
             let palm = `<g transform="translate(${cx},${cy}) rotate(${rotDeg})" stroke-linejoin="round">`;
-            // Central Rachis Stalk
             palm += `<path d="M 0,0 Q ${curveSign * radius * 0.2},-${radius * 0.5} 0,-${radius}" fill="none" stroke="${p[0]}" stroke-width="1.8" />`;
             for (let b = 0; b < numBlades; b++) {
               const t = (b - (numBlades - 1) / 2) / numBlades;
               const ang = t * (Math.PI * 0.82);
-              const tipX = Math.sin(ang) * radius + curveSign * (Math.pow(t, 2) * radius * 0.28);
-              const tipY = -Math.cos(ang) * radius + Math.abs(t) * radius * 0.22;
+              const tipX =
+                Math.sin(ang) * radius +
+                curveSign * (Math.pow(t, 2) * radius * 0.28);
+              const tipY =
+                -Math.cos(ang) * radius + Math.abs(t) * radius * 0.22;
               const sideX = Math.sin(ang + 0.15) * (radius * 0.45);
               const sideY = -Math.cos(ang + 0.15) * (radius * 0.45);
               const col = b % 2 === 0 ? colLit : colDark;
@@ -1363,24 +1431,82 @@
           }
 
           let flora = `<g>`;
-          // Bounded Botanical Pockets (Planted firmly on riverbanks and root anchors)
-          // Left Bank Cluster
-          flora += drawDetailedPalm(140 + rng.range(-10, 10), 320, 105, 9, -24 + rng.range(-8, 8), -1, p[4], p[2]);
-          flora += drawDetailedPalm(210 + rng.range(-10, 10), 345, 95, 7, -10 + rng.range(-6, 6), 1, p[3], p[1]);
-          // Right Bank Cluster
-          flora += drawDetailedPalm(640 + rng.range(-10, 10), 315, 110, 9, 26 + rng.range(-8, 8), 1, p[3], p[1]);
-          flora += drawDetailedPalm(580 + rng.range(-10, 10), 345, 95, 7, 12 + rng.range(-6, 6), -1, p[4], p[2]);
+          // Palms on Sunny Bank (Reaching toward open water)
+          const sunnyPalmCount = rng.range(3, 5);
+          for (let i = 0; i < sunnyPalmCount; i++) {
+            const startX = isLeftDominant ? 530 : 270;
+            const spanX = isLeftDominant ? 200 : -200;
+            const px =
+              startX + i * (spanX / (sunnyPalmCount - 1)) + rng.range(-10, 10);
+            const py = 320 + i * 12 + rng.range(-8, 8);
+            const pr = rng.range(85, 115);
+            const pblades = rng.range(7, 11);
+            const prot = isLeftDominant
+              ? 16 + i * 8 + rng.range(-6, 6)
+              : -16 - i * 8 + rng.range(-6, 6);
+            const pcurve =
+              i % 2 === 0 ? (isLeftDominant ? 1 : -1) : isLeftDominant ? -1 : 1;
+            const pcolLit = i % 2 === 0 ? p[4] : p[3];
+            const pcolDark = i % 2 === 0 ? p[2] : p[1];
+            flora += drawDetailedPalm(
+              px,
+              py,
+              pr,
+              pblades,
+              prot,
+              pcurve,
+              pcolLit,
+              pcolDark,
+            );
+          }
 
-          // Victoria Amazonica Water Lilies (Bounded floating cluster in river channel)
+          // Shaded Ferns at Tree Roots
+          const rootFernCount = rng.range(1, 3);
+          for (let i = 0; i < rootFernCount; i++) {
+            const fx = isLeftDominant
+              ? 210 + i * 40 + rng.range(-8, 8)
+              : 590 - i * 40 + rng.range(-8, 8);
+            const fy = 345 + i * 15 + rng.range(-6, 6);
+            const frot = isLeftDominant ? -24 + i * 10 : 24 - i * 10;
+            flora += drawDetailedPalm(
+              fx,
+              fy,
+              rng.range(75, 90),
+              7,
+              frot,
+              isLeftDominant ? -1 : 1,
+              p[3],
+              p[1],
+            );
+          }
+
+          // Victoria Amazonica Water Lilies in River Channel
           const lilyPads = [
-            { cx: 335 + rng.range(-8, 8), cy: 375, rx: 34, ry: 10, col: p[3] },
-            { cx: 445 + rng.range(-8, 8), cy: 395, rx: 40, ry: 12, col: p[2] },
-            { cx: 375 + rng.range(-8, 8), cy: 430, rx: 46, ry: 14, col: p[3] },
+            {
+              cx: 380 + rng.range(-15, 15),
+              cy: 375 + rng.range(-5, 5),
+              rx: 34,
+              ry: 10,
+              col: p[3],
+            },
+            {
+              cx: 480 + rng.range(-15, 15),
+              cy: 405 + rng.range(-5, 5),
+              rx: 42,
+              ry: 12,
+              col: p[2],
+            },
+            {
+              cx: 410 + rng.range(-15, 15),
+              cy: 435 + rng.range(-5, 5),
+              rx: 48,
+              ry: 14,
+              col: p[3],
+            },
           ];
           for (const lp of lilyPads) {
             flora += `<ellipse cx="${lp.cx}" cy="${lp.cy}" rx="${lp.rx}" ry="${lp.ry}" fill="${lp.col}" stroke="${p[0]}" stroke-width="1.3" />`;
             flora += `<ellipse cx="${lp.cx}" cy="${lp.cy - 1}" rx="${lp.rx * 0.85}" ry="${lp.ry * 0.78}" fill="${p[4]}" opacity="0.6" />`;
-            // Blooming Lotus Blossom
             flora += `<polygon points="${lp.cx},${lp.cy - 13} ${lp.cx - 7},${lp.cy - 2} ${lp.cx + 7},${lp.cy - 2}" fill="#ffffff" />`;
             flora += `<polygon points="${lp.cx},${lp.cy - 10} ${lp.cx - 4},${lp.cy - 2} ${lp.cx + 4},${lp.cy - 2}" fill="${p[4]}" />`;
             flora += `<circle cx="${lp.cx}" cy="${lp.cy - 4}" r="2.2" fill="#ffffff" />`;
@@ -1389,60 +1515,57 @@
           svg += `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.55));">${flora}</g>`;
 
           // -------------------------------------------------------------------------
-          // DEPTH PLANE 5: FOREGROUND (Z ~ 2m | Blur: 0px | Maximum Micro-Detail)
+          // DEPTH PLANE 5: FOREGROUND (LIANAS ONLY CONNECTING CANOPY NODES)
           // -------------------------------------------------------------------------
-          // High-Detail Hanging Catenary Lianas with Braided Tendrils & Epiphytes
           let vines = `<g stroke-linecap="round">`;
-          const vineRoutes = [
-            { x1: 70, y1: 85, x2: 320, y2: 155, dip: 90 },
-            { x1: 250, y1: 120, x2: 530, y2: 135, dip: 110 },
-            { x1: 470, y1: 140, x2: 730, y2: 95, dip: 100 },
-          ];
-          for (const v of vineRoutes) {
-            const midX = (v.x1 + v.x2) / 2;
-            const midY = (v.y1 + v.y2) / 2 + v.dip;
-            // Primary Heavy Braided Liana
-            vines += `<path d="M ${v.x1},${v.y1} Q ${midX},${midY} ${v.x2},${v.y2}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
-            vines += `<path d="M ${v.x1},${v.y1} Q ${midX + 4},${midY + 2} ${v.x2},${v.y2}" fill="none" stroke="${p[1]}" stroke-width="1.8" />`;
-            // Secondary Drooping Tendril Loop
-            vines += `<path d="M ${midX - 30},${midY - 8} Q ${midX},${midY + 24} ${midX + 30},${midY - 8}" fill="none" stroke="${p[0]}" stroke-width="2" />`;
+          // Lianas dynamically anchored strictly between adjacent canopy nodes and tree boughs
+          for (let i = 0; i < canopyNodes.length - 1; i += 2) {
+            const n1 = canopyNodes[i];
+            const n2 = canopyNodes[i + 1];
+            const dip = rng.range(75, 110);
+            const midX = (n1.x + n2.x) / 2;
+            const midY = (n1.y + n2.y) / 2 + dip;
 
-            // Radiant Orchid / Epiphyte Spore Node (Diffused local aura + crisp petals)
+            // Primary Heavy Braided Liana Loop
+            vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX},${midY} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
+            vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX + 4},${midY + 2} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[1]}" stroke-width="1.8" />`;
+            // Secondary Tendril Loop
+            vines += `<path d="M ${midX - 25},${midY - 8} Q ${midX},${midY + 22} ${midX + 25},${midY - 8}" fill="none" stroke="${p[0]}" stroke-width="2" />`;
+
+            // Luminous Epiphyte Orchid Node
             vines += `<circle cx="${midX}" cy="${midY}" r="16" fill="${p[4]}" opacity="0.45" style="filter: blur(5px);" />`;
             vines += `<polygon points="${midX},${midY - 9} ${midX - 6},${midY} ${midX},${midY + 9} ${midX + 6},${midY}" fill="${p[4]}" />`;
             vines += `<circle cx="${midX}" cy="${midY}" r="3" fill="#ffffff" />`;
-            // Lateral Epiphyte Leaves
             vines += `<polygon points="${midX - 4},${midY + 3} ${midX - 14},${midY + 12} ${midX - 2},${midY + 7}" fill="${p[2]}" />`;
             vines += `<polygon points="${midX + 4},${midY + 3} ${midX + 14},${midY + 12} ${midX + 2},${midY + 7}" fill="${p[2]}" />`;
           }
           vines += `</g>`;
 
-          // Foreground Macro Silhouette (Monstera Fenestration Cutouts & Floor Arch)
+          // Foreground Macro Framing Silhouette
           let fore = `<g stroke-linejoin="round">`;
-          // Left & Right Framing Canopy Overhang Boughs
-          fore += `<path d="M 0,0 L 270,0 Q 185,95 0,140 Z" fill="${p[0]}" />`;
-          fore += `<path d="M 800,0 L 530,0 Q 615,95 800,140 Z" fill="${p[0]}" />`;
-
-          // Giant Corner Monstera / Palm Fronds (Macro scale, crisp silhouette)
-          fore += drawDetailedPalm(35, 445, 175, 11, -48, -1, p[1], p[0]);
-          fore += drawDetailedPalm(765, 435, 185, 11, 48, 1, p[1], p[0]);
+          if (isLeftDominant) {
+            fore += `<path d="M 0,0 L 320,0 Q 210,105 0,150 Z" fill="${p[0]}" />`;
+            fore += `<path d="M 800,0 L 620,0 Q 690,75 800,105 Z" fill="${p[0]}" />`;
+            fore += drawDetailedPalm(30, 445, 185, 11, -44, -1, p[1], p[0]);
+            fore += drawDetailedPalm(95, 450, 150, 9, -28, -1, p[2], p[0]);
+            fore += drawDetailedPalm(770, 440, 160, 9, 42, 1, p[1], p[0]);
+          } else {
+            fore += `<path d="M 800,0 L 480,0 Q 590,105 800,150 Z" fill="${p[0]}" />`;
+            fore += `<path d="M 0,0 L 180,0 Q 110,75 0,105 Z" fill="${p[0]}" />`;
+            fore += drawDetailedPalm(770, 445, 185, 11, 44, 1, p[1], p[0]);
+            fore += drawDetailedPalm(705, 450, 150, 9, 28, 1, p[2], p[0]);
+            fore += drawDetailedPalm(30, 440, 160, 9, -42, -1, p[1], p[0]);
+          }
 
           // Ground Base Humidity Mist Blanket
-          fore += `<ellipse cx="400" cy="445" rx="350" ry="28" fill="${p[2]}" opacity="0.38" style="filter: blur(14px);" />`;
+          fore += `<ellipse cx="380" cy="445" rx="360" ry="28" fill="${p[2]}" opacity="0.38" style="filter: blur(14px);" />`;
+          fore += `<polygon points="0,450 0,405 220,380 380,430 540,390 800,410 800,450" fill="${p[0]}" />`;
 
-          // Foreground Ground Silhouette
-          fore += `<polygon points="0,450 0,405 240,385 400,425 560,385 800,405 800,450" fill="${p[0]}" />`;
-
-          // Floating Firefly Swarm (Crisp bright pinpoint cores with local glow)
-          const fireflies = [
-            { x: 70, y: 390 }, { x: 130, y: 330 }, { x: 190, y: 280 },
-            { x: 260, y: 360 }, { x: 340, y: 310 }, { x: 420, y: 370 },
-            { x: 490, y: 330 }, { x: 570, y: 290 }, { x: 650, y: 350 },
-            { x: 720, y: 380 }, { x: 310, y: 420 }, { x: 480, y: 410 },
-          ];
-          for (const ff of fireflies) {
-            const fx = ff.x + rng.range(-12, 12);
-            const fy = ff.y + rng.range(-10, 10);
+          // Bounded Randomness: Floating Firefly Swarm
+          const fireflyCount = rng.range(10, 16);
+          for (let f = 0; f < fireflyCount; f++) {
+            const fx = 70 + f * (680 / (fireflyCount - 1)) + rng.range(-20, 20);
+            const fy = 270 + (f % 4) * 38 + rng.range(-12, 12);
             fore += `<circle cx="${fx}" cy="${fy}" r="5.5" fill="${p[4]}" opacity="0.5" style="filter: blur(2.5px);" />`;
             fore += `<circle cx="${fx}" cy="${fy}" r="1.8" fill="#ffffff" />`;
           }
