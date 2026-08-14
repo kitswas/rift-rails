@@ -197,7 +197,7 @@
     </style>
   </head>
   <body>
-    <!-- SVG Post-Processing Filters -->
+    <!-- Global Post-Processing SVG Filters -->
     <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
       <defs>
         <filter id="filter-glitch">
@@ -315,6 +315,7 @@
         }
       }
 
+      // Palettes: [0: Void/Dark, 1: Shadow, 2: Midtone, 3: Light/Primary, 4: Highlight/Glow]
       const PALETTES = {
         Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
         Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
@@ -415,7 +416,6 @@
       const GenPixel = {
         // HUB
         Station: (r, rng) => {
-          // Ancient Astral Stone Ring / Portal
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
@@ -457,7 +457,6 @@
           }
         },
         Outpost: (r, rng) => {
-          // Ancient Cliffside Castle Keep
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++)
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
@@ -581,7 +580,6 @@
           }
         },
         Dominion: (r, rng) => {
-          // Medieval Citadel & Spires
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -832,25 +830,30 @@
        *  ENGINE 2: FACETED VECTOR DIORAMA (MULTI-LAYERED FANTASY / SACRED GEOMETRY)
        *  ========================================================================= */
       const GenVectorBG = {
-        // HUB
+        // =========================================================================
+        // HUB ARTIFACTS (Civic, Castles & Celestial Sanctuaries)
+        // =========================================================================
+
+        /* -------------------------------------------------------------------------
+         * NOUN: Station (Ancient Astral Stone Stargate over Mountain Pass)
+         * - Layer 0 [Sky/Celestial]: Deep atmospheric gradient & radiant moon aura
+         * - Layer 1 [Distant Plane]: Misty background mountain peaks (Gaussian blur)
+         * - Layer 2 [Midground Plane]: Segmented megalithic stone torus ring
+         * - Layer 3 [Foreground Plane]: Stepped ritual altar base & twin focus obelisks
+         * ------------------------------------------------------------------------- */
         Station: (rng, p) => {
-          // Ancient Astral Stargate Torus over Mountain Pass
           let svg = `<defs><linearGradient id="stnSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[3]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#stnSky-${rng.seed})" />`;
-          // Celestial Moon & Starry Glow
           svg += `<circle cx="400" cy="160" r="140" fill="${p[4]}" opacity="0.3" style="filter: blur(25px);" />`;
           svg += `<circle cx="400" cy="160" r="70" fill="${p[4]}" />`;
           svg += `<circle cx="430" cy="150" r="60" fill="${p[1]}" />`;
-          // Layer 1: Distant Jagged Mountains
           svg += `<polygon points="0,450 180,220 380,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.7;" />`;
           svg += `<polygon points="420,450 620,200 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.7;" />`;
-          // Layer 2: Monolithic Stone Torus Ring
           let torus = `<g stroke-linejoin="round" stroke-linecap="round">`;
           torus += `<ellipse cx="400" cy="200" rx="190" ry="190" fill="none" stroke="${p[1]}" stroke-width="32" />`;
           torus += `<ellipse cx="400" cy="200" rx="190" ry="190" fill="none" stroke="${p[3]}" stroke-width="8" stroke-dasharray="24 16" />`;
           torus += `</g>`;
           svg += `<g style="filter: drop-shadow(0 0 15px rgba(0,0,0,0.85));">${torus}</g>`;
-          // Layer 3: Foreground Alter Steps & Obelisks
           let base = `<polygon points="150,450 250,320 550,320 650,450" fill="${p[0]}" />`;
           base += `<polygon points="220,320 240,160 260,320" fill="${p[2]}" />`;
           base += `<polygon points="540,320 560,160 580,320" fill="${p[2]}" />`;
@@ -858,14 +861,18 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Bazaar (Silk-Road Canyon Pass & Layered Nomad Pavilions)
+         * - Layer 0 [Sky]: Dusk/dawn horizon gradient
+         * - Layer 1 [Distant Plane]: Sheer canyon gorge walls (blur)
+         * - Layer 2 [Midground Plane]: Multi-tier pavilion cloth roofs with gold finials
+         * - Layer 3 [Foreground Plane]: Deep canyon floor framing & lantern silhouettes
+         * ------------------------------------------------------------------------- */
         Bazaar: (rng, p) => {
-          // Ancient Silk-Road Canyon Pavilions & Braziers
           let svg = `<defs><linearGradient id="bazSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#bazSky-${rng.seed})" />`;
-          // Layer 1: Canyon Walls in Distance
           svg += `<polygon points="0,0 250,0 120,450 0,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.6;" />`;
           svg += `<polygon points="800,0 550,0 680,450 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.6;" />`;
-          // Layer 2: Midground nomadic tents
           for (let l = 0; l < 3; l++) {
             const y = 180 + l * 60;
             let tents = "";
@@ -880,23 +887,33 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Outpost (High Mountain Precipice & Stone Keep Spires)
+         * - Layer 0 [Sky]: Alpine sky gradient
+         * - Layer 1 [Distant Plane]: Distant mountain ranges (blur)
+         * - Layer 2 [Midground Plane]: Sheer faceted cliff pedestal
+         * - Layer 3 [Foreground Plane]: Stone watchtower keep with conical pitched roofs
+         * ------------------------------------------------------------------------- */
         Outpost: (rng, p) => {
-          // High Precipice Stone Watchtower Citadel
           let svg = `<defs><linearGradient id="outSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#outSky-${rng.seed})" />`;
-          // Layer 1: Distant Mountain Ranges
           svg += `<polygon points="0,450 220,180 500,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.6;" />`;
-          // Layer 2: Sheer Cliff Bastion
           let cliff = `<polygon points="120,450 200,240 600,240 680,450" fill="${p[1]}" />`;
-          // Layer 3: Stone Citadel Keep & Watch Spires
           cliff += `<polygon points="260,240 280,120 380,120 400,240" fill="${p[0]}" />`;
           cliff += `<polygon points="420,240 440,80 500,80 520,240" fill="${p[0]}" />`;
-          cliff += `<polygon points="440,80 470,20 500,80" fill="${p[3]}" />`; // Conical roof
+          cliff += `<polygon points="440,80 470,20 500,80" fill="${p[3]}" />`;
           cliff += `<polygon points="280,120 330,60 380,120" fill="${p[2]}" />`;
           svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.9));">${cliff}</g>`;
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Nexus (Sacred Hyper-Dimensional Polyhedral Focus Core)
+         * - Layer 0 [Atmosphere]: Radiant deep-field energy glow
+         * - Layer 1 [Distant Plane]: Harmonic resonance rings & orbital geometry
+         * - Layer 2 [Midground Plane]: Symmetric geometric ley-line conduits
+         * - Layer 3 [Foreground Plane]: Faceted multi-tonal floating crystal core
+         * ------------------------------------------------------------------------- */
         Nexus: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           svg += `<circle cx="400" cy="200" r="160" fill="${p[3]}" opacity="0.3" style="filter: blur(30px);" />`;
@@ -918,18 +935,21 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Sanctuary (Sacred Monolithic Cathedral with Radiant Mandala)
+         * - Layer 0 [Aura]: Volumetric halo & sacred geometric triangle mandala
+         * - Layer 1 [Distant Plane]: Concentric outer stone cathedral arches
+         * - Layer 2 [Midground Plane]: Deep shadowed nave portal
+         * - Layer 3 [Foreground Plane]: High-contrast arch pillars & entrance steps
+         * ------------------------------------------------------------------------- */
         Sanctuary: (rng, p) => {
-          // Sacred Monolithic Stone Cathedral with Radiant Mandala
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          // Radiant Occult Aura
           svg += `<circle cx="400" cy="180" r="120" fill="${p[4]}" opacity="0.4" style="filter: blur(25px);" />`;
-          // Layer 1: Sacred Geometric Mandala Rings
           svg += `<g style="filter: blur(2px); opacity: 0.8;">`;
           svg += `<circle cx="400" cy="180" r="100" fill="none" stroke="${p[3]}" stroke-width="3" />`;
           svg += `<polygon points="400,80 486,230 314,230" fill="none" stroke="${p[2]}" stroke-width="2" />`;
           svg += `<polygon points="400,280 486,130 314,130" fill="none" stroke="${p[2]}" stroke-width="2" />`;
           svg += `</g>`;
-          // Layer 2: Concentric Vaulted Stone Arches
           for (let i = 4; i >= 0; i--) {
             const pad = i * 42,
               col = p[i];
@@ -938,7 +958,17 @@
           return svg;
         },
 
-        // HUNT
+        // =========================================================================
+        // HUNT ARTIFACTS (Wilderness, Tundras & Primordial Frontiers)
+        // =========================================================================
+
+        /* -------------------------------------------------------------------------
+         * NOUN: Wilds (Misty Layered Ridges & Upright Pine Forest)
+         * - Layer 0 [Sky]: Crisp mountain sky gradient
+         * - Layer 1 [Distant Plane]: Far misty mountain ridge (blur)
+         * - Layer 2 [Midground Plane]: Sloping hill spine with mid-tier pine trees
+         * - Layer 3 [Foreground Plane]: Heavy dark foreground hill & giant pine silhouettes
+         * ------------------------------------------------------------------------- */
         Wilds: (rng, p) => {
           let svg = `<defs><linearGradient id="wildsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#wildsSky-${rng.seed})" />`;
@@ -964,34 +994,40 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Expanse (Primordial Titan Bone Arch spanning Grassland Steppes)
+         * - Layer 0 [Sky]: Low sun horizon gradient
+         * - Layer 1 [Distant Plane]: Flat misty steppe horizon & distant standing stones
+         * - Layer 2 [Midground Plane]: Giant curved fossil/stone arch
+         * - Layer 3 [Foreground Plane]: Dark stepped plateau ridge
+         * ------------------------------------------------------------------------- */
         Expanse: (rng, p) => {
-          // Primordial Titan Bone Arch spanning Grassland Steppes
           let svg = `<defs><linearGradient id="expSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#expSky-${rng.seed})" />`;
-          // Distant solar halo
           svg += `<circle cx="400" cy="180" r="90" fill="${p[3]}" opacity="0.35" style="filter: blur(20px);" />`;
-          // Layer 1: Distant Steppes
           svg += `<polygon points="0,450 0,250 800,250 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.8;" />`;
-          // Layer 2: Ancient Dolmen Stones & Fossil Arch
           let arch = `<g stroke-linejoin="round">`;
           arch += `<path d="M 240,320 Q 400,60 560,320 L 590,320 Q 400,30 210,320 Z" fill="${p[4]}" />`;
           arch += `<polygon points="160,320 180,180 200,320" fill="${p[1]}" />`;
           arch += `<polygon points="600,320 620,180 640,320" fill="${p[1]}" />`;
           arch += `</g>`;
           svg += `<g style="filter: drop-shadow(0 -6px 14px rgba(0,0,0,0.7));">${arch}</g>`;
-          // Layer 3: Foreground Terraces
           svg += `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));" />`;
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Tundra (Glacial Ice Floes, Auroral Curtains & Icebergs)
+         * - Layer 0 [Sky]: Polar auroral sky curtains
+         * - Layer 1 [Distant Plane]: Distant ice shelf (blur)
+         * - Layer 2 [Midground Plane]: Angular floating icebergs with lit/shadow facets
+         * - Layer 3 [Foreground Plane]: Broken foreground pack-ice shelf
+         * ------------------------------------------------------------------------- */
         Tundra: (rng, p) => {
           let svg = `<defs><linearGradient id="tunSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#tunSky-${rng.seed})" />`;
-          // Auroral curtains
           svg += `<path d="M 0,100 Q 200,40 400,120 T 800,80 L 800,200 L 0,200 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(15px);" />`;
-          // Distant ice shelf
           svg += `<polygon points="0,450 0,200 800,180 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.7;" />`;
-          // Midground Glaciers
           let ice = "";
           for (let i = 0; i < 5; i++) {
             const x = i * 160 + 20,
@@ -1006,6 +1042,13 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Jungle (Layered Tropical Canopy & Ancient Lianas)
+         * - Layer 0 [Sky]: Humid tropical atmosphere gradient
+         * - Layer 1 [Distant Plane]: Soft background foliage clusters (blur)
+         * - Layer 2 [Midground Plane]: Rounded tree domes & hanging vine bridges
+         * - Layer 3 [Foreground Plane]: Massive dark foreground boughs & silhouette roots
+         * ------------------------------------------------------------------------- */
         Jungle: (rng, p) => {
           let svg = `<defs><linearGradient id="junSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#junSky-${rng.seed})" />`;
@@ -1027,20 +1070,22 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Dominion (Dark Fantasy Citadel Castle & Spired Bastions)
+         * - Layer 0 [Sky]: Eclipse/blood-sun sky gradient
+         * - Layer 1 [Distant Plane]: Distant curtain walls & towers (blur)
+         * - Layer 2 [Midground Plane]: High-fantasy citadel keep with conical spires
+         * - Layer 3 [Foreground Plane]: Imposing fortified gatehouse wall
+         * ------------------------------------------------------------------------- */
         Dominion: (rng, p) => {
-          // Dark Fantasy Citadel Castle & Spired Bastions
           let svg = `<defs><linearGradient id="domSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#domSky-${rng.seed})" />`;
-          // Blood / Solar Eclipse Halo
           svg += `<circle cx="400" cy="130" r="80" fill="${p[3]}" opacity="0.5" style="filter: blur(15px);" />`;
           svg += `<circle cx="400" cy="130" r="50" fill="${p[0]}" />`;
-          // Distant Bastions
           svg += `<polygon points="0,450 0,220 180,220 200,260 600,260 620,220 800,220 800,450" fill="${p[2]}" style="filter: blur(2px); opacity: 0.8;" />`;
-          // Midground High-Fantasy Castle Citadel
           let castle = `<polygon points="150,450 180,260 320,260 350,450" fill="${p[1]}" />`;
           castle += `<polygon points="450,450 480,260 620,260 650,450" fill="${p[1]}" />`;
           castle += `<polygon points="300,450 340,160 460,160 500,450" fill="${p[0]}" />`;
-          // Spire Roofs
           castle += `<polygon points="180,260 250,140 320,260" fill="${p[2]}" />`;
           castle += `<polygon points="480,260 550,140 620,260" fill="${p[2]}" />`;
           castle += `<polygon points="340,160 400,40 460,160" fill="${p[3]}" />`;
@@ -1048,7 +1093,15 @@
           return svg;
         },
 
-        // RES
+        // =========================================================================
+        // RES ARTIFACTS (Vistas, Minerals & Natural Extraction)
+        // =========================================================================
+
+        /* -------------------------------------------------------------------------
+         * NOUN: Wastes (Layered Atmospheric Ridge Cutouts)
+         * - Layer 0 [Sky]: Desolation gradient
+         * - Layers 1..6 [Stepped Depth]: Progressive atmospheric fade with drop-shadows
+         * ------------------------------------------------------------------------- */
         Wastes: (rng, p) => {
           let svg = `<defs><linearGradient id="wasteSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[0]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#wasteSky-${rng.seed})" />`;
@@ -1075,8 +1128,12 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Quarry (Stepped Ancient Megalithic Ziggurat Excavation)
+         * - Layer 0 [Sky]: Open excavation pit sky
+         * - Layers 1..5 [Terraces]: Concentric faceted cut tiers stepping down
+         * ------------------------------------------------------------------------- */
         Quarry: (rng, p) => {
-          // Ancient Stepped Megalithic Ziggurat Excavation
           let svg = `<defs><linearGradient id="quarrySky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#quarrySky-${rng.seed})" />`;
           for (let s = 0; s < 5; s++) {
@@ -1093,6 +1150,13 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Nebula (Deep Space Volumetric Gas Clouds & Star Halos)
+         * - Layer 0 [Void]: Deep space base
+         * - Layer 1 [Deep Field]: Massive macro-blurred ionized dust clouds (blur 28px)
+         * - Layer 2 [Mid Field]: Luminous gas filaments (blur 14px)
+         * - Layer 3 [Optics]: Point-source stars with diffraction bloom (no physical shadows)
+         * ------------------------------------------------------------------------- */
         Nebula: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           let deepPolys = "";
@@ -1141,6 +1205,12 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Crags (Razor-Sharp Mountain Needles with Lit/Shaded Ridges)
+         * - Layer 0 [Sky]: Vertical crag sky gradient
+         * - Layer 1 [Distant Plane]: Distant spire needles (blur)
+         * - Layer 2 [Foreground Plane]: Giant jagged split-tone rock blades
+         * ------------------------------------------------------------------------- */
         Crags: (rng, p) => {
           let svg = `<defs><linearGradient id="cragSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#cragSky-${rng.seed})" />`;
@@ -1164,11 +1234,17 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Fields (Rolling Agrarian Terraces & Sunlit Shelves - Pure Nature)
+         * - Layer 0 [Sky/Sun]: Radiant dawn sun glow
+         * - Layer 1 [Distant Plane]: Far misty rolling hills (blur)
+         * - Layer 2 [Midground Plane]: Flowing contour shelves with depth drop-shadows
+         * - Layer 3 [Foreground Plane]: Deepest contrast agricultural earth ridge
+         * ------------------------------------------------------------------------- */
         Fields: (rng, p) => {
-          // Ancient Agrarian Terraces & Stone Cairn Markers
           let svg = `<defs><linearGradient id="fldSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#fldSky-${rng.seed})" />`;
-          svg += `<circle cx="600" cy="140" r="80" fill="${p[4]}" opacity="0.3" style="filter: blur(20px);" />`;
+          svg += `<circle cx="600" cy="140" r="90" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`;
           for (let l = 0; l < 4; l++) {
             const y = 180 + l * 65;
             let pts = `-50,450 `;
@@ -1177,15 +1253,23 @@
             }
             pts += `850,450`;
             const col = p[3 - l] || p[0];
-            svg += `<polygon points="${pts}" fill="${col}" style="filter: drop-shadow(0 -5px 10px rgba(0,0,0,0.5));" />`;
+            const filter =
+              l === 0
+                ? `style="filter: blur(2px);"`
+                : `style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.55));"`;
+            svg += `<polygon points="${pts}" fill="${col}" ${filter} />`;
           }
-          // Ancient Standing Megalith Cairn
-          let cairn = `<polygon points="580,360 590,200 610,200 620,360" fill="${p[0]}" />`;
-          cairn += `<polygon points="560,260 640,260 630,240 570,240" fill="${p[1]}" />`;
-          svg += `<g style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));">${cairn}</g>`;
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Vale (Alpine Valley with Snow-Capped Massif, Lake & Pine Slopes)
+         * - Layer 0 [Sky/Clouds]: High-altitude atmosphere with faceted cloud strips
+         * - Layer 1 [Distant Massif]: 5 snow-capped low-poly peaks (blur & washout)
+         * - Layer 1.5 [Valley Lake]: Reflective glacial lake
+         * - Layer 2 & 3 [Midground Slopes]: Faceted left/right ridges with lit/shadow faces
+         * - Layer 4 & 5 [Foreground]: Darkest framing silhouettes & slope-anchored pines
+         * ------------------------------------------------------------------------- */
         Vale: (rng, p) => {
           let svg = `<defs>
             <linearGradient id="vSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
@@ -1236,7 +1320,7 @@
           }
           svg += `<g style="filter: blur(3px); opacity: 0.75;">${distMarkup}</g>`;
 
-          // LAYER 1.5: Water Layer (Cyan Lake)
+          // LAYER 1.5: Water Layer (Glacial Lake)
           const waterY = rng.range(250, 270);
           svg += `<g style="filter: drop-shadow(0px -3px 6px rgba(0,0,0,0.3)); opacity: 0.9;">`;
           svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
@@ -1261,7 +1345,7 @@
           midRight += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" />`;
           svg += `<g style="filter: blur(1px) drop-shadow(0px -5px 10px rgba(0,0,0,0.45)); opacity: 0.95;">${midLeft}${midRight}</g>`;
 
-          // LAYER 4: Foreground Dark Mountains
+          // LAYER 4: Foreground Mountains
           const flX = rng.range(80, 150),
             flY = rng.range(280, 320),
             flW = rng.range(500, 700),
@@ -1277,7 +1361,7 @@
           foreRight += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" />`;
           svg += `<g style="filter: drop-shadow(0px -10px 18px rgba(0,0,0,0.7));">${foreLeft}${foreRight}</g>`;
 
-          // LAYER 5: Pine Tree Silhouettes
+          // LAYER 5: Pine Trees
           function drawTrees(startX, startY, endX, endY, count, color) {
             let tr = "";
             for (let i = 0; i < count; i++) {
@@ -1299,6 +1383,10 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Canyon (Stepped Low-Poly Terraced Gorge)
+         * - Layers 0..5 [Gorge Walls]: Stepped low-poly rock blocks descending in depth
+         * ------------------------------------------------------------------------- */
         Canyon: (rng, p) => {
           let svg = `<defs><linearGradient id="canyonSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#canyonSky-${rng.seed})" />`;
@@ -1325,6 +1413,10 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Dunes (Sweeping Low-Poly Sand Ridges)
+         * - Layers 0..4 [Wind Ridges]: Multi-stage curved dune ridges with drop-shadows
+         * ------------------------------------------------------------------------- */
         Dunes: (rng, p) => {
           let svg = `<defs><linearGradient id="duneSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#duneSky-${rng.seed})" />`;
@@ -1340,7 +1432,15 @@
           return svg;
         },
 
-        // MAZE
+        // =========================================================================
+        // MAZE ARTIFACTS (Architectural Depths, Crypts & Abyssal Chasms)
+        // =========================================================================
+
+        /* -------------------------------------------------------------------------
+         * NOUN: Catacombs (Deep Vaulted Stone Crypt Arches)
+         * - Layer 0 [Void]: Deep subterranean corridor
+         * - Layers 1..5 [Concentric Vaults]: Receding archway vaults with drop-shadows
+         * ------------------------------------------------------------------------- */
         Catacombs: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           for (let i = 4; i >= 0; i--) {
@@ -1352,6 +1452,11 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Labyrinth (Isometric Penrose Impossible Stairway Loop)
+         * - Layer 0 [Atmosphere]: Central mystical depth halo
+         * - Layers 1..4 [Stair Flights]: 4 orthogonal isometric flights with front/back occlusion
+         * ------------------------------------------------------------------------- */
         Labyrinth: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           svg += `<circle cx="400" cy="200" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(25px);" />`;
@@ -1417,17 +1522,20 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Spire (Cloud-Piercing Monolithic Obelisk)
+         * - Layer 0 [Sky]: Atmospheric sky gradient
+         * - Layer 1 [Distant Plane]: Cloud strata & background spires (blur)
+         * - Layer 2 [Foreground Plane]: Giant monolithic obelisk with central spine line
+         * ------------------------------------------------------------------------- */
         Spire: (rng, p) => {
-          // Towering Monolithic Obelisk Piercing Cloud Banks
           let svg = `<defs><linearGradient id="spireSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#spireSky-${rng.seed})" />`;
-          // Distant cloud strata
           svg += `<g style="filter: blur(4px); opacity: 0.5;">`;
           svg += `<polygon points="0,300 800,280 800,340 0,360" fill="${p[3]}" />`;
           svg += `<polygon points="200,450 220,100 240,450" fill="${p[2]}" />`;
           svg += `<polygon points="560,450 580,80 600,450" fill="${p[2]}" />`;
           svg += `</g>`;
-          // Foreground Megalith Spire
           svg += `<g style="filter: drop-shadow(0 0 25px rgba(0,0,0,0.9));">`;
           svg += `<polygon points="360,450 400,20 400,450" fill="${p[0]}" />`;
           svg += `<polygon points="400,20 440,450 400,450" fill="${p[1]}" />`;
@@ -1436,17 +1544,20 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Ruins (Classical Marble Colonnade with Broken Pediment)
+         * - Layer 0 [Sky]: Ruin sunset gradient
+         * - Layer 1 [Distant Plane]: Ruined distant archway (blur)
+         * - Layer 2 [Foreground Plane]: Standing classical pillars & fallen stone headers
+         * ------------------------------------------------------------------------- */
         Ruins: (rng, p) => {
-          // Classical Colonnade & Tumbled Megalithic Blocks
           let svg = `<defs><linearGradient id="ruinSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#ruinSky-${rng.seed})" />`;
-          // Distant ruined pediment
           svg += `<g style="filter: blur(3px); opacity: 0.6;">`;
           svg += `<rect x="250" y="160" width="300" height="20" fill="${p[2]}" />`;
           svg += `<rect x="280" y="180" width="25" height="150" fill="${p[2]}" />`;
           svg += `<rect x="495" y="180" width="25" height="150" fill="${p[2]}" />`;
           svg += `</g>`;
-          // Foreground Colonnade
           let cols = `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" />`;
           for (let i = 0; i < 5; i++) {
             const cx = 100 + i * 140,
@@ -1458,6 +1569,11 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Abyss (Sheer Tectonic Chasm into Radiant Planetary Core)
+         * - Layer 0 [Deep Core]: Radiant volcanic/mystic chasm light (blur 20px)
+         * - Layer 1 [Left/Right Cliffs]: Sheer cliff canyon walls framing the abyss
+         * ------------------------------------------------------------------------- */
         Abyss: (rng, p) => {
           let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           svg += `<rect x="350" y="0" width="100" height="450" fill="${p[4]}" opacity="0.4" style="filter: blur(20px);" />`;
@@ -1466,6 +1582,11 @@
           return svg;
         },
 
+        /* -------------------------------------------------------------------------
+         * NOUN: Woods (Atmospheric Multi-Plane Silhouette Pine Forest)
+         * - Layer 0 [Sun/Sky]: Wobble-filtered misty sun & horizon gradient
+         * - Layers 1..6 [Tree Planes]: Receding forest silhouette planes with distance fog
+         * ------------------------------------------------------------------------- */
         Woods: (rng, p) => {
           let svg = `<defs><linearGradient id="woodsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#woodsSky-${rng.seed})" />`;
