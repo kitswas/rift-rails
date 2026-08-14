@@ -1135,23 +1135,28 @@
 
         /* -------------------------------------------------------------------------
          * NOUN: Dominion (Grand Medieval Citadel Castle, Interlocking Spires & Parapets)
-         * - Layer 0 [Sky]: Eclipse blood sun & deep mountain pass sky
+         * - Layer 0 [Sky]: 95% Eclipsed Sun/Moon Corona (Prominent in sky)
          * - Layer 1 [Distant Plane]: Distant curtain wall ridges & spires (blur)
-         * - Layer 2 [Midground Citadel]: Vertical tower shafts + Conical roofs (No stacked triangles)
+         * - Layer 2 [Midground Citadel]: Lowered towers with uniform slope roofs (tip at 1/4th of sun)
          * - Layer 3 [Foreground Gatehouse]: Heavy crenelated curtain wall with portcullis arch
          * ------------------------------------------------------------------------- */
         Dominion: (rng, p) => {
           let svg = `<defs><linearGradient id="domSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#domSky-${rng.seed})" />`;
 
-          // Layer 0: Solar Eclipse Halo
-          svg += `<circle cx="400" cy="120" r="90" fill="${p[3]}" opacity="0.4" style="filter: blur(18px);" />`;
-          svg += `<circle cx="400" cy="120" r="45" fill="${p[0]}" />`;
+          // Layer 0: 95% Eclipsed Sun/Moon Corona (Sun top at y=80, bottom at y=180, cy=130, r=50)
+          svg += `<circle cx="400" cy="130" r="95" fill="${p[4]}" opacity="0.45" style="filter: blur(20px);" />`;
+          // Glowing Luminous Sun Disc
+          svg += `<circle cx="400" cy="130" r="50" fill="${p[4]}" />`;
+          // 95% Occluding Dark Moon (slight 1.5px offset leaves a crisp 5% glowing corona crescent)
+          svg += `<circle cx="398.5" cy="128.5" r="48.5" fill="${p[0]}" />`;
 
           // Layer 1: Distant Mountain Curtain Walls
-          svg += `<polygon points="0,450 0,200 240,160 560,160 800,210 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.75;" />`;
+          svg += `<polygon points="0,450 0,220 240,180 560,180 800,230 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.75;" />`;
 
-          // Layer 2: Main Faceted Castle Citadel (Vertical Shafts + Clean Conical Roofs)
+          // Layer 2: Main Faceted Castle Citadel
+          // Uniform Roof Steepness (slope k = 2.0).
+          // Central Keep apex is at y=105 (exactly 1/4th down from top of sun at y=80).
           let citadel = `<g stroke-linejoin="round">`;
 
           function drawTower(
@@ -1169,23 +1174,23 @@
             t += `<polygon points="${baseL},340 ${baseL},${topY} ${midX},${topY} ${midX},340" fill="${colShaftLit}" />`;
             // Tower Shaft - Shadow Right Half
             t += `<polygon points="${midX},340 ${midX},${topY} ${baseR},${topY} ${baseR},340" fill="${colShaftDark}" />`;
-            // Conical Roof sitting cleanly on top
-            t += `<polygon points="${baseL - 4},${topY} ${midX},${roofApexY} ${baseR + 4},${topY}" fill="${colRoof}" />`;
+            // Conical Roof sitting cleanly on horizontal top line with same steepness
+            t += `<polygon points="${baseL - 2},${topY} ${midX},${roofApexY} ${baseR + 2},${topY}" fill="${colRoof}" />`;
             return t;
           }
 
-          // Outer Flank Towers
-          citadel += drawTower(170, 230, 200, 110, p[2], p[1], p[3]);
-          citadel += drawTower(570, 630, 200, 110, p[2], p[1], p[3]);
+          // Outer Flank Towers (w=50, half-width=25 -> roof height=50)
+          citadel += drawTower(170, 220, 230, 180, p[2], p[1], p[3]);
+          citadel += drawTower(580, 630, 230, 180, p[2], p[1], p[3]);
 
-          // Inner Mid Towers
-          citadel += drawTower(260, 330, 160, 70, p[3], p[1], p[4]);
-          citadel += drawTower(470, 540, 160, 70, p[3], p[1], p[4]);
+          // Inner Mid Towers (w=60, half-width=30 -> roof height=60)
+          citadel += drawTower(270, 330, 210, 150, p[3], p[1], p[4]);
+          citadel += drawTower(470, 530, 210, 150, p[3], p[1], p[4]);
 
-          // Central High Keep (Body + Roof)
-          citadel += `<polygon points="340,340 340,120 400,120 400,340" fill="${p[3]}" />`;
-          citadel += `<polygon points="400,340 400,120 460,120 460,340" fill="${p[1]}" />`;
-          citadel += `<polygon points="334,120 400,20 466,120" fill="${p[4]}" />`;
+          // Central High Keep (w=80, half-width=40 -> roof height=80, apex at y=105, shaft top at y=185)
+          citadel += `<polygon points="360,340 360,185 400,185 400,340" fill="${p[3]}" />`;
+          citadel += `<polygon points="400,340 400,185 440,185 440,340" fill="${p[1]}" />`;
+          citadel += `<polygon points="356,185 400,105 444,185" fill="${p[4]}" />`;
 
           citadel += `</g>`;
           svg += `<g style="filter: drop-shadow(0 -8px 16px rgba(0,0,0,0.7));">${citadel}</g>`;
