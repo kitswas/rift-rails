@@ -989,34 +989,56 @@
         // =========================================================================
 
         /* -------------------------------------------------------------------------
-         * NOUN: Wilds (Misty Layered Ridges & Upright Pine Forest)
+         * NOUN: Wilds (Misty Layered Ridges & Multi-Tier Faceted Pine Forest)
          * - Layer 0 [Sky]: Crisp mountain sky gradient
-         * - Layer 1 [Distant Plane]: Far misty mountain ridge (blur)
-         * - Layer 2 [Midground Plane]: Sloping hill spine with mid-tier pine trees
-         * - Layer 3 [Foreground Plane]: Heavy dark foreground hill & giant pine silhouettes
+         * - Layer 1 [Distant Plane]: Far mountain range with shared spine ridges (blur)
+         * - Layer 2 [Midground Plane]: Mountain slope spine with multi-tiered pine trees
+         * - Layer 3 [Foreground Plane]: Heavy dark slope & giant faceted pines
          * ------------------------------------------------------------------------- */
         Wilds: (rng, p) => {
           let svg = `<defs><linearGradient id="wildsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#wildsSky-${rng.seed})" />`;
-          svg += `<polygon points="0,450 0,220 400,160 800,240 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.6;" />`;
-          let mid = `<polygon points="0,450 0,280 500,220 800,310 800,450" fill="${p[1]}" />`;
+
+          // Layer 1: Distant Misty Ridge (Shared Crest Vertices)
+          let dist = `<polygon points="0,450 0,220 200,160 420,230 620,150 800,240 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
+          svg += dist;
+
+          // Helper: Multi-Tier Faceted Pine Tree (Shared Vertical Trunk Axis & Symmetric Boughs)
+          function drawFacetedPine(tx, ty, th, colLit, colDark) {
+            let tr = `<g stroke-linejoin="round">`;
+            const tiers = 3;
+            for (let t = 0; t < tiers; t++) {
+              const tierApexY = ty - th + t * (th * 0.25);
+              const tierBotY = ty - th * 0.45 + t * (th * 0.28);
+              const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
+              // Lit Left Bough Half
+              tr += `<polygon points="${tx - halfW},${tierBotY} ${tx},${tierApexY} ${tx},${tierBotY}" fill="${colLit}" />`;
+              // Shadow Right Bough Half
+              tr += `<polygon points="${tx},${tierBotY} ${tx},${tierApexY} ${tx + Number(halfW)},${tierBotY}" fill="${colDark}" />`;
+            }
+            tr += `</g>`;
+            return tr;
+          }
+
+          // Layer 2: Midground Mountain Ridge & Forest
+          let mid = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" />`;
           for (let i = 0; i < 20; i++) {
-            const tx = i * 42 + rng.range(-5, 5),
-              ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
-            const th = rng.range(25, 45),
-              tw = th * 0.45;
-            mid += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${p[0]}" />`;
+            const tx = i * 42 + rng.range(-4, 4);
+            const ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
+            const th = rng.range(30, 52);
+            mid += drawFacetedPine(tx, ty, th, p[2], p[0]);
           }
-          svg += `<g style="filter: drop-shadow(0 -6px 10px rgba(0,0,0,0.5));">${mid}</g>`;
-          let fore = `<polygon points="0,450 0,360 800,340 800,450" fill="${p[0]}" />`;
-          for (let i = 0; i < 12; i++) {
-            const tx = i * 70 + rng.range(-10, 10),
-              ty = 360 + rng.range(-10, 20);
-            const th = rng.range(50, 85),
-              tw = th * 0.45;
-            fore += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${p[0]}" />`;
+          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.55));">${mid}</g>`;
+
+          // Layer 3: Foreground Slope & Giant Faceted Pines
+          let fore = `<polygon points="0,450 0,360 800,335 800,450" fill="${p[0]}" />`;
+          for (let i = 0; i < 11; i++) {
+            const tx = i * 76 + rng.range(-8, 8);
+            const ty = 360 + rng.range(-5, 25);
+            const th = rng.range(55, 95);
+            fore += drawFacetedPine(tx, ty, th, p[1], p[0]);
           }
-          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${fore}</g>`;
+          svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.85));">${fore}</g>`;
           return svg;
         },
 
@@ -1106,30 +1128,67 @@
         },
 
         /* -------------------------------------------------------------------------
-         * NOUN: Jungle (Layered Tropical Canopy & Ancient Lianas)
+         * NOUN: Jungle (Interlocking Canopy Scallops & Hyperbolic Buttress Roots)
          * - Layer 0 [Sky]: Humid tropical atmosphere gradient
-         * - Layer 1 [Distant Plane]: Soft background foliage clusters (blur)
-         * - Layer 2 [Midground Plane]: Rounded tree domes & hanging vine bridges
-         * - Layer 3 [Foreground Plane]: Massive dark foreground boughs & silhouette roots
+         * - Layer 1 [Distant Plane]: Soft foliage dome clusters (blur)
+         * - Layer 2 [Ancient Tree]: Massive central banyan with sweeping buttress root flanges
+         * - Layer 3 [Catenary Lianas]: Hanging catenary vine curves & epiphytes
          * ------------------------------------------------------------------------- */
         Jungle: (rng, p) => {
           let svg = `<defs><linearGradient id="junSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#junSky-${rng.seed})" />`;
-          svg += `<circle cx="200" cy="220" r="140" fill="${p[2]}" style="filter: blur(6px); opacity: 0.7;" />`;
-          svg += `<circle cx="600" cy="200" r="160" fill="${p[2]}" style="filter: blur(6px); opacity: 0.7;" />`;
-          let mid = "";
-          for (let i = 0; i < 6; i++) {
-            const cx = i * 140 + 30,
-              cy = 250 + rng.range(-20, 20),
-              r = rng.range(60, 100);
-            mid += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p[1]}" />`;
-            mid += `<path d="M ${cx - 40},${cy} Q ${cx},${cy + 80} ${cx + 40},${cy}" fill="none" stroke="${p[0]}" stroke-width="4" />`;
+
+          // Layer 1: Distant Canopy Domes (Interlocking Elliptical Scallops)
+          svg += `<circle cx="200" cy="200" r="140" fill="${p[2]}" style="filter: blur(6px); opacity: 0.7;" />`;
+          svg += `<circle cx="600" cy="180" r="160" fill="${p[2]}" style="filter: blur(6px); opacity: 0.7;" />`;
+
+          // Layer 2: Ancient Banyan Tree with Sweeping Parabolic/Hyperbolic Buttress Roots
+          let banyan = `<g stroke-linejoin="round">`;
+
+          // Canopy Cluster Domes
+          for (let i = 0; i < 5; i++) {
+            const cx = 100 + i * 150 + rng.range(-15, 15);
+            const cy = 130 + rng.range(-15, 15);
+            const r = rng.range(75, 110);
+            banyan += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p[2]}" />`;
+            banyan += `<circle cx="${cx}" cy="${cy}" r="${r * 0.7}" fill="${p[3]}" />`;
           }
-          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.6));">${mid}</g>`;
-          let fore = `<polygon points="0,450 0,350 800,350 800,450" fill="${p[0]}" />`;
-          fore += `<circle cx="100" cy="320" r="110" fill="${p[0]}" />`;
-          fore += `<circle cx="700" cy="300" r="130" fill="${p[0]}" />`;
-          svg += `<g style="filter: drop-shadow(0 -12px 20px rgba(0,0,0,0.9));">${fore}</g>`;
+
+          // Massive Buttress Root Flanges (Shared Trunk Junction Vertices at (400,200))
+          // Lit Outer Left Root
+          banyan += `<path d="M 370,200 Q 330,330 140,450 L 220,450 Q 370,350 385,200 Z" fill="${p[3]}" />`;
+          // Lit Center-Left Spine Root
+          banyan += `<path d="M 385,200 Q 375,340 320,450 L 390,450 Q 400,340 400,200 Z" fill="${p[4]}" />`;
+          // Shadow Center-Right Spine Root
+          banyan += `<path d="M 400,200 Q 410,340 470,450 L 540,450 Q 425,340 415,200 Z" fill="${p[1]}" />`;
+          // Deep Shadow Outer Right Root
+          banyan += `<path d="M 415,200 Q 460,330 660,450 L 740,450 Q 450,330 430,200 Z" fill="${p[0]}" />`;
+          banyan += `</g>`;
+
+          svg += `<g style="filter: drop-shadow(0 -8px 16px rgba(0,0,0,0.65));">${banyan}</g>`;
+
+          // Layer 3: Hanging Catenary Lianas & Epiphytes (Shared Branch Anchor Coordinates)
+          let vines = `<g stroke-linecap="round">`;
+          const vineAnchors = [
+            { x1: 150, y1: 150, x2: 320, y2: 170, dip: 75 },
+            { x1: 300, y1: 160, x2: 500, y2: 160, dip: 95 },
+            { x1: 480, y1: 150, x2: 680, y2: 140, dip: 80 },
+          ];
+          for (const v of vineAnchors) {
+            const midX = (v.x1 + v.x2) / 2;
+            const midY = (v.y1 + v.y2) / 2 + v.dip;
+            vines += `<path d="M ${v.x1},${v.y1} Q ${midX},${midY} ${v.x2},${v.y2}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
+            // Hanging Epiphytic Moss Nodes along Catenary
+            vines += `<circle cx="${midX}" cy="${midY}" r="6" fill="${p[4]}" />`;
+            vines += `<circle cx="${(v.x1 + midX) / 2}" cy="${(v.y1 + midY) / 2 + 8}" r="4.5" fill="${p[3]}" />`;
+          }
+          vines += `</g>`;
+
+          // Foreground Framing Silhouette
+          let fore = `<polygon points="0,450 0,370 800,370 800,450" fill="${p[0]}" />`;
+          fore += `<circle cx="80" cy="350" r="110" fill="${p[0]}" />`;
+          fore += `<circle cx="720" cy="330" r="130" fill="${p[0]}" />`;
+          svg += `<g style="filter: drop-shadow(0 -12px 22px rgba(0,0,0,0.9));">${vines}${fore}</g>`;
           return svg;
         },
 
@@ -1388,29 +1447,54 @@
         },
 
         /* -------------------------------------------------------------------------
-         * NOUN: Fields (Rolling Agrarian Terraces & Sunlit Shelves - Pure Nature)
+         * NOUN: Fields (Nested Conic Contour Terraces & Perspective Furrow Cadence)
          * - Layer 0 [Sky/Sun]: Radiant dawn sun glow
          * - Layer 1 [Distant Plane]: Far misty rolling hills (blur)
-         * - Layer 2 [Midground Plane]: Flowing contour shelves with depth drop-shadows
-         * - Layer 3 [Foreground Plane]: Deepest contrast agricultural earth ridge
+         * - Layers 2..5 [Contour Terraces]: Nested sweeping parabolic shelves with shared boundary edges
+         * - Furrows: Equidistant agricultural furrow lines flowing along contours
          * ------------------------------------------------------------------------- */
         Fields: (rng, p) => {
           let svg = `<defs><linearGradient id="fldSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#fldSky-${rng.seed})" />`;
-          svg += `<circle cx="600" cy="140" r="90" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`;
-          for (let l = 0; l < 4; l++) {
-            const y = 180 + l * 65;
-            let pts = `-50,450 `;
-            for (let x = -50; x <= 850; x += 100) {
-              pts += `${x},${y + Math.sin((x + l * 80) * 0.01) * 25} `;
+          svg += `<circle cx="600" cy="130" r="95" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`;
+
+          // 5 Nested Parabolic Contour Terraces (Shared Continuous Boundary Ribs)
+          for (let l = 0; l < 5; l++) {
+            const y = 160 + l * 62;
+            let terrace = `<g stroke-linejoin="round">`;
+
+            // Shelf Parabolic Path
+            let shelfPts = `-50,450 `;
+            for (let x = -50; x <= 850; x += 50) {
+              const py = y + Math.sin((x + l * 90) * 0.007) * 28;
+              shelfPts += `${x},${py.toFixed(1)} `;
             }
-            pts += `850,450`;
-            const col = p[3 - l] || p[0];
+            shelfPts += `850,450`;
+
+            // Riser Shadow Band
+            let riserPts = `-50,${y + 12} `;
+            for (let x = -50; x <= 850; x += 50) {
+              const py = y + Math.sin((x + l * 90) * 0.007) * 28;
+              riserPts += `${x},${py.toFixed(1)} `;
+            }
+            riserPts += `850,${y + 12}`;
+
+            terrace += `<polygon points="${shelfPts}" fill="${p[Math.min(4, Math.max(0, 4 - l))]}" />`;
+            terrace += `<path d="M ${riserPts}" fill="none" stroke="${p[1]}" stroke-width="6" />`;
+
+            // Equidistant Perspective Furrow Stripes along Contour
+            for (let f = 0; f < 6; f++) {
+              const fx = 60 + f * 120 + (l % 2) * 30;
+              const fy = y + Math.sin((fx + l * 90) * 0.007) * 28;
+              terrace += `<line x1="${fx}" y1="${fy}" x2="${fx + 40}" y2="${fy + 35}" stroke="${p[0]}" stroke-width="1.8" stroke-dasharray="6 8" />`;
+            }
+            terrace += `</g>`;
+
             const filter =
               l === 0
-                ? `style="filter: blur(2px);"`
-                : `style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.55));"`;
-            svg += `<polygon points="${pts}" fill="${col}" ${filter} />`;
+                ? `style="filter: blur(2.5px);"`
+                : `style="filter: drop-shadow(0 -6px 14px rgba(0,0,0,0.55));"`;
+            svg += `<g ${filter}>${terrace}</g>`;
           }
           return svg;
         },
@@ -1912,7 +1996,7 @@
           const bgSVG = GenVectorBG[noun]
             ? GenVectorBG[noun](rng, palette)
             : GenVectorBG.Vale(rng, palette);
-          container.innerHTML = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filterAttr}>${bgSVG}</g></svg>`;
+          container.innerHTML = `<svg viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filterAttr}>${bgSVG}</g></svg>`;
         }
 
         card.appendChild(headerDiv);
