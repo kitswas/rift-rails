@@ -1170,6 +1170,174 @@
             />
           </g>
         </pattern>
+        <!-- Overgrown: S-Curve Golden Ratio Vine Pattern with Alternating Thorns, Leaves, and Flowers (100% Tileable) -->
+        <pattern
+          id="overgrownVines"
+          width="100"
+          height="100"
+          patternUnits="userSpaceOnUse"
+        >
+          <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+              stroke="#142b12"
+              stroke-width="3.2"
+            />
+            <path
+              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+              stroke="#2a5825"
+              stroke-width="2.0"
+            />
+            <path
+              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+              stroke="#529e49"
+              stroke-width="0.8"
+              opacity="0.85"
+            />
+          </g>
+
+          <!-- 2. Golden Spiral Tendril Offshoots at Golden Nodes (u=0.382 and u=0.618) -->
+          <g fill="none" stroke="#3d7e35" stroke-width="0.9" opacity="0.75">
+            <path
+              d="M 39,28 C 45,18 52,16 55,22 C 57,26 53,30 49,28 Q 47,26 49,24"
+            />
+            <path
+              d="M 61,72 C 55,82 48,84 45,78 C 43,74 47,70 51,72 Q 53,74 51,76"
+            />
+          </g>
+
+          <!-- 3. Alternating Curved Rose Thorns along Golden Ratio sequence -->
+          <g fill="#142b12">
+            <path d="M 9,34 Q 4,26 1,24 Q 7,31 12,37 Z" />
+            <path d="M 39,28 Q 38,38 35,44 Q 41,36 43,29 Z" />
+            <path d="M 70,80 Q 72,70 75,64 Q 69,72 67,79 Z" />
+            <path d="M 97,54 Q 99,62 100,66 Q 96,60 94,53 Z" />
+            <path d="M 0,54 Q 2,62 3,66 Q -1,60 -3,53 Z" />
+          </g>
+
+          <!-- 4. Sinuous Botanical Leaves with Golden Angle Ribs -->
+          <g stroke-linejoin="round">
+            <path
+              d="M 20,22 C 10,12 8,-2 22,-8 C 30,2 26,16 20,22 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 20,22 Q 18,6 22,-8"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+
+            <path
+              d="M 50,50 C 38,60 28,62 26,46 C 36,40 46,44 50,50 Z"
+              fill="#356d2f"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 50,50 Q 38,52 26,46"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+
+            <path
+              d="M 80,78 C 90,88 92,102 78,108 C 70,98 74,84 80,78 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 80,78 Q 82,94 78,108"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+            <path
+              d="M 80,-22 C 90,-12 92,2 78,8 C 70,-2 74,-16 80,-22 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 80,-22 Q 82,-6 78,8"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+
+            <path
+              d="M 20,122 C 10,112 8,98 22,92 C 30,102 26,116 20,122 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 20,122 Q 18,106 22,92"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+          </g>
+
+          <!-- 5. Golden Ratio Floral Rosettes & Blossoms -->
+          <g>
+            <!-- Flower 1 (u=0.28, Upper Arc Golden Peak) -->
+            <g transform="translate(30, 20)">
+              <circle cx="0" cy="-3.8" r="2.8" fill="#a83244" opacity="0.95" />
+              <circle
+                cx="3.6"
+                cy="-1.2"
+                r="2.8"
+                fill="#bd3a4e"
+                opacity="0.95"
+              />
+              <circle cx="2.3" cy="3.1" r="2.8" fill="#a83244" opacity="0.95" />
+              <circle
+                cx="-2.3"
+                cy="3.1"
+                r="2.8"
+                fill="#912838"
+                opacity="0.95"
+              />
+              <circle
+                cx="-3.6"
+                cy="-1.2"
+                r="2.8"
+                fill="#a83244"
+                opacity="0.95"
+              />
+              <circle cx="0" cy="0" r="1.6" fill="#e5b83b" />
+              <circle cx="0" cy="0" r="0.7" fill="#ffffff" />
+            </g>
+
+            <!-- Flower 2 (u=0.618, Major Golden Ratio Node - Full Radiant Blossom) -->
+            <g transform="translate(61, 72)">
+              <circle cx="0" cy="-4.2" r="3.2" fill="#912838" />
+              <circle cx="4.0" cy="-1.4" r="3.2" fill="#a83244" />
+              <circle cx="2.5" cy="3.4" r="3.2" fill="#bd3a4e" />
+              <circle cx="-2.5" cy="3.4" r="3.2" fill="#a83244" />
+              <circle cx="-4.0" cy="-1.4" r="3.2" fill="#912838" />
+              <circle cx="0" cy="-1.8" r="2.0" fill="#c94458" />
+              <circle cx="1.8" cy="0.6" r="2.0" fill="#c94458" />
+              <circle cx="-1.8" cy="0.6" r="2.0" fill="#c94458" />
+              <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
+              <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
+            </g>
+
+            <!-- Bud 3 (u=0.92, Delicate Sprouting Rose Bud) -->
+            <g transform="translate(91, 66)">
+              <circle cx="0" cy="0" r="2.4" fill="#a83244" />
+              <circle cx="-0.8" cy="-0.8" r="1.5" fill="#bd3a4e" />
+              <circle cx="0.8" cy="0.8" r="1.0" fill="#e5b83b" />
+              <path d="M 0,2.4 Q -3,5 -2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+              <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+            </g>
+          </g>
+        </pattern>
       </defs>
     </svg>
 
@@ -3976,6 +4144,292 @@
         </g>
       `;
 
+      const OVERGROWN_VINE_INNER_SVG = `
+        <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+            stroke="#142b12"
+            stroke-width="3.2"
+          />
+          <path
+            d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+            stroke="#2a5825"
+            stroke-width="2.0"
+          />
+          <path
+            d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+            stroke="#529e49"
+            stroke-width="0.8"
+            opacity="0.85"
+          />
+        </g>
+
+        <!-- 2. Golden Spiral Tendril Offshoots at Golden Nodes (u=0.382 and u=0.618) -->
+        <g fill="none" stroke="#3d7e35" stroke-width="0.9" opacity="0.75">
+          <path
+            d="M 39,28 C 45,18 52,16 55,22 C 57,26 53,30 49,28 Q 47,26 49,24"
+          />
+          <path
+            d="M 61,72 C 55,82 48,84 45,78 C 43,74 47,70 51,72 Q 53,74 51,76"
+          />
+        </g>
+
+        <!-- 3. Alternating Curved Rose Thorns along Golden Ratio sequence -->
+        <g fill="#142b12">
+          <path d="M 9,34 Q 4,26 1,24 Q 7,31 12,37 Z" />
+          <path d="M 39,28 Q 38,38 35,44 Q 41,36 43,29 Z" />
+          <path d="M 70,80 Q 72,70 75,64 Q 69,72 67,79 Z" />
+          <path d="M 97,54 Q 99,62 100,66 Q 96,60 94,53 Z" />
+          <path d="M 0,54 Q 2,62 3,66 Q -1,60 -3,53 Z" />
+        </g>
+
+        <!-- 4. Sinuous Botanical Leaves with Golden Angle Ribs -->
+        <g stroke-linejoin="round">
+          <path
+            d="M 20,22 C 10,12 8,-2 22,-8 C 30,2 26,16 20,22 Z"
+            fill="#2d5e28"
+            stroke="#142b12"
+            stroke-width="0.7"
+          />
+          <path
+            d="M 20,22 Q 18,6 22,-8"
+            stroke="#5cb352"
+            stroke-width="0.5"
+            fill="none"
+          />
+
+          <path
+            d="M 50,50 C 38,60 28,62 26,46 C 36,40 46,44 50,50 Z"
+            fill="#356d2f"
+            stroke="#142b12"
+            stroke-width="0.7"
+          />
+          <path
+            d="M 50,50 Q 38,52 26,46"
+            stroke="#5cb352"
+            stroke-width="0.5"
+            fill="none"
+          />
+
+          <path
+            d="M 80,78 C 90,88 92,102 78,108 C 70,98 74,84 80,78 Z"
+            fill="#2d5e28"
+            stroke="#142b12"
+            stroke-width="0.7"
+          />
+          <path
+            d="M 80,78 Q 82,94 78,108"
+            stroke="#5cb352"
+            stroke-width="0.5"
+            fill="none"
+          />
+          <path
+            d="M 80,-22 C 90,-12 92,2 78,8 C 70,-2 74,-16 80,-22 Z"
+            fill="#2d5e28"
+            stroke="#142b12"
+            stroke-width="0.7"
+          />
+          <path
+            d="M 80,-22 Q 82,-6 78,8"
+            stroke="#5cb352"
+            stroke-width="0.5"
+            fill="none"
+          />
+
+          <path
+            d="M 20,122 C 10,112 8,98 22,92 C 30,102 26,116 20,122 Z"
+            fill="#2d5e28"
+            stroke="#142b12"
+            stroke-width="0.7"
+          />
+          <path
+            d="M 20,122 Q 18,106 22,92"
+            stroke="#5cb352"
+            stroke-width="0.5"
+            fill="none"
+          />
+        </g>
+
+        <!-- 5. Golden Ratio Floral Rosettes & Blossoms -->
+        <g>
+          <!-- Flower 1 (u=0.28, Upper Arc Golden Peak) -->
+          <g transform="translate(30, 20)">
+            <circle cx="0" cy="-3.8" r="2.8" fill="#a83244" opacity="0.95" />
+            <circle cx="3.6" cy="-1.2" r="2.8" fill="#bd3a4e" opacity="0.95" />
+            <circle cx="2.3" cy="3.1" r="2.8" fill="#a83244" opacity="0.95" />
+            <circle cx="-2.3" cy="3.1" r="2.8" fill="#912838" opacity="0.95" />
+            <circle cx="-3.6" cy="-1.2" r="2.8" fill="#a83244" opacity="0.95" />
+            <circle cx="0" cy="0" r="1.6" fill="#e5b83b" />
+            <circle cx="0" cy="0" r="0.7" fill="#ffffff" />
+          </g>
+
+          <!-- Flower 2 (u=0.618, Major Golden Ratio Node - Full Radiant Blossom) -->
+          <g transform="translate(61, 72)">
+            <circle cx="0" cy="-4.2" r="3.2" fill="#912838" />
+            <circle cx="4.0" cy="-1.4" r="3.2" fill="#a83244" />
+            <circle cx="2.5" cy="3.4" r="3.2" fill="#bd3a4e" />
+            <circle cx="-2.5" cy="3.4" r="3.2" fill="#a83244" />
+            <circle cx="-4.0" cy="-1.4" r="3.2" fill="#912838" />
+            <circle cx="0" cy="-1.8" r="2.0" fill="#c94458" />
+            <circle cx="1.8" cy="0.6" r="2.0" fill="#c94458" />
+            <circle cx="-1.8" cy="0.6" r="2.0" fill="#c94458" />
+            <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
+            <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
+          </g>
+
+          <!-- Bud 3 (u=0.92, Delicate Sprouting Rose Bud) -->
+          <g transform="translate(91, 66)">
+            <circle cx="0" cy="0" r="2.4" fill="#a83244" />
+            <circle cx="-0.8" cy="-0.8" r="1.5" fill="#bd3a4e" />
+            <circle cx="0.8" cy="0.8" r="1.0" fill="#e5b83b" />
+            <path d="M 0,2.4 Q -3,5 -2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+            <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+          </g>
+        </g>
+      `;
+
+      function getOvergrownFrameVines() {
+        return `
+          <g class="overgrown-frame-vines" style="pointer-events: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.55));">
+            <!-- 1. Top-Left Corner Gnarly Vine Overhang -->
+            <g stroke-linecap="round" stroke-linejoin="round">
+              <path d="M -15,-10 C 20,15 45,5 85,45 C 115,75 105,105 125,95 C 135,90 130,78 122,82 Q 116,85 118,92" fill="none" stroke="#162e14" stroke-width="5" />
+              <path d="M -15,-10 C 20,15 45,5 85,45 C 115,75 105,105 125,95 C 135,90 130,78 122,82 Q 116,85 118,92" fill="none" stroke="#2d5e28" stroke-width="3" />
+              <path d="M -15,-10 C 20,15 45,5 85,45 C 115,75 105,105 125,95" fill="none" stroke="#4a8f42" stroke-width="1" opacity="0.85" />
+              <path d="M 45,18 C 65,30 60,65 42,75 Q 32,80 36,90 Q 42,95 48,88" fill="none" stroke="#22471e" stroke-width="2" />
+            </g>
+            <!-- Top-Left Thorns -->
+            <g fill="#162e14">
+              <path d="M 28,14 Q 22,5 16,3 Q 23,12 30,20 Z" />
+              <path d="M 68,34 Q 72,24 76,21 Q 70,30 64,38 Z" />
+              <path d="M 98,62 Q 108,60 114,57 Q 104,65 95,68 Z" />
+              <path d="M 52,48 Q 58,54 62,56 Q 54,52 48,46 Z" />
+            </g>
+            <!-- Top-Left Leaves -->
+            <g stroke-linejoin="round">
+              <path d="M 38,24 C 28,12 35,-2 52,2 C 54,16 48,26 38,24 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 38,24 Q 44,10 52,2" stroke="#5cb352" stroke-width="0.6" fill="none" />
+              <path d="M 80,42 C 92,30 108,35 112,50 C 98,54 86,48 80,42 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 80,42 Q 98,42 112,50" stroke="#5cb352" stroke-width="0.6" fill="none" />
+              <path d="M 108,82 C 122,72 136,80 134,96 C 120,96 112,88 108,82 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 108,82 Q 124,84 134,96" stroke="#4a8f42" stroke-width="0.6" fill="none" />
+              <path d="M 45,72 C 35,65 30,50 42,44 C 48,54 48,65 45,72 Z" fill="#3a7534" stroke="#162e14" stroke-width="0.7" />
+            </g>
+            <!-- Top-Left Flower Rosette -->
+            <g transform="translate(85, 45)">
+              <circle cx="0" cy="-4" r="3" fill="#a83244" />
+              <circle cx="3.8" cy="-1.2" r="3" fill="#bd3a4e" />
+              <circle cx="2.4" cy="3.2" r="3" fill="#a83244" />
+              <circle cx="-2.4" cy="3.2" r="3" fill="#912838" />
+              <circle cx="-3.8" cy="-1.2" r="3" fill="#a83244" />
+              <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
+              <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
+            </g>
+
+            <!-- 2. Top-Right Corner Curling Vine -->
+            <g stroke-linecap="round" stroke-linejoin="round">
+              <path d="M 815,-10 C 780,20 755,10 715,48 C 685,78 695,110 675,100 C 665,95 670,82 678,86 Q 684,89 682,96" fill="none" stroke="#162e14" stroke-width="4.5" />
+              <path d="M 815,-10 C 780,20 755,10 715,48 C 685,78 695,110 675,100 C 665,95 670,82 678,86 Q 684,89 682,96" fill="none" stroke="#2d5e28" stroke-width="2.6" />
+              <path d="M 815,-10 C 780,20 755,10 715,48 C 685,78 695,110 675,100" fill="none" stroke="#4a8f42" stroke-width="0.9" opacity="0.85" />
+              <path d="M 755,22 C 735,35 740,70 758,80 Q 768,85 764,95" fill="none" stroke="#22471e" stroke-width="1.8" />
+            </g>
+            <!-- Top-Right Thorns -->
+            <g fill="#162e14">
+              <path d="M 772,16 Q 778,7 784,5 Q 777,14 770,22 Z" />
+              <path d="M 732,36 Q 728,26 724,23 Q 730,32 736,40 Z" />
+              <path d="M 702,64 Q 692,62 686,59 Q 696,67 705,70 Z" />
+            </g>
+            <!-- Top-Right Leaves -->
+            <g stroke-linejoin="round">
+              <path d="M 762,26 C 772,14 765,0 748,4 C 746,18 752,28 762,26 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 762,26 Q 756,12 748,4" stroke="#5cb352" stroke-width="0.6" fill="none" />
+              <path d="M 720,44 C 708,32 692,37 688,52 C 702,56 714,50 720,44 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 720,44 Q 702,44 688,52" stroke="#5cb352" stroke-width="0.6" fill="none" />
+              <path d="M 692,84 C 678,74 664,82 666,98 C 680,98 688,90 692,84 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+            </g>
+            <!-- Top-Right Flower Rosette -->
+            <g transform="translate(715, 48)">
+              <circle cx="0" cy="-3.5" r="2.6" fill="#a83244" />
+              <circle cx="3.3" cy="-1.1" r="2.6" fill="#bd3a4e" />
+              <circle cx="2.1" cy="2.8" r="2.6" fill="#a83244" />
+              <circle cx="-2.1" cy="2.8" r="2.6" fill="#912838" />
+              <circle cx="-3.3" cy="-1.1" r="2.6" fill="#a83244" />
+              <circle cx="0" cy="0" r="1.5" fill="#e5b83b" />
+            </g>
+
+            <!-- 3. Bottom-Left Heavy Creeping Root/Vine Trunk -->
+            <g stroke-linecap="round" stroke-linejoin="round">
+              <path d="M -10,460 C 25,430 40,445 75,410 C 110,375 95,340 120,350 Q 130,355 125,365 Q 118,368 116,360" fill="none" stroke="#162e14" stroke-width="5" />
+              <path d="M -10,460 C 25,430 40,445 75,410 C 110,375 95,340 120,350 Q 130,355 125,365 Q 118,368 116,360" fill="none" stroke="#2d5e28" stroke-width="3" />
+              <path d="M -10,460 C 25,430 40,445 75,410" fill="none" stroke="#4a8f42" stroke-width="1" opacity="0.85" />
+              <path d="M 40,440 C 60,420 50,385 35,375 Q 25,370 28,360" fill="none" stroke="#22471e" stroke-width="2" />
+            </g>
+            <!-- Bottom-Left Thorns -->
+            <g fill="#162e14">
+              <path d="M 25,436 Q 18,444 14,448 Q 22,439 29,431 Z" />
+              <path d="M 58,418 Q 54,428 50,432 Q 56,423 62,414 Z" />
+              <path d="M 94,386 Q 84,390 78,392 Q 88,384 97,380 Z" />
+            </g>
+            <!-- Bottom-Left Leaves -->
+            <g stroke-linejoin="round">
+              <path d="M 32,430 C 22,442 28,458 45,454 C 47,440 42,430 32,430 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 72,408 C 60,420 44,415 40,400 C 54,396 66,402 72,408 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 104,368 C 90,378 76,370 78,354 C 92,354 100,362 104,368 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+            </g>
+            <!-- Bottom-Left Rose -->
+            <g transform="translate(75, 410)">
+              <circle cx="0" cy="-3.5" r="2.6" fill="#a83244" />
+              <circle cx="3.3" cy="-1.1" r="2.6" fill="#bd3a4e" />
+              <circle cx="2.1" cy="2.8" r="2.6" fill="#a83244" />
+              <circle cx="-2.1" cy="2.8" r="2.6" fill="#912838" />
+              <circle cx="-3.3" cy="-1.1" r="2.6" fill="#a83244" />
+              <circle cx="0" cy="0" r="1.5" fill="#e5b83b" />
+            </g>
+
+            <!-- 4. Bottom-Right Heavy Creeping Root/Vine Trunk -->
+            <g stroke-linecap="round" stroke-linejoin="round">
+              <path d="M 810,460 C 775,430 760,445 725,410 C 690,375 705,340 680,350 Q 670,355 675,365 Q 682,368 684,360" fill="none" stroke="#162e14" stroke-width="5" />
+              <path d="M 810,460 C 775,430 760,445 725,410 C 690,375 705,340 680,350 Q 670,355 675,365 Q 682,368 684,360" fill="none" stroke="#2d5e28" stroke-width="3" />
+              <path d="M 810,460 C 775,430 760,445 725,410" fill="none" stroke="#4a8f42" stroke-width="1" opacity="0.85" />
+              <path d="M 760,440 C 740,420 750,385 765,375 Q 775,370 772,360" fill="none" stroke="#22471e" stroke-width="2" />
+            </g>
+            <!-- Bottom-Right Thorns -->
+            <g fill="#162e14">
+              <path d="M 775,436 Q 782,444 786,448 Q 778,439 771,431 Z" />
+              <path d="M 742,418 Q 746,428 750,432 Q 744,423 738,414 Z" />
+              <path d="M 706,386 Q 716,390 722,392 Q 712,384 703,380 Z" />
+            </g>
+            <!-- Bottom-Right Leaves -->
+            <g stroke-linejoin="round">
+              <path d="M 768,430 C 778,442 772,458 755,454 C 753,440 758,430 768,430 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 728,408 C 740,420 756,415 760,400 C 746,396 734,402 728,408 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
+              <path d="M 696,368 C 710,378 724,370 722,354 C 708,354 700,362 696,368 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
+            </g>
+            <!-- Bottom-Right Rose -->
+            <g transform="translate(725, 410)">
+              <circle cx="0" cy="-3.5" r="2.6" fill="#a83244" />
+              <circle cx="3.3" cy="-1.1" r="2.6" fill="#bd3a4e" />
+              <circle cx="2.1" cy="2.8" r="2.6" fill="#a83244" />
+              <circle cx="-2.1" cy="2.8" r="2.6" fill="#912838" />
+              <circle cx="-3.3" cy="-1.1" r="2.6" fill="#a83244" />
+              <circle cx="0" cy="0" r="1.5" fill="#e5b83b" />
+            </g>
+
+            <!-- 5. Side Margin Sinuous Tendril Climbers -->
+            <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M -5,220 C 25,210 15,245 35,235 Q 45,230 40,240 Q 34,242 36,236" stroke="#22471e" stroke-width="2" />
+              <path d="M 805,200 C 775,190 785,225 765,215 Q 755,210 760,220 Q 766,222 764,216" stroke="#22471e" stroke-width="2" />
+            </g>
+            <!-- Side Leaves -->
+            <g stroke-linejoin="round">
+              <path d="M 18,225 C 26,215 36,220 34,232 C 24,234 18,228 18,225 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.6" />
+              <path d="M 782,205 C 774,195 764,200 766,212 C 776,214 782,208 782,205 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.6" />
+            </g>
+          </g>
+        `;
+      }
+
       function createVectorSVG(noun, adjective, rng, palette) {
         const filterName = ADJECTIVE_EFFECTS[adjective]?.svgFilter;
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
@@ -3988,7 +4442,12 @@
         let terrainMarkup = "";
 
         // Adjectives that use selective surface stack filtering (preserves pristine sky & atmospheric far horizon)
-        const selectiveSurfaceAdjectives = ["Frozen", "Clockwork", "Rusting"];
+        const selectiveSurfaceAdjectives = [
+          "Frozen",
+          "Clockwork",
+          "Rusting",
+          "Overgrown",
+        ];
 
         if (typeof bgContent === "object" && bgContent !== null) {
           skyMarkup = bgContent.layer0 ? bgContent.layer0.render() : "";
@@ -3997,7 +4456,16 @@
             // Keep far background (layer1) soft & atmospheric; apply tactile material filter to midground & foreground terrain/structures
             const farBg = bgContent.layer1 ? bgContent.layer1.render() : "";
 
-            const isPatternAdjective = adjective === "Clockwork";
+            const isPatternAdjective =
+              adjective === "Clockwork" || adjective === "Overgrown";
+            const patternInnerSvg =
+              adjective === "Overgrown"
+                ? OVERGROWN_VINE_INNER_SVG
+                : CLOCKWORK_CIRCUIT_INNER_SVG;
+            const patternPrefix =
+              adjective === "Overgrown" ? "vine" : "circuit";
+            const patternBlendMode =
+              adjective === "Clockwork" ? "color-dodge" : "difference";
 
             const surfaceLayerConfigs = [
               {
@@ -4007,7 +4475,7 @@
                 dy: 0,
                 rot: 0,
                 scale: 0.85,
-                opacity: 0.4,
+                opacity: adjective === "Overgrown" ? 0.48 : 0.4,
               },
               {
                 key: "layer3",
@@ -4016,7 +4484,7 @@
                 dy: 62,
                 rot: 90,
                 scale: 1.05,
-                opacity: 0.55,
+                opacity: adjective === "Overgrown" ? 0.62 : 0.55,
               },
               {
                 key: "layer4",
@@ -4025,7 +4493,7 @@
                 dy: 28,
                 rot: 0,
                 scale: 1.35,
-                opacity: 0.65,
+                opacity: adjective === "Overgrown" ? 0.72 : 0.65,
               },
             ];
 
@@ -4038,7 +4506,7 @@
               if (!markup) return;
 
               if (isPatternAdjective) {
-                const patternId = `circuit-${rng.seed}-${cfg.key}`;
+                const patternId = `${patternPrefix}-${rng.seed}-${cfg.key}`;
                 const maskId = `mask-${rng.seed}-${cfg.key}`;
                 const rotTransform = cfg.rot ? ` rotate(${cfg.rot} 50 50)` : "";
                 const maskMarkup = markup
@@ -4049,9 +4517,9 @@
                   .replace(/filter:\s*[^;"]+;?/gi, "")
                   .replace(/filter="[^"]*"/gi, "");
 
-                extraDefs += `<pattern id="${patternId}" width="100" height="100" patternUnits="userSpaceOnUse" patternTransform="translate(${cfg.dx}, ${cfg.dy})${rotTransform} scale(${cfg.scale})">${CLOCKWORK_CIRCUIT_INNER_SVG}</pattern>\n`;
+                extraDefs += `<pattern id="${patternId}" width="100" height="100" patternUnits="userSpaceOnUse" patternTransform="translate(${cfg.dx}, ${cfg.dy})${rotTransform} scale(${cfg.scale})">${patternInnerSvg}</pattern>\n`;
                 extraDefs += `<mask id="${maskId}" maskUnits="userSpaceOnUse"><g filter="url(#maskToWhite)">${maskMarkup}</g></mask>\n`;
-                const decor = `<rect width="100%" height="100%" fill="url(#${patternId})" mask="url(#${maskId})" style="mix-blend-mode: color-dodge; opacity: ${cfg.opacity}; pointer-events: none;" />`;
+                const decor = `<rect width="100%" height="100%" fill="url(#${patternId})" mask="url(#${maskId})" style="mix-blend-mode: ${patternBlendMode}; opacity: ${cfg.opacity}; pointer-events: none;" />`;
                 surfaceLayerElements.push(
                   `<g class="${cfg.key}" style="isolation: isolate;">${markup}${decor}</g>`,
                 );
@@ -4081,6 +4549,9 @@
           terrainMarkup = `<g class="midground" ${filterAttr}>${bgContent}</g>`;
         }
 
+        const overgrownFrameVines =
+          adjective === "Overgrown" ? getOvergrownFrameVines() : "";
+
         return `
           <svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg" style="overflow: hidden; border-radius: 6px;">
             <defs>
@@ -4091,6 +4562,7 @@
             <g clip-path="url(#${clipId})">
               ${skyMarkup}
               ${terrainMarkup}
+              ${overgrownFrameVines}
             </g>
           </svg>
         `;
