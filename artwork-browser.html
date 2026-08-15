@@ -696,22 +696,102 @@
 
     <script>
       /** =========================================================================
-       *  0. SEEDED PSEUDO-RANDOM NUMBER GENERATION & UNIFIED PALETTES
+       *  0. CONSTANTS, TONE SEMANTICS, SEEDED PRNG & UNIFIED PALETTES
        *  ========================================================================= */
+
+      // Viewport & Rendering Dimensions
+      const SVG_CONFIG = {
+        WIDTH: 800,
+        HEIGHT: 450,
+        BASE_Y: 450,
+        MID_X: 400,
+        VIEWBOX: "0 0 800 450",
+      };
+
+      const PIXEL_CONFIG = {
+        WIDTH: 160,
+        HEIGHT: 90,
+      };
+
+      // 5-Tone Color Semantics (Strictly aligns with Artwork-rules.md p[0]..p[4])
+      const TONE = {
+        DEEP_DARK: 0, // p[0]: Foreground silhouettes and deep shadows
+        SHADOW: 1, // p[1]: Shaded sides of terrain and structures
+        MIDTONE: 2, // p[2]: Distant hills and neutral base ground
+        LIGHT: 3, // p[3]: Sunlit surfaces and upper sky
+        GLOW: 4, // p[4]: Sun, moon, stars, crystals, and light points
+      };
+
+      // Engine Modes
+      const ENGINE_MODE = {
+        DUAL: "dual",
+        PIXEL: "pixel",
+        VECTOR: "vector",
+      };
+
+      // PRNG Hashing & Linear Congruential Parameters
+      const PRNG_CONSTANTS = {
+        HASH_INIT: 0xdeadbeef,
+        HASH_PRIME: 2654435761,
+        MULBERRY_STEP: 0x6d2b79f5,
+        MULBERRY_DIVISOR: 4294967296,
+      };
+
+      // Bayer Dither & Glitch Post-Processing Configuration
+      const DITHER_CONFIG = {
+        BAYER_SIZE: 4,
+        THRESHOLD_OFFSET: 0.5,
+        DIVISOR: 16,
+      };
+
+      const GLITCH_CONFIG = {
+        MIN_SLICES: 3,
+        MAX_SLICES: 8,
+        MIN_HEIGHT: 1,
+        MAX_HEIGHT: 4,
+        MIN_OFFSET: -5,
+        MAX_OFFSET: 5,
+      };
+
+      // Adjective Post-Processing & Animation Effects (Single Source of Truth)
+      const ADJECTIVE_EFFECTS = {
+        Fractured: {
+          svgFilter: "filter-glitch",
+          glitchPixel: true,
+          cssClass: null,
+        },
+        Shattered: {
+          svgFilter: "filter-glitch",
+          glitchPixel: true,
+          cssClass: null,
+        },
+        Overgrown: {
+          svgFilter: "filter-wobble",
+          glitchPixel: false,
+          cssClass: null,
+        },
+        Eldritch: {
+          svgFilter: null,
+          glitchPixel: false,
+          cssClass: "anim-eldritch",
+        },
+        Neon: { svgFilter: null, glitchPixel: false, cssClass: "anim-neon" },
+      };
+
       function generateSeed(str) {
-        let h = 0xdeadbeef;
+        let h = PRNG_CONSTANTS.HASH_INIT;
         for (let i = 0; i < str.length; i++) {
-          h = Math.imul(h ^ str.charCodeAt(i), 2654435761);
+          h = Math.imul(h ^ str.charCodeAt(i), PRNG_CONSTANTS.HASH_PRIME);
         }
         return (h ^ (h >>> 16)) >>> 0;
       }
 
       function mulberry32(seed) {
         return function () {
-          let t = (seed += 0x6d2b79f5);
+          let t = (seed += PRNG_CONSTANTS.MULBERRY_STEP);
           t = Math.imul(t ^ (t >>> 15), t | 1);
           t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          return ((t ^ (t >>> 14)) >>> 0) / PRNG_CONSTANTS.MULBERRY_DIVISOR;
         };
       }
 
@@ -770,7 +850,7 @@
        *  ENGINE 1: PROCEDURAL PIXEL ART (CANVAS DITHER)
        *  ========================================================================= */
       class PixelRenderer {
-        constructor(width = 160, height = 90) {
+        constructor(width = PIXEL_CONFIG.WIDTH, height = PIXEL_CONFIG.HEIGHT) {
           this.w = width;
           this.h = height;
           this.canvas = document.createElement("canvas");
@@ -787,37 +867,62 @@
           ];
         }
         setPalette(hexColors) {
+          const OPAQUE_ALPHA_SHIFT = 24;
+          const FULL_ALPHA = 255;
+          const BLUE_SHIFT = 16;
+          const GREEN_SHIFT = 8;
+          const HEX_RADIX = 16;
+
           this.palette = hexColors.map((hex) => {
-            const r = parseInt(hex.slice(1, 3), 16),
-              g = parseInt(hex.slice(3, 5), 16),
-              b = parseInt(hex.slice(5, 7), 16);
-            return (255 << 24) | (b << 16) | (g << 8) | r;
+            const r = parseInt(hex.slice(1, 3), HEX_RADIX),
+              g = parseInt(hex.slice(3, 5), HEX_RADIX),
+              b = parseInt(hex.slice(5, 7), HEX_RADIX);
+            return (
+              (FULL_ALPHA << OPAQUE_ALPHA_SHIFT) |
+              (b << BLUE_SHIFT) |
+              (g << GREEN_SHIFT) |
+              r
+            );
           });
         }
-        setPixel(x, y, i) {
+        setPixel(x, y, toneIndex) {
           if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
             this.buf[y * this.w + x] =
-              this.palette[Math.min(Math.max(i, 0), 4)];
+              this.palette[
+                Math.min(Math.max(toneIndex, TONE.DEEP_DARK), TONE.GLOW)
+              ];
           }
         }
-        setPixelDither(x, y, c1, c2, ratio) {
+        setPixelDither(x, y, toneA, toneB, ratio) {
           if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
-            const threshold = (this.bayer[y % 4][x % 4] + 0.5) / 16;
+            const threshold =
+              (this.bayer[y % DITHER_CONFIG.BAYER_SIZE][
+                x % DITHER_CONFIG.BAYER_SIZE
+              ] +
+                DITHER_CONFIG.THRESHOLD_OFFSET) /
+              DITHER_CONFIG.DIVISOR;
             this.buf[y * this.w + x] =
-              this.palette[ratio > threshold ? c2 : c1];
+              this.palette[ratio > threshold ? toneB : toneA];
           }
         }
         applyGlitch(rng) {
-          const slices = rng.range(3, 8);
+          const slices = rng.range(
+            GLITCH_CONFIG.MIN_SLICES,
+            GLITCH_CONFIG.MAX_SLICES,
+          );
+          const BYTES_PER_PIXEL = 4;
           for (let i = 0; i < slices; i++) {
             const y = rng.range(0, this.h),
-              h = rng.range(1, 4),
-              offset = rng.range(-5, 5);
+              h = rng.range(GLITCH_CONFIG.MIN_HEIGHT, GLITCH_CONFIG.MAX_HEIGHT),
+              offset = rng.range(
+                GLITCH_CONFIG.MIN_OFFSET,
+                GLITCH_CONFIG.MAX_OFFSET,
+              );
             if (offset === 0) continue;
             for (let yy = y; yy < y + h && yy < this.h; yy++) {
               const row = new Uint32Array(
                 this.buf.buffer,
-                yy * this.w * 4,
+                yy * this.w * BYTES_PER_PIXEL,
                 this.w,
               );
               const shifted = new Uint32Array(this.w);
@@ -1270,6 +1375,24 @@
       /** =========================================================================
        *  ENGINE 2: FACETED VECTOR DIORAMA (MULTI-LAYERED FANTASY / SACRED GEOMETRY)
        *  ========================================================================= */
+      const VectorHelpers = {
+        /**
+         * 3-tier faceted pine tree with lit and dark halves (Shared across Wilds and Woods)
+         */
+        facetedPine: (tx, ty, th, colLit, colDark, tiers = 3) => {
+          let tr = `<g stroke-linejoin="round">`;
+          for (let t = 0; t < tiers; t++) {
+            const tierApexY = ty - th + t * (th * 0.25);
+            const tierBotY = ty - th * 0.45 + t * (th * 0.28);
+            const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
+            tr += `<polygon points="${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${tx.toFixed(1)},${tierBotY.toFixed(1)}" fill="${colLit}" />`;
+            tr += `<polygon points="${tx.toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${(tx + Number(halfW)).toFixed(1)},${tierBotY.toFixed(1)}" fill="${colDark}" />`;
+          }
+          tr += `</g>`;
+          return tr;
+        },
+      };
+
       const GenVectorBG = {
         // =========================================================================
         // HUB ARTIFACTS (Civic, Castles & Celestial Sanctuaries)
@@ -1339,6 +1462,7 @@
 
             if (prevApex) {
               const midSagY = Math.max(prevApex.y, ty) + rng.range(25, 40);
+              /* Festoon banner string spanning pavilion apexes */
               midTents += `<path d="M ${prevApex.x},${prevApex.y + 12} Q ${(prevApex.x + apexX) / 2},${midSagY} ${apexX},${ty + 12}" fill="none" stroke="${p[4]}" stroke-width="1.8" stroke-dasharray="6 6" />`;
             }
             prevApex = { x: apexX, y: ty };
@@ -1407,6 +1531,7 @@
           for (let i = 4; i >= 0; i--) {
             const pad = i * 42,
               col = p[i];
+            /* Concentric portal archway frame */
             svg += `<path d="M ${pad},450 L ${pad},${160 + i * 20} Q 400,${i * 20} ${800 - pad},${160 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
           }
           return svg;
@@ -1423,26 +1548,12 @@
           let dist = `<polygon points="0,450 0,220 200,160 420,230 620,150 800,240 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
           svg += dist;
 
-          function drawFacetedPine(tx, ty, th, colLit, colDark) {
-            let tr = `<g stroke-linejoin="round">`;
-            const tiers = 3;
-            for (let t = 0; t < tiers; t++) {
-              const tierApexY = ty - th + t * (th * 0.25);
-              const tierBotY = ty - th * 0.45 + t * (th * 0.28);
-              const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
-              tr += `<polygon points="${tx - halfW},${tierBotY} ${tx},${tierApexY} ${tx},${tierBotY}" fill="${colLit}" />`;
-              tr += `<polygon points="${tx},${tierBotY} ${tx},${tierApexY} ${tx + Number(halfW)},${tierBotY}" fill="${colDark}" />`;
-            }
-            tr += `</g>`;
-            return tr;
-          }
-
           let mid = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" />`;
           for (let i = 0; i < 20; i++) {
             const tx = i * 42 + rng.range(-4, 4);
             const ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
             const th = rng.range(30, 52);
-            mid += drawFacetedPine(tx, ty, th, p[2], p[0]);
+            mid += VectorHelpers.facetedPine(tx, ty, th, p[2], p[0]);
           }
           svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.55));">${mid}</g>`;
 
@@ -1451,7 +1562,7 @@
             const tx = i * 76 + rng.range(-8, 8);
             const ty = 360 + rng.range(-5, 25);
             const th = rng.range(55, 95);
-            fore += drawFacetedPine(tx, ty, th, p[1], p[0]);
+            fore += VectorHelpers.facetedPine(tx, ty, th, p[1], p[0]);
           }
           svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.85));">${fore}</g>`;
           return svg;
@@ -1463,6 +1574,7 @@
           svg += `<circle cx="400" cy="180" r="90" fill="${p[3]}" opacity="0.35" style="filter: blur(20px);" />`;
           svg += `<polygon points="0,450 0,250 800,250 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.8;" />`;
           let arch = `<g stroke-linejoin="round">`;
+          /* Curved celestial arch sweep spanning horizon */
           arch += `<path d="M 240,320 Q 400,60 560,320 L 590,320 Q 400,30 210,320 Z" fill="${p[4]}" />`;
           arch += `<polygon points="160,320 180,180 200,320" fill="${p[1]}" />`;
           arch += `<polygon points="600,320 620,180 640,320" fill="${p[1]}" />`;
@@ -1475,6 +1587,7 @@
         Tundra: (rng, p) => {
           let svg = `<defs><linearGradient id="tunSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
           svg += `<rect width="100%" height="100%" fill="url(#tunSky-${rng.seed})" />`;
+          /* Aurora mist ribbon across polar sky */
           svg += `<path d="M 0,80 Q 200,20 400,90 T 800,60 L 800,180 L 0,180 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(16px);" />`;
           svg += `<polygon points="0,450 0,220 200,150 450,230 650,140 800,210 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
 
@@ -1594,6 +1707,7 @@
           distRidge += `</g>`;
           svg += distRidge;
 
+          /* Midground jungle mist stratum */
           svg += `<path d="M -50,160 Q 250,135 520,185 T 850,170 L 850,240 Q 550,260 250,225 T -50,240 Z" fill="${p[4]}" opacity="0.32" style="filter: blur(14px);" />`;
 
           const fallX = isLeftDominant
@@ -1662,9 +1776,13 @@
 
           let titanTrunk = `<g stroke-linejoin="round">`;
           const dir = isLeftDominant ? 1 : -1;
+          /* Titan mangrove lit primary trunk */
           titanTrunk += `<path d="M ${treeX - 50 * dir},${treeY} Q ${treeX - 30 * dir},240 ${treeX - 90 * dir},420 L ${treeX},420 Q ${treeX + 40 * dir},260 ${treeX + 30 * dir},${treeY} Z" fill="${p[3]}" />`;
+          /* Titan mangrove shadow trunk facet */
           titanTrunk += `<path d="M ${treeX - 10 * dir},${treeY} Q ${treeX + 10 * dir},240 ${treeX - 20 * dir},420 L ${treeX + 50 * dir},420 Q ${treeX + 70 * dir},260 ${treeX + 60 * dir},${treeY} Z" fill="${p[2]}" />`;
+          /* Overhanging canopy limb base */
           titanTrunk += `<path d="M ${treeX + 10 * dir},115 Q ${treeX + 170 * dir},105 ${treeX + 330 * dir},125 L ${treeX + 320 * dir},145 Q ${treeX + 160 * dir},130 ${treeX + 20 * dir},150 Z" fill="${p[1]}" />`;
+          /* Overhanging canopy limb lit highlight */
           titanTrunk += `<path d="M ${treeX + 20 * dir},115 Q ${treeX + 170 * dir},110 ${treeX + 325 * dir},130 L ${treeX + 320 * dir},138 Q ${treeX + 170 * dir},120 ${treeX + 30 * dir},135 Z" fill="${p[3]}" />`;
 
           const roots = isLeftDominant
@@ -1721,6 +1839,7 @@
                 },
               ];
           for (const r of roots) {
+            /* Sinuous buttress root */
             titanTrunk += `<path d="M ${r.startX},${r.startY} Q ${r.midX},290 ${r.endX},450 L ${r.endX + r.w * dir},450 Q ${r.midX + 45 * dir},310 ${r.startX + 22 * dir},${r.startY} Z" fill="${r.col}" />`;
           }
 
@@ -1752,6 +1871,7 @@
             colDark,
           ) {
             let palm = `<g transform="translate(${cx},${cy}) rotate(${rotDeg})" stroke-linejoin="round">`;
+            /* Curved palm frond stem */
             palm += `<path d="M 0,0 Q ${curveSign * radius * 0.2},-${radius * 0.5} 0,-${radius}" fill="none" stroke="${p[0]}" stroke-width="1.8" />`;
             for (let b = 0; b < numBlades; b++) {
               const t = (b - (numBlades - 1) / 2) / numBlades;
@@ -1859,8 +1979,11 @@
             const midX = (n1.x + n2.x) / 2;
             const midY = (n1.y + n2.y) / 2 + dip;
 
+            /* Primary hanging liana vine */
             vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX},${midY} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
+            /* Secondary liana vine highlight */
             vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX + 4},${midY + 2} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[1]}" stroke-width="1.8" />`;
+            /* Hanging liana loop */
             vines += `<path d="M ${midX - 25},${midY - 8} Q ${midX},${midY + 22} ${midX + 25},${midY - 8}" fill="none" stroke="${p[0]}" stroke-width="2" />`;
 
             vines += `<circle cx="${midX}" cy="${midY}" r="16" fill="${p[4]}" opacity="0.45" style="filter: blur(5px);" />`;
@@ -1873,13 +1996,17 @@
 
           let fore = `<g stroke-linejoin="round">`;
           if (isLeftDominant) {
+            /* Left foreground canopy vignette */
             fore += `<path d="M 0,0 L 320,0 Q 210,105 0,150 Z" fill="${p[0]}" />`;
+            /* Right foreground canopy vignette */
             fore += `<path d="M 800,0 L 620,0 Q 690,75 800,105 Z" fill="${p[0]}" />`;
             fore += drawDetailedPalm(30, 445, 185, 11, -44, -1, p[1], p[0]);
             fore += drawDetailedPalm(95, 450, 150, 9, -28, -1, p[2], p[0]);
             fore += drawDetailedPalm(770, 440, 160, 9, 42, 1, p[1], p[0]);
           } else {
+            /* Right foreground canopy vignette (mirrored) */
             fore += `<path d="M 800,0 L 480,0 Q 590,105 800,150 Z" fill="${p[0]}" />`;
+            /* Left foreground canopy vignette (mirrored) */
             fore += `<path d="M 0,0 L 180,0 Q 110,75 0,105 Z" fill="${p[0]}" />`;
             fore += drawDetailedPalm(770, 445, 185, 11, 44, 1, p[1], p[0]);
             fore += drawDetailedPalm(705, 450, 150, 9, 28, 1, p[2], p[0]);
@@ -1945,7 +2072,9 @@
           for (let x = 40; x <= 760; x += 30) {
             gate += `<rect x="${x}" y="290" width="16" height="20" fill="${p[0]}" />`;
           }
+          /* Portal archway aura glow */
           gate += `<path d="M 360,450 L 360,360 Q 400,330 440,360 L 440,450 Z" fill="${p[4]}" opacity="0.25" />`;
+          /* Inner fortress gate archway */
           gate += `<path d="M 370,450 L 370,370 Q 400,345 430,370 L 430,450 Z" fill="${p[1]}" />`;
 
           svg += `<g style="filter: drop-shadow(0 -12px 22px rgba(0,0,0,0.9));">${gate}</g>`;
@@ -2134,6 +2263,7 @@
             riserPts += `850,${y + 12}`;
 
             terrace += `<polygon points="${shelfPts}" fill="${p[Math.min(4, Math.max(0, 4 - l))]}" />`;
+            /* Terraced riser contour stroke */
             terrace += `<path d="M ${riserPts}" fill="none" stroke="${p[1]}" stroke-width="6" />`;
 
             // Perspective Furrow Stripes along Contour
@@ -2407,10 +2537,10 @@
             }
 
             if (!isRightShadow) {
-              // Left shadow facet
+              /* Left shadow facet of serpentine sand dune */
               dune += `<path d="M -50,${yStart} L ${peakX},${peakY} ${chainedCurve} L -50,450 Z" fill="${colShadow}" />`;
             } else {
-              // Right shadow facet
+              /* Right shadow facet of serpentine sand dune */
               dune += `<path d="M ${peakX},${peakY} ${chainedCurve} L 850,450 L 850,${yEnd} Z" fill="${colShadow}" />`;
             }
 
@@ -2555,6 +2685,7 @@
           for (let i = 4; i >= 0; i--) {
             const pad = i * 45,
               col = p[i];
+            /* Descending crypt archway portal */
             svg += `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="18" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
           }
           svg += `<circle cx="400" cy="240" r="12" fill="${p[4]}" style="filter: blur(2px);" />`;
@@ -2713,8 +2844,10 @@
 
             let spire = `<g stroke-linejoin="round">`;
             // Lit Left Flank
+            /* Lit left flank of hyperbolic spire needle */
             spire += `<path d="M ${leftTop.toFixed(1)},${topY.toFixed(1)} Q ${leftCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${leftBase.toFixed(1)},${botY} L ${cx.toFixed(1)},${botY} L ${cx.toFixed(1)},${topY.toFixed(1)} Z" fill="${colLit}" />`;
             // Shadow Right Flank
+            /* Shadow right flank of hyperbolic spire needle */
             spire += `<path d="M ${cx.toFixed(1)},${topY.toFixed(1)} L ${cx.toFixed(1)},${botY} L ${rightBase.toFixed(1)},${botY} Q ${rightCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} Z" fill="${colShadow}" />`;
             // Glowing Needle Apex Tip
             spire += `<polygon points="${leftTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY - 6).toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY + 10).toFixed(1)}" fill="${colTip}" />`;
@@ -2854,18 +2987,6 @@
           svg += `<circle cx="${moonX}" cy="${moonY}" r="${moonR + 32}" fill="${p[4]}" opacity="0.32" style="filter: blur(25px);" />`;
           svg += `<circle cx="${moonX}" cy="${moonY}" r="${moonR}" fill="${p[4]}" opacity="0.92" />`;
 
-          function drawPineTree(tx, ty, th, col, tiers = 3) {
-            let tr = `<g stroke-linejoin="round">`;
-            for (let t = 0; t < tiers; t++) {
-              const tierApexY = ty - th + t * (th * 0.25);
-              const tierBotY = ty - th * 0.45 + t * (th * 0.28);
-              const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
-              tr += `<polygon points="${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} ${tx},${tierApexY.toFixed(1)} ${(tx + Number(halfW)).toFixed(1)},${tierBotY.toFixed(1)}" fill="${col}" />`;
-            }
-            tr += `</g>`;
-            return tr;
-          }
-
           const layers = 6;
           let prevPositions = [];
 
@@ -2898,7 +3019,7 @@
                 (baseOffset + (i + 0.5) * step + rng.range(-6, 6)) % 800;
               const sy = rng.range(yMin, yMin + 70);
               const th = 450 - sy;
-              svg += drawPineTree(cx, 450, th, col, 3);
+              svg += VectorHelpers.facetedPine(cx, 450, th, col, col, 3);
             }
             svg += `</g>`;
           }
@@ -2909,20 +3030,47 @@
       /** =========================================================================
        *  MASTER DOM ASSEMBLER & CONTROLLER
        *  ========================================================================= */
+
+      /**
+       * Renders a pixel art canvas element with adjective post-processing
+       */
+      function renderPixelCanvas(noun, adjective, rng, palette) {
+        const renderer = new PixelRenderer(
+          PIXEL_CONFIG.WIDTH,
+          PIXEL_CONFIG.HEIGHT,
+        );
+        renderer.setPalette(palette);
+        if (GenPixel[noun]) {
+          GenPixel[noun](renderer, rng);
+        }
+        if (ADJECTIVE_EFFECTS[adjective]?.glitchPixel) {
+          renderer.applyGlitch(rng);
+        }
+        return renderer.present();
+      }
+
+      /**
+       * Applies adjective-specific CSS animation classes to a container
+       */
+      function applyContainerEffects(container, adjective) {
+        const effectClass = ADJECTIVE_EFFECTS[adjective]?.cssClass;
+        if (effectClass) {
+          container.classList.add(effectClass);
+        }
+      }
+
+      /**
+       * Generates the SVG vector diorama string with adjective post-processing filters
+       */
       function createVectorSVG(noun, adjective, rng, palette) {
-        let filterAttr = "";
-        if (adjective === "Fractured" || adjective === "Shattered") {
-          filterAttr = `filter="url(#filter-glitch)"`;
-        }
-        if (adjective === "Overgrown") {
-          filterAttr = `filter="url(#filter-wobble)"`;
-        }
+        const filterName = ADJECTIVE_EFFECTS[adjective]?.svgFilter;
+        const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
 
         const bgSVG = GenVectorBG[noun]
           ? GenVectorBG[noun](rng, palette)
           : GenVectorBG.Vale(rng, palette);
 
-        return `<svg viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filterAttr}>${bgSVG}</g></svg>`;
+        return `<svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filterAttr}>${bgSVG}</g></svg>`;
       }
 
       function buildCard(adjective, noun, category, engineMode) {
@@ -2961,7 +3109,7 @@
         const mediaWrapper = document.createElement("div");
         mediaWrapper.className = "card-media-wrapper";
 
-        if (engineMode === "dual") {
+        if (engineMode === ENGINE_MODE.DUAL) {
           // 1. Pixel container
           const pixelContainer = document.createElement("div");
           pixelContainer.className = "art-container";
@@ -2970,20 +3118,15 @@
           pixelLabel.innerText = "PIXEL";
           pixelContainer.appendChild(pixelLabel);
 
-          const pixelRenderer = new PixelRenderer(160, 90);
-          pixelRenderer.setPalette(palette);
           const pRng = new SeededRNG(fullName);
-          if (GenPixel[noun]) GenPixel[noun](pixelRenderer, pRng);
-          if (adjective === "Fractured" || adjective === "Shattered")
-            pixelRenderer.applyGlitch(pRng);
-          pixelContainer.appendChild(pixelRenderer.present());
+          pixelContainer.appendChild(
+            renderPixelCanvas(noun, adjective, pRng, palette),
+          );
 
           // 2. Vector container
           const vectorContainer = document.createElement("div");
           vectorContainer.className = "art-container";
-          if (adjective === "Eldritch")
-            vectorContainer.classList.add("anim-eldritch");
-          if (adjective === "Neon") vectorContainer.classList.add("anim-neon");
+          applyContainerEffects(vectorContainer, adjective);
 
           const vectorLabel = document.createElement("span");
           vectorLabel.className = "engine-label vector";
@@ -3000,32 +3143,26 @@
           mediaWrapper.appendChild(vectorContainer);
 
           pixelContainer.onclick = () =>
-            openInspector(adjective, noun, category, "pixel");
+            openInspector(adjective, noun, category, ENGINE_MODE.PIXEL);
           vectorContainer.onclick = () =>
-            openInspector(adjective, noun, category, "vector");
-        } else if (engineMode === "pixel") {
+            openInspector(adjective, noun, category, ENGINE_MODE.VECTOR);
+        } else if (engineMode === ENGINE_MODE.PIXEL) {
           const container = document.createElement("div");
           container.className = "art-container";
-
-          const pixelRenderer = new PixelRenderer(160, 90);
-          pixelRenderer.setPalette(palette);
-          if (GenPixel[noun]) GenPixel[noun](pixelRenderer, rng);
-          if (adjective === "Fractured" || adjective === "Shattered")
-            pixelRenderer.applyGlitch(rng);
-          container.appendChild(pixelRenderer.present());
+          container.appendChild(
+            renderPixelCanvas(noun, adjective, rng, palette),
+          );
           container.onclick = () =>
-            openInspector(adjective, noun, category, "pixel");
+            openInspector(adjective, noun, category, ENGINE_MODE.PIXEL);
           mediaWrapper.appendChild(container);
         } else {
           // Vector mode
           const container = document.createElement("div");
           container.className = "art-container";
-          if (adjective === "Eldritch")
-            container.classList.add("anim-eldritch");
-          if (adjective === "Neon") container.classList.add("anim-neon");
+          applyContainerEffects(container, adjective);
           container.innerHTML = createVectorSVG(noun, adjective, rng, palette);
           container.onclick = () =>
-            openInspector(adjective, noun, category, "vector");
+            openInspector(adjective, noun, category, ENGINE_MODE.VECTOR);
           mediaWrapper.appendChild(container);
         }
 
@@ -3057,7 +3194,7 @@
             adjective,
             noun,
             category,
-            engineMode === "dual" ? "vector" : engineMode,
+            engineMode === ENGINE_MODE.DUAL ? ENGINE_MODE.VECTOR : engineMode,
           );
         };
 
@@ -3096,7 +3233,7 @@
         adjective: "Crimson",
         noun: "Wilds",
         category: "hunt",
-        engine: "vector",
+        engine: ENGINE_MODE.VECTOR,
         seedStr: "The Crimson Wilds",
       };
 
@@ -3115,7 +3252,7 @@
         const selectedAdjective = adjectiveSelect.value;
         const query = (searchInput.value || "").trim().toLowerCase();
 
-        if (selectedEngine === "dual") {
+        if (selectedEngine === ENGINE_MODE.DUAL) {
           gallery.classList.add("mode-dual");
         } else {
           gallery.classList.remove("mode-dual");
@@ -3164,7 +3301,7 @@
           adjective: adj,
           noun: noun,
           category: cat,
-          engine: engine === "dual" ? "vector" : engine,
+          engine: engine === ENGINE_MODE.DUAL ? ENGINE_MODE.VECTOR : engine,
           seedStr: `The ${adj} ${noun}`,
         };
         modalSeedInput.value = currentInspectState.seedStr;
@@ -3183,13 +3320,10 @@
         modalBadge.innerText = category;
 
         modalPreview.innerHTML = "";
-        if (engine === "pixel") {
-          const renderer = new PixelRenderer(160, 90);
-          renderer.setPalette(palette);
-          if (GenPixel[noun]) GenPixel[noun](renderer, rng);
-          if (adjective === "Fractured" || adjective === "Shattered")
-            renderer.applyGlitch(rng);
-          modalPreview.appendChild(renderer.present());
+        if (engine === ENGINE_MODE.PIXEL) {
+          modalPreview.appendChild(
+            renderPixelCanvas(noun, adjective, rng, palette),
+          );
         } else {
           modalPreview.innerHTML = createVectorSVG(
             noun,
