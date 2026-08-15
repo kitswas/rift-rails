@@ -2561,68 +2561,122 @@
           return svg;
         },
 
+        /* =========================================================================
+         * NOUN: Labyrinth (Penrose Impossible Staircase: Rigorous Isometric Closure)
+         *
+         * 1. Mathematical Flight Boundaries & Coordinate Grid:
+         *    Symmetrical horizontal span (X in [180, 720], width 540px)
+         *    Vertical span (Y in [210, 618], height 408px)
+         *
+         *    CORNER C (North Landing): Outer (450, 210) | Inner (450, 300)
+         *    CORNER B (East Landing):  Outer (720, 414) | Inner (600, 414)
+         *    CORNER A (South Landing): Outer (450, 618) | Inner (450, 528)
+         *    CORNER D (West Landing):  Outer (180, 414) | Inner (300, 414)
+         *
+         *    Flight 1 (South -> East):  (450,618)/(450,528) -> (720,414)/(600,414) | dX,dY = (+270,-204)/(+150,-114)
+         *    Flight 2 (East -> North):  (720,414)/(600,414) -> (450,210)/(450,300) | dX,dY = (-270,-204)/(-150,-114)
+         *    Flight 3 (North -> West):  (450,210)/(450,300) -> (180,414)/(300,414) | dX,dY = (-270,+204)/(-150,+114)
+         *    Flight 4 (West -> South):  (180,414)/(300,414) -> (450,618)/(450,528) | dX,dY = (+270,+204)/(+150,+114)
+         *
+         *    Loop Invariant: sum(dX) = 0 and sum(dY) = 0 | oint grad(h) * dr = 12*dh != 0
+         * ========================================================================= */
         Labyrinth: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          svg += `<circle cx="400" cy="200" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(25px);" />`;
-          const N = 8,
-            corners = [
-              { x: 400, y: 40 },
-              { x: 660, y: 185 },
-              { x: 400, y: 330 },
-              { x: 140, y: 185 },
-            ];
-          const configs = [
-            {
-              d: { x: 32.5, y: 18.125 },
-              w: { x: -22, y: 12 },
-              h: 12,
-              s: p[3],
-              r: p[1],
-            },
-            {
-              d: { x: -32.5, y: 18.125 },
-              w: { x: 22, y: 12 },
-              h: 12,
-              s: p[2],
-              r: p[1],
-            },
-            {
-              d: { x: -32.5, y: -18.125 },
-              w: { x: 22, y: -12 },
-              h: 12,
-              s: p[3],
-              r: p[2],
-            },
-            {
-              d: { x: 32.5, y: -18.125 },
-              w: { x: -22, y: -12 },
-              h: 12,
-              s: p[2],
-              r: p[1],
-            },
-          ];
-          let flights = [];
-          for (let f = 0; f < 4; f++) {
-            let mk = `<g stroke-linejoin="round" stroke-linecap="round">`;
-            const st = corners[f],
-              cfg = configs[f];
-            for (let s = 0; s < N; s++) {
-              const x0 = st.x + s * cfg.d.x,
-                y0 = st.y + s * cfg.d.y;
-              const x1 = st.x + (s + 1) * cfg.d.x,
-                y1 = st.y + (s + 1) * cfg.d.y;
-              const tread = `${x0},${y0} ${x1},${y1} ${x1 + cfg.w.x},${y1 + cfg.w.y} ${x0 + cfg.w.x},${y0 + cfg.w.y}`;
-              const riser = `${x0},${y0} ${x0 + cfg.w.x},${y0 + cfg.w.y} ${x0 + cfg.w.x},${y0 + cfg.w.y + cfg.h} ${x0},${y0 + cfg.h}`;
-              mk += `<polygon points="${riser}" fill="${cfg.r}" stroke="${p[0]}" stroke-width="1.2" />`;
-              mk += `<polygon points="${tread}" fill="${cfg.s}" stroke="${p[0]}" stroke-width="1.2" />`;
-            }
-            mk += `</g>`;
-            flights.push(mk);
-          }
-          svg += `<g style="filter: blur(1.5px); opacity: 0.8;">${flights[0]}</g>`;
-          svg += `<g style="filter: drop-shadow(-6px 8px 12px rgba(0,0,0,0.6));">${flights[3]}</g>`;
-          svg += `<g style="filter: drop-shadow(6px 8px 12px rgba(0,0,0,0.6));">${flights[1]}</g>`;
-          svg += `<g style="filter: drop-shadow(0px 14px 20px rgba(0,0,0,0.85));">${flights[2]}</g>`;
+          let svg = `<defs>
+            <linearGradient id="treadGrad-${rng.seed}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="${p[4]}"/>
+              <stop offset="100%" stop-color="${p[3]}"/>
+            </linearGradient>
+            <linearGradient id="riserGrad-${rng.seed}" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="${p[3]}"/>
+              <stop offset="100%" stop-color="${p[2]}"/>
+            </linearGradient>
+            <linearGradient id="wallOuterGrad-${rng.seed}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="${p[1]}"/>
+              <stop offset="100%" stop-color="${p[0]}"/>
+            </linearGradient>
+            <linearGradient id="wallInnerGrad-${rng.seed}" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="${p[0]}"/>
+              <stop offset="100%" stop-color="${p[2]}"/>
+            </linearGradient>
+          </defs>`;
+
+          svg += `<rect width="100%" height="100%" fill="${p[0]}" />`;
+          svg += `<circle cx="400" cy="225" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(32px);" />`;
+
+          const tg = `url(#treadGrad-${rng.seed})`;
+          const rg = `url(#riserGrad-${rng.seed})`;
+          const wo = `url(#wallOuterGrad-${rng.seed})`;
+          const wi = `url(#wallInnerGrad-${rng.seed})`;
+
+          let figure = `
+            <!-- 1. Foundation Skirt & Inner Courtyard Void -->
+            <polygon points="180,414 450,618 450,700 180,496" fill="${wo}"/>
+            <polygon points="450,618 720,414 720,496 450,700" fill="${wo}"/>
+            <polygon points="450,300 600,414 600,450 450,336" fill="${wi}"/>
+            <polygon points="450,300 300,414 300,450 450,336" fill="${wi}"/>
+            <polygon points="300,414 450,528 450,600 300,486" fill="${wi}"/>
+            <polygon points="450,528 600,414 600,486 450,600" fill="${wi}"/>
+
+            <!-- 2. Flight 2: East -> North (Ascends Top-Left) -->
+            <!-- Step 2.1 -->
+            <polygon points="720,414 600,414 600,396 720,396" fill="${rg}"/>
+            <polygon points="720,396 600,396 550,376 630,346" fill="${tg}"/>
+            <!-- Step 2.2 -->
+            <polygon points="630,346 550,376 550,358 630,328" fill="${rg}"/>
+            <polygon points="630,328 550,358 500,338 540,278" fill="${tg}"/>
+            <!-- Step 2.3 (Landing C) -->
+            <polygon points="540,278 500,338 500,320 540,260" fill="${rg}"/>
+            <polygon points="540,260 500,320 450,300 450,210" fill="${tg}"/>
+
+            <!-- 3. Flight 3: North -> West (Ascends Bottom-Left) -->
+            <!-- Step 3.1 -->
+            <polygon points="450,210 450,300 450,282 450,192" fill="${rg}"/>
+            <polygon points="450,192 450,282 400,338 360,278" fill="${tg}"/>
+            <!-- Step 3.2 -->
+            <polygon points="360,278 400,338 400,320 360,260" fill="${rg}"/>
+            <polygon points="360,260 400,320 350,376 270,346" fill="${tg}"/>
+            <!-- Step 3.3 (Landing D) -->
+            <polygon points="270,346 350,376 350,358 270,328" fill="${rg}"/>
+            <polygon points="270,328 350,358 300,414 180,414" fill="${tg}"/>
+
+            <!-- 4. Flight 4: West -> South (Ascends Bottom-Right) -->
+            <!-- Step 4.1 -->
+            <polygon points="180,414 300,414 300,396 180,396" fill="${rg}"/>
+            <polygon points="180,396 300,396 350,452 270,482" fill="${tg}"/>
+            <polygon points="180,414 180,396 270,482 270,500" fill="${wo}"/>
+            <!-- Step 4.2 -->
+            <polygon points="270,482 350,452 350,434 270,464" fill="${rg}"/>
+            <polygon points="270,464 350,434 400,490 360,550" fill="${tg}"/>
+            <polygon points="270,482 270,464 360,550 360,568" fill="${wo}"/>
+            <!-- Step 4.3 (Landing A) -->
+            <polygon points="360,550 400,490 400,472 360,532" fill="${rg}"/>
+            <polygon points="360,532 400,472 450,528 450,618" fill="${tg}"/>
+            <polygon points="360,550 360,532 450,618 450,636" fill="${wo}"/>
+
+            <!-- 5. Flight 1: South -> East (Ascends Top-Right) -->
+            <!-- Step 1.1 -->
+            <polygon points="450,618 450,528 450,510 450,600" fill="${rg}"/>
+            <polygon points="450,600 450,510 500,490 540,550" fill="${tg}"/>
+            <polygon points="450,618 450,600 540,550 540,568" fill="${wo}"/>
+            <!-- Step 1.2 -->
+            <polygon points="540,550 500,490 500,472 540,532" fill="${rg}"/>
+            <polygon points="540,532 500,472 550,452 630,482" fill="${tg}"/>
+            <polygon points="540,550 540,532 630,482 630,500" fill="${wo}"/>
+            <!-- Step 1.3 (Landing B) -->
+            <polygon points="630,482 550,452 550,434 630,464" fill="${rg}"/>
+            <polygon points="630,464 550,434 600,414 720,414" fill="${tg}"/>
+            <polygon points="630,482 630,464 720,414 720,432" fill="${wo}"/>
+          `;
+
+          svg += `
+            <g style="filter: drop-shadow(0 14px 26px rgba(0,0,0,0.85));">
+              <g transform="translate(400, 225) scale(0.68) translate(-450, -446)"
+                 stroke="${p[0]}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+                ${figure}
+              </g>
+            </g>
+          `;
+
           return svg;
         },
 
