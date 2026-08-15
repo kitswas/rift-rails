@@ -539,6 +539,20 @@
     <!-- Global Post-Processing SVG Filters -->
     <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
       <defs>
+        <!-- Distance Atmosphere Fog (Layer 1) -->
+        <filter id="distantFog">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+        <!-- Paper-Cutout Drop Shadow (Layers 2, 3, 4) -->
+        <filter id="paperShadow">
+          <feDropShadow
+            dx="0"
+            dy="4"
+            stdDeviation="4"
+            flood-color="#000000"
+            flood-opacity="0.35"
+          />
+        </filter>
         <filter id="filter-glitch">
           <feTurbulence
             type="fractalNoise"
@@ -1377,7 +1391,14 @@
        *  ========================================================================= */
       const VectorHelpers = {
         /**
-         * 3-tier faceted pine tree with lit and dark halves (Shared across Wilds and Woods)
+         * Micro-stroke to prevent sub-pixel background bleed along touching polygon/spline seams
+         */
+        microStroke: (color, width = 0.5) => {
+          return `stroke="${color}" stroke-width="${width}" stroke-linejoin="round"`;
+        },
+
+        /**
+         * 3-tier faceted pine tree with lit and dark halves and micro-strokes
          */
         facetedPine: (tx, ty, th, colLit, colDark, tiers = 3) => {
           let tr = `<g stroke-linejoin="round">`;
@@ -1385,11 +1406,185 @@
             const tierApexY = ty - th + t * (th * 0.25);
             const tierBotY = ty - th * 0.45 + t * (th * 0.28);
             const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
-            tr += `<polygon points="${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${tx.toFixed(1)},${tierBotY.toFixed(1)}" fill="${colLit}" />`;
-            tr += `<polygon points="${tx.toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${(tx + Number(halfW)).toFixed(1)},${tierBotY.toFixed(1)}" fill="${colDark}" />`;
+            tr += `<polygon points="${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${tx.toFixed(1)},${tierBotY.toFixed(1)}" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
+            tr += `<polygon points="${tx.toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${(tx + Number(halfW)).toFixed(1)},${tierBotY.toFixed(1)}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />`;
           }
           tr += `</g>`;
           return tr;
+        },
+
+        /**
+         * Smooth Catmull-Rom or cubic Bézier spline terrain path with closed base anchoring (L W H L 0 H Z)
+         */
+        splinePath: (
+          points,
+          closeBase = true,
+          baseY = SVG_CONFIG.BASE_Y,
+          width = SVG_CONFIG.WIDTH,
+        ) => {
+          if (!points || points.length === 0) return "";
+          const pts = points.map((p) =>
+            Array.isArray(p) ? { x: p[0], y: p[1] } : p,
+          );
+          if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
+
+          let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+          for (let i = 0; i < pts.length - 1; i++) {
+            const p0 = i > 0 ? pts[i - 1] : pts[i];
+            const p1 = pts[i];
+            const p2 = pts[i + 1];
+            const p3 = i < pts.length - 2 ? pts[i + 2] : p2;
+
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+            const cp2x = p2.x - (p3.x - p1.x) / 6;
+            const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+            d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+          }
+
+          if (closeBase) {
+            const lastX = pts[pts.length - 1].x;
+            const firstX = pts[0].x;
+            d += ` L ${lastX.toFixed(1)},${baseY} L ${firstX.toFixed(1)},${baseY} Z`;
+          }
+          return d;
+        },
+
+        /**
+         * Generates seamless lit and shaded mountain / ridge facets sharing exact spinal coordinates
+         */
+        splitRidge: (
+          spinePts,
+          baseY = SVG_CONFIG.BASE_Y,
+          pLit = "#fff",
+          pDark = "#000",
+          leftX = 0,
+          rightX = SVG_CONFIG.WIDTH,
+        ) => {
+          const pts = spinePts.map((p) =>
+            Array.isArray(p) ? { x: p[0], y: p[1] } : p,
+          );
+          if (pts.length < 2) return "";
+          const peakIdx = pts.reduce(
+            (maxI, p, i, arr) => (p.y < arr[maxI].y ? i : maxI),
+            0,
+          );
+          const peak = pts[peakIdx];
+
+          // Lit side facet
+          let dLit = `M ${leftX},${baseY} L ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+          for (let i = 1; i <= peakIdx; i++) {
+            dLit += ` L ${pts[i].x.toFixed(1)},${pts[i].y.toFixed(1)}`;
+          }
+          dLit += ` L ${peak.x.toFixed(1)},${baseY} Z`;
+
+          // Dark side facet
+          let dDark = `M ${peak.x.toFixed(1)},${baseY}`;
+          for (let i = peakIdx; i < pts.length; i++) {
+            dDark += ` L ${pts[i].x.toFixed(1)},${pts[i].y.toFixed(1)}`;
+          }
+          dDark += ` L ${rightX},${baseY} Z`;
+
+          return `
+            <path d="${dLit}" fill="${pLit}" ${VectorHelpers.microStroke(pLit)} />
+            <path d="${dDark}" fill="${pDark}" ${VectorHelpers.microStroke(pDark)} />
+          `;
+        },
+
+        /**
+         * 1D Poisson-style scatter enforcing minDistance between sampled points
+         */
+        poissonScatter: (rng, xMin, xMax, minDistance, count = 10) => {
+          const points = [];
+          const maxAttempts = count * 6;
+          let attempts = 0;
+          while (points.length < count && attempts < maxAttempts) {
+            attempts++;
+            const candX = rng.range(xMin, xMax);
+            let valid = true;
+            for (const p of points) {
+              if (Math.abs(p - candX) < minDistance) {
+                valid = false;
+                break;
+              }
+            }
+            if (valid) points.push(candX);
+          }
+          return points.sort((a, b) => a - b);
+        },
+
+        /**
+         * Single-path recursive tree generator (Packed into unified path string to save DOM overhead)
+         */
+        singlePathTree: (
+          rng,
+          startX,
+          startY,
+          height,
+          depth = 4,
+          pCol = "#000000",
+        ) => {
+          let pathD = "";
+          const clampedDepth = Math.min(Math.max(depth, 2), 5);
+
+          function branch(x, y, len, angle, d) {
+            const endX = x + Math.sin(angle) * len;
+            const endY = y - Math.cos(angle) * len;
+            pathD += ` M ${x.toFixed(1)},${y.toFixed(1)} L ${endX.toFixed(1)},${endY.toFixed(1)}`;
+            if (d > 1) {
+              const branchDecay = rng.range(68, 76) / 100;
+              const spread = (rng.range(20, 35) * Math.PI) / 180;
+              branch(endX, endY, len * branchDecay, angle - spread, d - 1);
+              branch(endX, endY, len * branchDecay, angle + spread, d - 1);
+            }
+          }
+
+          branch(startX, startY, height * 0.38, 0, clampedDepth);
+          const strokeW = Math.max(1, height * 0.04).toFixed(1);
+          return `<path d="${pathD}" fill="none" stroke="${pCol}" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round" />`;
+        },
+
+        /**
+         * Quantized Lambertian Shading helper for 3D facets
+         */
+        quantizedLambert: (
+          normal,
+          lightDir = [-0.5, 0.7, 0.5],
+          palette = null,
+        ) => {
+          const lenN = Math.hypot(normal[0], normal[1], normal[2]) || 1;
+          const nx = normal[0] / lenN,
+            ny = normal[1] / lenN,
+            nz = normal[2] / lenN;
+          const lenL = Math.hypot(lightDir[0], lightDir[1], lightDir[2]) || 1;
+          const lx = lightDir[0] / lenL,
+            ly = lightDir[1] / lenL,
+            lz = lightDir[2] / lenL;
+
+          const dot = nx * lx + ny * ly + nz * lz;
+          const intensity = (dot + 1) / 2;
+          const toneIdx = Math.max(0, Math.min(4, Math.floor(intensity * 5)));
+          return palette ? palette[toneIdx] : toneIdx;
+        },
+
+        /**
+         * Packages SVG groups into the standardized Painter's 5-Layer Stack
+         */
+        layerStack: (layers) => {
+          const l0 = layers.layer0 || layers[0] || "";
+          const l1 = layers.layer1 || layers[1] || "";
+          const l2 = layers.layer2 || layers[2] || "";
+          const l3 = layers.layer3 || layers[3] || "";
+          const l4 = layers.layer4 || layers[4] || "";
+
+          return `
+            <g class="layer-0" data-layer="0">${l0}</g>
+            <g class="layer-1" data-layer="1" filter="url(#distantFog)" opacity="0.7">${l1}</g>
+            <g class="layer-2" data-layer="2" filter="url(#paperShadow)">${l2}</g>
+            <g class="layer-3" data-layer="3" filter="url(#paperShadow)">${l3}</g>
+            <g class="layer-4" data-layer="4" filter="url(#paperShadow)">${l4}</g>
+          `;
         },
       };
 
@@ -1542,30 +1737,43 @@
         // =========================================================================
 
         Wilds: (rng, p) => {
-          let svg = `<defs><linearGradient id="wildsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#wildsSky-${rng.seed})" />`;
+          // Layer 0: Sky / Celestial Backdrop (Exact original gradient)
+          const skyId = `wildsSky-${rng.seed}`;
+          const layer0 = `
+            <defs>
+              <linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${p[4]}"/>
+                <stop offset="100%" stop-color="${p[2]}"/>
+              </linearGradient>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
 
-          let dist = `<polygon points="0,450 0,220 200,160 420,230 620,150 800,240 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
-          svg += dist;
+          // Layer 1: Distant mountain peaks (Original silhouette with micro-strokes & distant fog)
+          const layer1 = `<polygon points="0,450 0,220 200,160 420,230 620,150 800,240 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
 
-          let mid = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" />`;
+          // Layer 2: Midground ridge + dense faceted pine forest
+          let layer2 = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
           for (let i = 0; i < 20; i++) {
             const tx = i * 42 + rng.range(-4, 4);
             const ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
             const th = rng.range(30, 52);
-            mid += VectorHelpers.facetedPine(tx, ty, th, p[2], p[0]);
+            layer2 += VectorHelpers.facetedPine(tx, ty, th, p[2], p[0]);
           }
-          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.55));">${mid}</g>`;
 
-          let fore = `<polygon points="0,450 0,360 800,335 800,450" fill="${p[0]}" />`;
+          // Layer 3: Midground front (Clean layer separator)
+          const layer3 = "";
+
+          // Layer 4: Foreground ridge + large faceted pine silhouettes
+          let layer4 = `<polygon points="0,450 0,360 800,335 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
           for (let i = 0; i < 11; i++) {
             const tx = i * 76 + rng.range(-8, 8);
             const ty = 360 + rng.range(-5, 25);
             const th = rng.range(55, 95);
-            fore += VectorHelpers.facetedPine(tx, ty, th, p[1], p[0]);
+            layer4 += VectorHelpers.facetedPine(tx, ty, th, p[1], p[0]);
           }
-          svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.85));">${fore}</g>`;
-          return svg;
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Expanse: (rng, p) => {
@@ -3066,11 +3274,28 @@
         const filterName = ADJECTIVE_EFFECTS[adjective]?.svgFilter;
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
 
-        const bgSVG = GenVectorBG[noun]
-          ? GenVectorBG[noun](rng, palette)
-          : GenVectorBG.Vale(rng, palette);
+        const generator = GenVectorBG[noun] || GenVectorBG.Vale;
+        const bgContent = generator(rng, palette);
 
-        return `<svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg"><g class="midground" ${filterAttr}>${bgSVG}</g></svg>`;
+        let innerSVG;
+        if (typeof bgContent === "object" && bgContent !== null) {
+          innerSVG = `<g ${filterAttr}>${VectorHelpers.layerStack(bgContent)}</g>`;
+        } else {
+          innerSVG = `<g class="midground" ${filterAttr}>${bgContent}</g>`;
+        }
+
+        const defs = `
+          <defs>
+            <filter id="distantFog">
+              <feGaussianBlur stdDeviation="3" />
+            </filter>
+            <filter id="paperShadow">
+              <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.35" />
+            </filter>
+          </defs>
+        `;
+
+        return `<svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg">${defs}${innerSVG}</svg>`;
       }
 
       function buildCard(adjective, noun, category, engineMode) {
