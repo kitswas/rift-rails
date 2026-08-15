@@ -1594,23 +1594,31 @@
         // =========================================================================
 
         Station: (rng, p) => {
-          let svg = `<defs><linearGradient id="stnSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[3]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#stnSky-${rng.seed})" />`;
-          svg += `<circle cx="400" cy="160" r="140" fill="${p[4]}" opacity="0.3" style="filter: blur(25px);" />`;
-          svg += `<circle cx="400" cy="160" r="70" fill="${p[4]}" />`;
-          svg += `<circle cx="430" cy="150" r="60" fill="${p[1]}" />`;
-          svg += `<polygon points="0,450 180,220 380,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.7;" />`;
-          svg += `<polygon points="420,450 620,200 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.7;" />`;
+          const skyId = `stnSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[3]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <circle cx="400" cy="160" r="140" fill="${p[4]}" opacity="0.3" style="filter: blur(25px);" />
+            <circle cx="400" cy="160" r="70" fill="${p[4]}" />
+            <circle cx="430" cy="150" r="60" fill="${p[1]}" />
+          `;
+          const layer1 = `
+            <polygon points="0,450 180,220 380,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+            <polygon points="420,450 620,200 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+          `;
           let torus = `<g stroke-linejoin="round" stroke-linecap="round">`;
           torus += `<ellipse cx="400" cy="200" rx="190" ry="190" fill="none" stroke="${p[1]}" stroke-width="32" />`;
           torus += `<ellipse cx="400" cy="200" rx="190" ry="190" fill="none" stroke="${p[3]}" stroke-width="8" stroke-dasharray="24 16" />`;
           torus += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 0 15px rgba(0,0,0,0.85));">${torus}</g>`;
-          let base = `<polygon points="150,450 250,320 550,320 650,450" fill="${p[0]}" />`;
-          base += `<polygon points="220,320 240,160 260,320" fill="${p[2]}" />`;
-          base += `<polygon points="540,320 560,160 580,320" fill="${p[2]}" />`;
-          svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.9));">${base}</g>`;
-          return svg;
+          const layer2 = torus;
+
+          let base = `<polygon points="150,450 250,320 550,320 650,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          base += `<polygon points="220,320 240,160 260,320" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+          base += `<polygon points="540,320 560,160 580,320" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+          const layer3 = base;
+          const layer4 = "";
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         /* -------------------------------------------------------------------------
@@ -1618,12 +1626,17 @@
          * - Random seed-driven tent placement bounded cleanly within canyon floor
          * ------------------------------------------------------------------------- */
         Bazaar: (rng, p) => {
-          let svg = `<defs><linearGradient id="bazSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#bazSky-${rng.seed})" />`;
+          const skyId = `bazSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
 
           // Sheer canyon walls
-          svg += `<polygon points="0,0 260,0 110,450 0,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
-          svg += `<polygon points="800,0 540,0 690,450 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
+          const layer1 = `
+            <polygon points="0,0 260,0 110,450 0,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+            <polygon points="800,0 540,0 690,450 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+          `;
 
           // Scattered Far Tents (Bounded within canyon floor)
           const farCount = rng.range(3, 4);
@@ -1633,12 +1646,12 @@
               90 + i * (480 / Math.max(1, farCount - 1)) + rng.range(-12, 12);
             const ty = rng.range(195, 225);
             const tw = rng.range(75, 95);
-            farTents += `<polygon points="${tx},450 ${tx + tw * 0.45},${ty} ${tx + tw},450" fill="${p[2]}" />`;
-            farTents += `<polygon points="${tx + tw * 0.45},${ty} ${tx + tw},450 ${tx + tw * 0.6},${ty + (450 - ty) * 0.3}" fill="${p[1]}" />`;
+            farTents += `<polygon points="${tx},450 ${tx + tw * 0.45},${ty} ${tx + tw},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+            farTents += `<polygon points="${tx + tw * 0.45},${ty} ${tx + tw},450 ${tx + tw * 0.6},${ty + (450 - ty) * 0.3}" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
             farTents += `<circle cx="${tx + tw * 0.45}" cy="${ty + 8}" r="4" fill="${p[4]}" />`;
           }
           farTents += `</g>`;
-          svg += `<g style="filter: blur(1.5px) drop-shadow(0 -4px 8px rgba(0,0,0,0.5));">${farTents}</g>`;
+          const layer2 = farTents;
 
           // Midground Nomad Pavilions (Strictly bounded so rightmost tent does not exceed canyon)
           const midCount = rng.range(3, 4);
@@ -1651,8 +1664,8 @@
             const ty = rng.range(245, 285);
             const apexX = tx + tw * (0.45 + (i % 2) * 0.1);
 
-            midTents += `<polygon points="${tx},450 ${apexX},${ty} ${apexX},450" fill="${p[3]}" />`;
-            midTents += `<polygon points="${apexX},${ty} ${tx + tw},450 ${apexX},450" fill="${p[1]}" />`;
+            midTents += `<polygon points="${tx},450 ${apexX},${ty} ${apexX},450" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+            midTents += `<polygon points="${apexX},${ty} ${tx + tw},450 ${apexX},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
             midTents += `<circle cx="${apexX}" cy="${ty + 10}" r="5.5" fill="${p[4]}" />`;
 
             if (prevApex) {
@@ -1663,11 +1676,11 @@
             prevApex = { x: apexX, y: ty };
           }
           midTents += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -6px 14px rgba(0,0,0,0.65));">${midTents}</g>`;
+          const layer3 = midTents;
 
           let fore = `<g stroke-linejoin="round">`;
-          fore += `<polygon points="0,450 0,360 210,380 400,450" fill="${p[0]}" />`;
-          fore += `<polygon points="800,450 800,360 590,380 400,450" fill="${p[0]}" />`;
+          fore += `<polygon points="0,450 0,360 210,380 400,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          fore += `<polygon points="800,450 800,360 590,380 400,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
           fore += `<line x1="120" y1="450" x2="120" y2="290" stroke="${p[0]}" stroke-width="6" />`;
           fore += `<line x1="120" y1="300" x2="155" y2="300" stroke="${p[0]}" stroke-width="4" />`;
           fore += `<circle cx="155" cy="315" r="14" fill="${p[4]}" opacity="0.4" style="filter: blur(8px);" />`;
@@ -1677,59 +1690,87 @@
           fore += `<circle cx="645" cy="315" r="14" fill="${p[4]}" opacity="0.4" style="filter: blur(8px);" />`;
           fore += `<circle cx="645" cy="315" r="6" fill="${p[4]}" />`;
           fore += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.9));">${fore}</g>`;
-          return svg;
+          const layer4 = fore;
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Outpost: (rng, p) => {
-          let svg = `<defs><linearGradient id="outSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#outSky-${rng.seed})" />`;
-          svg += `<polygon points="0,450 220,180 500,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.6;" />`;
-          let cliff = `<polygon points="120,450 200,240 600,240 680,450" fill="${p[1]}" />`;
-          cliff += `<polygon points="260,240 280,120 380,120 400,240" fill="${p[0]}" />`;
-          cliff += `<polygon points="420,240 440,80 500,80 520,240" fill="${p[0]}" />`;
-          cliff += `<polygon points="440,80 470,20 500,80" fill="${p[3]}" />`;
-          cliff += `<polygon points="280,120 330,60 380,120" fill="${p[2]}" />`;
-          svg += `<g style="filter: drop-shadow(0 -10px 20px rgba(0,0,0,0.9));">${cliff}</g>`;
-          return svg;
+          const skyId = `outSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
+          const layer1 = `<polygon points="0,450 220,180 500,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+          const layer2 = `<polygon points="120,450 200,240 600,240 680,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          let cliff = `<polygon points="260,240 280,120 380,120 400,240" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          cliff += `<polygon points="420,240 440,80 500,80 520,240" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          cliff += `<polygon points="440,80 470,20 500,80" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+          cliff += `<polygon points="280,120 330,60 380,120" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+          const layer3 = cliff;
+          const layer4 = "";
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Nexus: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          svg += `<circle cx="400" cy="200" r="160" fill="${p[3]}" opacity="0.3" style="filter: blur(30px);" />`;
-          svg += `<g style="filter: blur(3px); opacity: 0.7;">`;
-          svg += `<circle cx="400" cy="200" r="180" fill="none" stroke="${p[2]}" stroke-width="3" stroke-dasharray="12 24" />`;
-          svg += `<circle cx="400" cy="200" r="130" fill="none" stroke="${p[2]}" stroke-width="2" />`;
-          svg += `</g>`;
+          const layer0 = `
+            <rect width="100%" height="100%" fill="${p[0]}" />
+            <circle cx="400" cy="200" r="160" fill="${p[3]}" opacity="0.3" style="filter: blur(30px);" />
+          `;
+          const layer1 = `
+            <g>
+              <circle cx="400" cy="200" r="180" fill="none" stroke="${p[2]}" stroke-width="3" stroke-dasharray="12 24" />
+              <circle cx="400" cy="200" r="130" fill="none" stroke="${p[2]}" stroke-width="2" />
+            </g>
+          `;
           let pylons = "";
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2;
             pylons += `<line x1="400" y1="200" x2="${400 + Math.cos(a) * 450}" y2="${200 + Math.sin(a) * 300}" stroke="${p[3]}" stroke-width="3" />`;
           }
-          svg += `<g style="filter: drop-shadow(0 0 10px ${p[4]});">${pylons}</g>`;
-          svg += `<g style="filter: drop-shadow(0 0 20px ${p[4]});">`;
-          svg += `<polygon points="400,60 480,200 400,340 320,200" fill="${p[4]}" />`;
-          svg += `<polygon points="400,60 400,340 320,200" fill="${p[1]}" opacity="0.5" />`;
-          svg += `<polygon points="400,100 440,200 400,300 360,200" fill="#ffffff" />`;
-          svg += `</g>`;
-          return svg;
+          const layer2 = `<g style="filter: drop-shadow(0 0 10px ${p[4]});">${pylons}</g>`;
+          let core = `<g style="filter: drop-shadow(0 0 20px ${p[4]});">`;
+          core += `<polygon points="400,60 480,200 400,340 320,200" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+          core += `<polygon points="400,60 400,340 320,200" fill="${p[1]}" opacity="0.5" />`;
+          core += `<polygon points="400,100 440,200 400,300 360,200" fill="#ffffff" />`;
+          core += `</g>`;
+          const layer3 = core;
+          const layer4 = "";
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Sanctuary: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          svg += `<circle cx="400" cy="180" r="120" fill="${p[4]}" opacity="0.4" style="filter: blur(25px);" />`;
-          svg += `<g style="filter: blur(2px); opacity: 0.8;">`;
-          svg += `<circle cx="400" cy="180" r="100" fill="none" stroke="${p[3]}" stroke-width="3" />`;
-          svg += `<polygon points="400,80 486,230 314,230" fill="none" stroke="${p[2]}" stroke-width="2" />`;
-          svg += `<polygon points="400,280 486,130 314,130" fill="none" stroke="${p[2]}" stroke-width="2" />`;
-          svg += `</g>`;
-          for (let i = 4; i >= 0; i--) {
+          const layer0 = `
+            <rect width="100%" height="100%" fill="${p[0]}" />
+            <circle cx="400" cy="180" r="120" fill="${p[4]}" opacity="0.4" style="filter: blur(25px);" />
+          `;
+          const layer1 = `
+            <g>
+              <circle cx="400" cy="180" r="100" fill="none" stroke="${p[3]}" stroke-width="3" />
+              <polygon points="400,80 486,230 314,230" fill="none" stroke="${p[2]}" stroke-width="2" />
+              <polygon points="400,280 486,130 314,130" fill="none" stroke="${p[2]}" stroke-width="2" />
+            </g>
+          `;
+          let archOuter = "";
+          for (let i = 4; i >= 2; i--) {
             const pad = i * 42,
               col = p[i];
-            /* Concentric portal archway frame */
-            svg += `<path d="M ${pad},450 L ${pad},${160 + i * 20} Q 400,${i * 20} ${800 - pad},${160 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
+            archOuter += `<path d="M ${pad},450 L ${pad},${160 + i * 20} Q 400,${i * 20} ${800 - pad},${160 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" />`;
           }
-          return svg;
+          const layer2 = archOuter;
+
+          let archInner = "";
+          for (let i = 1; i >= 0; i--) {
+            const pad = i * 42,
+              col = p[i];
+            archInner += `<path d="M ${pad},450 L ${pad},${160 + i * 20} Q 400,${i * 20} ${800 - pad},${160 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" />`;
+          }
+          const layer3 = archInner;
+          const layer4 = "";
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         // =========================================================================
@@ -1777,33 +1818,40 @@
         },
 
         Expanse: (rng, p) => {
-          let svg = `<defs><linearGradient id="expSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#expSky-${rng.seed})" />`;
-          svg += `<circle cx="400" cy="180" r="90" fill="${p[3]}" opacity="0.35" style="filter: blur(20px);" />`;
-          svg += `<polygon points="0,450 0,250 800,250 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.8;" />`;
+          const skyId = `expSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <circle cx="400" cy="180" r="90" fill="${p[3]}" opacity="0.35" style="filter: blur(20px);" />
+          `;
+          const layer1 = `<polygon points="0,450 0,250 800,250 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
           let arch = `<g stroke-linejoin="round">`;
-          /* Curved celestial arch sweep spanning horizon */
-          arch += `<path d="M 240,320 Q 400,60 560,320 L 590,320 Q 400,30 210,320 Z" fill="${p[4]}" />`;
-          arch += `<polygon points="160,320 180,180 200,320" fill="${p[1]}" />`;
-          arch += `<polygon points="600,320 620,180 640,320" fill="${p[1]}" />`;
+          arch += `<path d="M 240,320 Q 400,60 560,320 L 590,320 Q 400,30 210,320 Z" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+          arch += `<polygon points="160,320 180,180 200,320" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          arch += `<polygon points="600,320 620,180 640,320" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
           arch += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -6px 14px rgba(0,0,0,0.7));">${arch}</g>`;
-          svg += `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));" />`;
-          return svg;
+          const layer2 = arch;
+          const layer3 = "";
+          const layer4 = `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Tundra: (rng, p) => {
-          let svg = `<defs><linearGradient id="tunSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#tunSky-${rng.seed})" />`;
-          /* Aurora mist ribbon across polar sky */
-          svg += `<path d="M 0,80 Q 200,20 400,90 T 800,60 L 800,180 L 0,180 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(16px);" />`;
-          svg += `<polygon points="0,450 0,220 200,150 450,230 650,140 800,210 800,450" fill="${p[2]}" style="filter: blur(4px); opacity: 0.65;" />`;
+          const skyId = `tunSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <path d="M 0,80 Q 200,20 400,90 T 800,60 L 800,180 L 0,180 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(16px);" />
+          `;
+          const layer1 = `<polygon points="0,450 0,220 200,150 450,230 650,140 800,210 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
 
           const waterY = 270;
-          svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[1]}" />`;
+          let water = `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[1]}" />`;
           for (let i = 0; i < 5; i++) {
-            svg += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(8, 45)}" width="${rng.range(30, 100)}" height="2" fill="${p[3]}" opacity="0.5" />`;
+            water += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(8, 45)}" width="${rng.range(30, 100)}" height="2" fill="${p[3]}" opacity="0.5" />`;
           }
+          const layer2 = water;
 
           let icebergs = `<g stroke-linejoin="round">`;
           const bergs = [
@@ -1823,18 +1871,19 @@
             const midL = subL + (px - subL) * 0.5,
               midY = py + bh * 0.45;
 
-            icebergs += `<polygon points="${subL},${waterY} ${px},${py} ${ridgeX},${waterY}" fill="#ffffff" />`;
-            icebergs += `<polygon points="${midL},${midY} ${px},${py} ${ridgeX},${py + bh * 0.35}" fill="${p[4]}" />`;
-            icebergs += `<polygon points="${ridgeX},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[3]}" />`;
-            icebergs += `<polygon points="${ridgeX + (subR - ridgeX) * 0.4},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[2]}" />`;
+            icebergs += `<polygon points="${subL},${waterY} ${px},${py} ${ridgeX},${waterY}" fill="#ffffff" ${VectorHelpers.microStroke("#ffffff")} />`;
+            icebergs += `<polygon points="${midL},${midY} ${px},${py} ${ridgeX},${py + bh * 0.35}" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+            icebergs += `<polygon points="${ridgeX},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+            icebergs += `<polygon points="${ridgeX + (subR - ridgeX) * 0.4},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
           }
           icebergs += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -4px 8px rgba(0,0,0,0.45));">${icebergs}</g>`;
+          const layer3 = icebergs;
 
-          let floe = `<polygon points="0,450 0,345 280,310 520,355 800,315 800,450" fill="${p[0]}" />`;
-          floe += `<polygon points="0,345 280,310 520,355 800,315 800,330 520,370 280,325 0,360" fill="${p[3]}" />`;
-          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${floe}</g>`;
-          return svg;
+          let floe = `<polygon points="0,450 0,345 280,310 520,355 800,315 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          floe += `<polygon points="0,345 280,310 520,355 800,315 800,330 520,370 280,325 0,360" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+          const layer4 = floe;
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Jungle: (rng, p) => {
@@ -1843,22 +1892,24 @@
             ? rng.range(600, 680)
             : rng.range(120, 200);
           const sunY = rng.range(55, 80);
+          const skyId = `junSky-${rng.seed}`;
+          const waterId = `junWater-${rng.seed}`;
 
-          let svg = `<defs>
-            <linearGradient id="junSky-${rng.seed}" x1="${isLeftDominant ? 0 : 1}" y1="0" x2="${isLeftDominant ? 1 : 0}" y2="1">
+          let layer0 = `<defs>
+            <linearGradient id="${skyId}" x1="${isLeftDominant ? 0 : 1}" y1="0" x2="${isLeftDominant ? 1 : 0}" y2="1">
               <stop offset="0%" stop-color="${p[4]}"/>
               <stop offset="50%" stop-color="${p[3]}"/>
               <stop offset="100%" stop-color="${p[1]}"/>
             </linearGradient>
-            <linearGradient id="junWater-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="${waterId}" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="${p[3]}"/>
               <stop offset="100%" stop-color="${p[0]}"/>
             </linearGradient>
           </defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#junSky-${rng.seed})" />`;
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(130, 160)}" fill="${p[4]}" opacity="0.3" style="filter: blur(36px);" />`;
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(70, 90)}" fill="${p[4]}" opacity="0.55" style="filter: blur(18px);" />`;
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(40, 50)}" fill="${p[4]}" opacity="0.8" style="filter: blur(10px);" />`;
+          layer0 += `<rect width="100%" height="100%" fill="url(#${skyId})" />`;
+          layer0 += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(130, 160)}" fill="${p[4]}" opacity="0.3" style="filter: blur(36px);" />`;
+          layer0 += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(70, 90)}" fill="${p[4]}" opacity="0.55" style="filter: blur(18px);" />`;
+          layer0 += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(40, 50)}" fill="${p[4]}" opacity="0.8" style="filter: blur(10px);" />`;
 
           const rayCount = rng.range(7, 10);
           let rays = `<g style="filter: blur(6px); opacity: 0.38;">`;
@@ -1872,7 +1923,7 @@
             rays += `<polygon points="${sunX},${sunY} ${xFar - w},${yFar} ${xFar + w},${yFar}" fill="${p[4]}" />`;
           }
           rays += `</g>`;
-          svg += rays;
+          layer0 += rays;
 
           const birdCount = rng.range(2, 5);
           let birdSvg = `<g stroke-linejoin="round">`;
@@ -1897,7 +1948,7 @@
             birdSvg += `</g>`;
           }
           birdSvg += `</g>`;
-          svg += birdSvg;
+          layer0 += birdSvg;
 
           let distRidge = `<g style="filter: blur(5px); opacity: 0.65;">`;
           const ridgeCount = 7;
@@ -1913,10 +1964,8 @@
             distRidge += `<ellipse cx="${rx}" cy="${ry - rr * 0.35}" rx="${rr * 0.8}" ry="${rr * 0.38}" fill="${p[3]}" />`;
           }
           distRidge += `</g>`;
-          svg += distRidge;
-
-          /* Midground jungle mist stratum */
-          svg += `<path d="M -50,160 Q 250,135 520,185 T 850,170 L 850,240 Q 550,260 250,225 T -50,240 Z" fill="${p[4]}" opacity="0.32" style="filter: blur(14px);" />`;
+          distRidge += `<path d="M -50,160 Q 250,135 520,185 T 850,170 L 850,240 Q 550,260 250,225 T -50,240 Z" fill="${p[4]}" opacity="0.32" style="filter: blur(14px);" />`;
+          const layer1 = distRidge;
 
           const fallX = isLeftDominant
             ? rng.range(230, 290)
@@ -1926,13 +1975,11 @@
           farMid += `<polygon points="${fallX - 38},205 ${fallX + 38},205 ${fallX + 44},235 ${fallX - 44},235" fill="#ffffff" opacity="0.92" />`;
           farMid += `<polygon points="${fallX - 48},235 ${fallX + 48},235 ${fallX + 55},268 ${fallX - 55},268" fill="${p[3]}" />`;
           farMid += `</g>`;
-          svg += farMid;
-
-          svg += `<ellipse cx="${fallX}" cy="268" rx="72" ry="18" fill="#ffffff" opacity="0.45" style="filter: blur(8px);" />`;
+          farMid += `<ellipse cx="${fallX}" cy="268" rx="72" ry="18" fill="#ffffff" opacity="0.45" style="filter: blur(8px);" />`;
 
           const waterY = rng.range(270, 285);
-          let water = `<g style="filter: drop-shadow(0px -3px 8px rgba(0,0,0,0.35));">`;
-          water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="url(#junWater-${rng.seed})" />`;
+          let water = `<g>`;
+          water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="url(#${waterId})" />`;
           for (let i = 0; i < 6; i++) {
             const gy = waterY + 16 + i * 26 + rng.range(-3, 3);
             const gx = 220 + (i % 3) * 80 + rng.range(-20, 30);
@@ -1940,22 +1987,21 @@
             water += `<rect x="${gx}" y="${gy}" width="${gw}" height="2.2" rx="1.1" fill="#ffffff" opacity="${(0.4 + (i % 3) * 0.15).toFixed(2)}" />`;
           }
           water += `</g>`;
-          svg += water;
 
           let landmasses = `<g stroke-linejoin="round">`;
           if (isLeftDominant) {
-            landmasses += `<polygon points="0,450 0,265 240,255 290,345 160,450" fill="${p[1]}" />`;
-            landmasses += `<polygon points="0,265 240,255 280,280 0,300" fill="${p[2]}" />`;
-            landmasses += `<polygon points="800,450 800,285 530,275 450,355 590,450" fill="${p[1]}" />`;
-            landmasses += `<polygon points="800,285 530,275 490,300 800,315" fill="${p[2]}" />`;
+            landmasses += `<polygon points="0,450 0,265 240,255 290,345 160,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+            landmasses += `<polygon points="0,265 240,255 280,280 0,300" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+            landmasses += `<polygon points="800,450 800,285 530,275 450,355 590,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+            landmasses += `<polygon points="800,285 530,275 490,300 800,315" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
           } else {
-            landmasses += `<polygon points="800,450 800,265 560,255 510,345 640,450" fill="${p[1]}" />`;
-            landmasses += `<polygon points="800,265 560,255 520,280 800,300" fill="${p[2]}" />`;
-            landmasses += `<polygon points="0,450 0,285 270,275 350,355 210,450" fill="${p[1]}" />`;
-            landmasses += `<polygon points="0,285 270,275 310,300 0,315" fill="${p[2]}" />`;
+            landmasses += `<polygon points="800,450 800,265 560,255 510,345 640,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+            landmasses += `<polygon points="800,265 560,255 520,280 800,300" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+            landmasses += `<polygon points="0,450 0,285 270,275 350,355 210,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+            landmasses += `<polygon points="0,285 270,275 310,300 0,315" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
           }
           landmasses += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.45));">${landmasses}</g>`;
+          const layer2 = `${farMid}${water}${landmasses}`;
 
           const treeX = isLeftDominant
             ? rng.range(130, 170)
@@ -1980,17 +2026,12 @@
             canopySvg += `<ellipse cx="${cx + (isLeftDominant ? 14 : -14)}" cy="${cy - 14}" rx="${cr * 0.62}" ry="${cr * 0.38}" fill="${p[3]}" />`;
           }
           canopySvg += `</g>`;
-          svg += canopySvg;
 
           let titanTrunk = `<g stroke-linejoin="round">`;
           const dir = isLeftDominant ? 1 : -1;
-          /* Titan mangrove lit primary trunk */
           titanTrunk += `<path d="M ${treeX - 50 * dir},${treeY} Q ${treeX - 30 * dir},240 ${treeX - 90 * dir},420 L ${treeX},420 Q ${treeX + 40 * dir},260 ${treeX + 30 * dir},${treeY} Z" fill="${p[3]}" />`;
-          /* Titan mangrove shadow trunk facet */
           titanTrunk += `<path d="M ${treeX - 10 * dir},${treeY} Q ${treeX + 10 * dir},240 ${treeX - 20 * dir},420 L ${treeX + 50 * dir},420 Q ${treeX + 70 * dir},260 ${treeX + 60 * dir},${treeY} Z" fill="${p[2]}" />`;
-          /* Overhanging canopy limb base */
           titanTrunk += `<path d="M ${treeX + 10 * dir},115 Q ${treeX + 170 * dir},105 ${treeX + 330 * dir},125 L ${treeX + 320 * dir},145 Q ${treeX + 160 * dir},130 ${treeX + 20 * dir},150 Z" fill="${p[1]}" />`;
-          /* Overhanging canopy limb lit highlight */
           titanTrunk += `<path d="M ${treeX + 20 * dir},115 Q ${treeX + 170 * dir},110 ${treeX + 325 * dir},130 L ${treeX + 320 * dir},138 Q ${treeX + 170 * dir},120 ${treeX + 30 * dir},135 Z" fill="${p[3]}" />`;
 
           const roots = isLeftDominant
@@ -2047,7 +2088,6 @@
                 },
               ];
           for (const r of roots) {
-            /* Sinuous buttress root */
             titanTrunk += `<path d="M ${r.startX},${r.startY} Q ${r.midX},290 ${r.endX},450 L ${r.endX + r.w * dir},450 Q ${r.midX + 45 * dir},310 ${r.startX + 22 * dir},${r.startY} Z" fill="${r.col}" />`;
           }
 
@@ -2066,7 +2106,7 @@
             titanTrunk += `<polygon points="${sr.x - sr.w / 2},${sr.yTop} ${sr.x + sr.w / 2},${sr.yTop} ${sr.x + sr.w * 0.7},${sr.yBot} ${sr.x - sr.w * 0.7},${sr.yBot}" fill="${sr.col}" />`;
           }
           titanTrunk += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -8px 20px rgba(0,0,0,0.7));">${titanTrunk}</g>`;
+          const layer3 = `${canopySvg}${titanTrunk}`;
 
           function drawDetailedPalm(
             cx,
@@ -2079,7 +2119,6 @@
             colDark,
           ) {
             let palm = `<g transform="translate(${cx},${cy}) rotate(${rotDeg})" stroke-linejoin="round">`;
-            /* Curved palm frond stem */
             palm += `<path d="M 0,0 Q ${curveSign * radius * 0.2},-${radius * 0.5} 0,-${radius}" fill="none" stroke="${p[0]}" stroke-width="1.8" />`;
             for (let b = 0; b < numBlades; b++) {
               const t = (b - (numBlades - 1) / 2) / numBlades;
@@ -2177,7 +2216,6 @@
             flora += `<circle cx="${lp.cx}" cy="${lp.cy - 4}" r="2.2" fill="#ffffff" />`;
           }
           flora += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.55));">${flora}</g>`;
 
           let vines = `<g stroke-linecap="round">`;
           for (let i = 0; i < canopyNodes.length - 1; i += 2) {
@@ -2187,11 +2225,8 @@
             const midX = (n1.x + n2.x) / 2;
             const midY = (n1.y + n2.y) / 2 + dip;
 
-            /* Primary hanging liana vine */
             vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX},${midY} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
-            /* Secondary liana vine highlight */
             vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX + 4},${midY + 2} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[1]}" stroke-width="1.8" />`;
-            /* Hanging liana loop */
             vines += `<path d="M ${midX - 25},${midY - 8} Q ${midX},${midY + 22} ${midX + 25},${midY - 8}" fill="none" stroke="${p[0]}" stroke-width="2" />`;
 
             vines += `<circle cx="${midX}" cy="${midY}" r="16" fill="${p[4]}" opacity="0.45" style="filter: blur(5px);" />`;
@@ -2204,17 +2239,13 @@
 
           let fore = `<g stroke-linejoin="round">`;
           if (isLeftDominant) {
-            /* Left foreground canopy vignette */
             fore += `<path d="M 0,0 L 320,0 Q 210,105 0,150 Z" fill="${p[0]}" />`;
-            /* Right foreground canopy vignette */
             fore += `<path d="M 800,0 L 620,0 Q 690,75 800,105 Z" fill="${p[0]}" />`;
             fore += drawDetailedPalm(30, 445, 185, 11, -44, -1, p[1], p[0]);
             fore += drawDetailedPalm(95, 450, 150, 9, -28, -1, p[2], p[0]);
             fore += drawDetailedPalm(770, 440, 160, 9, 42, 1, p[1], p[0]);
           } else {
-            /* Right foreground canopy vignette (mirrored) */
             fore += `<path d="M 800,0 L 480,0 Q 590,105 800,150 Z" fill="${p[0]}" />`;
-            /* Left foreground canopy vignette (mirrored) */
             fore += `<path d="M 0,0 L 180,0 Q 110,75 0,105 Z" fill="${p[0]}" />`;
             fore += drawDetailedPalm(770, 445, 185, 11, 44, 1, p[1], p[0]);
             fore += drawDetailedPalm(705, 450, 150, 9, 28, 1, p[2], p[0]);
@@ -2222,7 +2253,7 @@
           }
 
           fore += `<ellipse cx="380" cy="445" rx="360" ry="28" fill="${p[2]}" opacity="0.38" style="filter: blur(14px);" />`;
-          fore += `<polygon points="0,450 0,405 220,380 380,430 540,390 800,410 800,450" fill="${p[0]}" />`;
+          fore += `<polygon points="0,450 0,405 220,380 380,430 540,390 800,410 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
 
           const fireflyCount = rng.range(10, 16);
           for (let f = 0; f < fireflyCount; f++) {
@@ -2232,19 +2263,21 @@
             fore += `<circle cx="${fx}" cy="${fy}" r="1.8" fill="#ffffff" />`;
           }
           fore += `</g>`;
+          const layer4 = `${flora}${vines}${fore}`;
 
-          svg += `<g style="filter: drop-shadow(0 -16px 26px rgba(0,0,0,0.95));">${vines}${fore}</g>`;
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Dominion: (rng, p) => {
-          let svg = `<defs><linearGradient id="domSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#domSky-${rng.seed})" />`;
-
-          svg += `<circle cx="400" cy="130" r="95" fill="${p[4]}" opacity="0.45" style="filter: blur(20px);" />`;
-          svg += `<circle cx="400" cy="130" r="50" fill="${p[4]}" />`;
-          svg += `<circle cx="398.5" cy="128.5" r="48.5" fill="${p[0]}" />`;
-          svg += `<polygon points="0,450 0,220 240,180 560,180 800,230 800,450" fill="${p[2]}" style="filter: blur(3px); opacity: 0.75;" />`;
+          const skyId = `domSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <circle cx="400" cy="130" r="95" fill="${p[4]}" opacity="0.45" style="filter: blur(20px);" />
+            <circle cx="400" cy="130" r="50" fill="${p[4]}" />
+            <circle cx="398.5" cy="128.5" r="48.5" fill="${p[0]}" />
+          `;
+          const layer1 = `<polygon points="0,450 0,220 240,180 560,180 800,230 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
 
           let citadel = `<g stroke-linejoin="round">`;
           function drawTower(
@@ -2258,9 +2291,9 @@
           ) {
             const midX = (baseL + baseR) / 2;
             let t = "";
-            t += `<polygon points="${baseL},340 ${baseL},${topY} ${midX},${topY} ${midX},340" fill="${colShaftLit}" />`;
-            t += `<polygon points="${midX},340 ${midX},${topY} ${baseR},${topY} ${baseR},340" fill="${colShaftDark}" />`;
-            t += `<polygon points="${baseL - 2},${topY} ${midX},${roofApexY} ${baseR + 2},${topY}" fill="${colRoof}" />`;
+            t += `<polygon points="${baseL},340 ${baseL},${topY} ${midX},${topY} ${midX},340" fill="${colShaftLit}" ${VectorHelpers.microStroke(colShaftLit)} />`;
+            t += `<polygon points="${midX},340 ${midX},${topY} ${baseR},${topY} ${baseR},340" fill="${colShaftDark}" ${VectorHelpers.microStroke(colShaftDark)} />`;
+            t += `<polygon points="${baseL - 2},${topY} ${midX},${roofApexY} ${baseR + 2},${topY}" fill="${colRoof}" ${VectorHelpers.microStroke(colRoof)} />`;
             return t;
           }
 
@@ -2269,24 +2302,22 @@
           citadel += drawTower(270, 330, 210, 150, p[3], p[1], p[4]);
           citadel += drawTower(470, 530, 210, 150, p[3], p[1], p[4]);
 
-          citadel += `<polygon points="360,340 360,185 400,185 400,340" fill="${p[3]}" />`;
-          citadel += `<polygon points="400,340 400,185 440,185 440,340" fill="${p[1]}" />`;
-          citadel += `<polygon points="356,185 400,105 444,185" fill="${p[4]}" />`;
-
+          citadel += `<polygon points="360,340 360,185 400,185 400,340" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+          citadel += `<polygon points="400,340 400,185 440,185 440,340" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          citadel += `<polygon points="356,185 400,105 444,185" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
           citadel += `</g>`;
-          svg += `<g style="filter: drop-shadow(0 -8px 16px rgba(0,0,0,0.7));">${citadel}</g>`;
+          const layer2 = citadel;
 
-          let gate = `<polygon points="0,450 0,310 800,310 800,450" fill="${p[0]}" />`;
+          let gate = `<polygon points="0,450 0,310 800,310 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
           for (let x = 40; x <= 760; x += 30) {
             gate += `<rect x="${x}" y="290" width="16" height="20" fill="${p[0]}" />`;
           }
-          /* Portal archway aura glow */
           gate += `<path d="M 360,450 L 360,360 Q 400,330 440,360 L 440,450 Z" fill="${p[4]}" opacity="0.25" />`;
-          /* Inner fortress gate archway */
           gate += `<path d="M 370,450 L 370,370 Q 400,345 430,370 L 430,450 Z" fill="${p[1]}" />`;
+          const layer3 = gate;
+          const layer4 = "";
 
-          svg += `<g style="filter: drop-shadow(0 -12px 22px rgba(0,0,0,0.9));">${gate}</g>`;
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         // =========================================================================
@@ -2294,12 +2325,15 @@
         // =========================================================================
 
         Wastes: (rng, p) => {
-          let svg = `<defs><linearGradient id="wasteSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[0]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#wasteSky-${rng.seed})" />`;
+          const skyId = `wasteSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[0]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
           const layers = 6;
+          const layerPolys = ["", "", "", "", "", ""];
           for (let l = 0; l < layers; l++) {
-            const depth = l / (layers - 1),
-              sy = 120 + l * 45;
+            const sy = 120 + l * 45;
             let pts = `-50,450 -50,${sy} `,
               cx = -50;
             while (cx < 850) {
@@ -2309,35 +2343,44 @@
             pts += `850,450`;
             const col =
               l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
-            const blurAmt = Math.max(0, (1 - depth) * 6);
-            const filterStyle =
-              blurAmt > 0.5
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
-                : `style="filter: drop-shadow(0px -${(l + 1) * 3}px ${(l + 1) * 3}px rgba(0,0,0,0.6));"`;
-            svg += `<polygon points="${pts}" fill="${col}" ${filterStyle} />`;
+            layerPolys[l] =
+              `<polygon points="${pts}" fill="${col}" ${VectorHelpers.microStroke(col)} />`;
           }
-          return svg;
+
+          const layer1 = `${layerPolys[0]}${layerPolys[1]}`;
+          const layer2 = `${layerPolys[2]}${layerPolys[3]}`;
+          const layer3 = layerPolys[4];
+          const layer4 = layerPolys[5];
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Quarry: (rng, p) => {
-          let svg = `<defs><linearGradient id="quarrySky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#quarrySky-${rng.seed})" />`;
+          const skyId = `quarrySky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
+          const stepMarkup = [];
           for (let s = 0; s < 5; s++) {
             const pad = s * 70,
               y = 140 + s * 55;
-            let step = `<polygon points="${pad},450 ${pad + 40},${y} ${800 - pad - 40},${y} ${800 - pad},450" fill="${p[Math.min(4, Math.max(0, 4 - s))]}" />`;
-            step += `<polygon points="${pad + 40},${y} ${pad + 70},${y + 35} ${800 - pad - 70},${y + 35} ${800 - pad - 40},${y}" fill="${p[Math.min(3, Math.max(0, 3 - s))]}" />`;
-            const filter =
-              s === 0
-                ? `style="filter: blur(3px);"`
-                : `style="filter: drop-shadow(0 -6px 10px rgba(0,0,0,0.6));"`;
-            svg += `<g ${filter}>${step}</g>`;
+            const c1 = p[Math.min(4, Math.max(0, 4 - s))];
+            const c2 = p[Math.min(3, Math.max(0, 3 - s))];
+            let step = `<polygon points="${pad},450 ${pad + 40},${y} ${800 - pad - 40},${y} ${800 - pad},450" fill="${c1}" ${VectorHelpers.microStroke(c1)} />`;
+            step += `<polygon points="${pad + 40},${y} ${pad + 70},${y + 35} ${800 - pad - 70},${y + 35} ${800 - pad - 40},${y}" fill="${c2}" ${VectorHelpers.microStroke(c2)} />`;
+            stepMarkup.push(step);
           }
-          return svg;
+
+          const layer1 = stepMarkup[0];
+          const layer2 = `${stepMarkup[1]}${stepMarkup[2]}`;
+          const layer3 = stepMarkup[3];
+          const layer4 = stepMarkup[4];
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Nebula: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
           let deepPolys = "";
           for (let i = 0; i < 16; i++) {
             const cx = rng.range(40, 760),
@@ -2352,7 +2395,11 @@
             }
             deepPolys += `<polygon points="${pts}" fill="${p[Math.floor((i / 16) * 3) + 1]}" opacity="0.45" />`;
           }
-          svg += `<g style="filter: blur(28px); opacity: 0.75;">${deepPolys}</g>`;
+          const layer0 = `
+            <rect width="100%" height="100%" fill="${p[0]}" />
+            <g style="filter: blur(28px); opacity: 0.75;">${deepPolys}</g>
+          `;
+
           let midPolys = "";
           for (let i = 0; i < 20; i++) {
             const cx = rng.range(20, 780),
@@ -2367,7 +2414,9 @@
             }
             midPolys += `<polygon points="${pts}" fill="${p[Math.floor((i / 20) * 3) + 2]}" opacity="0.6" />`;
           }
-          svg += `<g style="filter: blur(14px); opacity: 0.85;">${midPolys}</g>`;
+          const layer1 = `<g style="filter: blur(14px); opacity: 0.85;">${midPolys}</g>`;
+          const layer2 = "";
+
           let stars = "";
           for (let i = 0; i < 55; i++) {
             const sx = rng.range(0, 800),
@@ -2380,22 +2429,27 @@
               stars += `<circle cx="${sx}" cy="${sy}" r="${rng.next() * 1.3 + 0.4}" fill="${p[4]}" opacity="${op}" />`;
             }
           }
-          svg += `<g style="filter: drop-shadow(0 0 3px ${p[4]});">${stars}</g>`;
-          return svg;
+          const layer3 = `<g style="filter: drop-shadow(0 0 3px ${p[4]});">${stars}</g>`;
+          const layer4 = "";
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Crags: (rng, p) => {
-          let svg = `<defs><linearGradient id="cragSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#cragSky-${rng.seed})" />`;
+          const skyId = `cragSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
 
           let dist = "";
           for (let i = 0; i < 5; i++) {
             const x = 70 + i * 160 + rng.range(-20, 20),
               h = rng.range(200, 290),
               w = rng.range(70, 110);
-            dist += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[2]}" />`;
+            dist += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
           }
-          svg += `<g style="filter: blur(4px); opacity: 0.65;">${dist}</g>`;
+          const layer1 = dist;
 
           function generateCragCluster(
             cx,
@@ -2413,11 +2467,11 @@
             const shelfX = cx + width * 0.25;
 
             let rock = `<g stroke-linejoin="round">`;
-            rock += `<polygon points="${leftX},${botY} ${cx},${topY} ${spineX},${midY}" fill="${colLit}" />`;
-            rock += `<polygon points="${leftX},${botY} ${spineX},${midY} ${cx},${botY}" fill="${colMid}" />`;
-            rock += `<polygon points="${cx},${topY} ${rightX},${botY} ${shelfX},${midY}" fill="${colDark}" />`;
+            rock += `<polygon points="${leftX},${botY} ${cx},${topY} ${spineX},${midY}" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
+            rock += `<polygon points="${leftX},${botY} ${spineX},${midY} ${cx},${botY}" fill="${colMid}" ${VectorHelpers.microStroke(colMid)} />`;
+            rock += `<polygon points="${cx},${topY} ${rightX},${botY} ${shelfX},${midY}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />`;
             rock += `<polygon points="${spineX},${midY} ${shelfX},${midY} ${cx},${botY}" fill="${colDark}" opacity="0.85" />`;
-            rock += `<polygon points="${shelfX},${midY} ${rightX},${botY} ${cx},${botY}" fill="${colDark}" />`;
+            rock += `<polygon points="${shelfX},${midY} ${rightX},${botY} ${cx},${botY}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />`;
             rock += `</g>`;
             return rock;
           }
@@ -2425,29 +2479,32 @@
           let midCrags = "";
           midCrags += generateCragCluster(220, 160, 160, p[3], p[2], p[1]);
           midCrags += generateCragCluster(580, 140, 180, p[3], p[2], p[1]);
-          svg += `<g style="filter: drop-shadow(0 -6px 12px rgba(0,0,0,0.6));">${midCrags}</g>`;
+          const layer2 = midCrags;
+          const layer3 = "";
 
           let foreCrags = "";
           foreCrags += generateCragCluster(100, 100, 220, p[3], p[1], p[0]);
           foreCrags += generateCragCluster(380, 60, 260, p[4], p[2], p[0]);
           foreCrags += generateCragCluster(700, 80, 240, p[3], p[1], p[0]);
-          svg += `<g style="filter: drop-shadow(0 -12px 24px rgba(0,0,0,0.9));">${foreCrags}</g>`;
+          const layer4 = foreCrags;
 
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Fields: (rng, p) => {
-          let svg = `<defs><linearGradient id="fldSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#fldSky-${rng.seed})" />`;
-
-          // Seed-driven sun position and radiant glow
+          const skyId = `fldSky-${rng.seed}`;
           const sunX = rng.range(250, 650),
             sunY = rng.range(90, 150),
             sunR = rng.range(75, 110);
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`;
 
-          // 5 Nested Parabolic Contour Terraces (Seed-Randomized Frequency, Amplitude & Cadence)
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />
+          `;
+
           const layers = 5;
+          const terraceMarkup = [];
           for (let l = 0; l < layers; l++) {
             const y = 145 + l * 60 + rng.range(-6, 6);
             const freq = 0.005 + (l % 2) * 0.002 + rng.range(-1, 1) * 0.001;
@@ -2455,7 +2512,6 @@
             const phase = l * 85 + rng.range(-15, 15);
 
             let terrace = `<g stroke-linejoin="round">`;
-
             let shelfPts = `-50,450 `;
             for (let x = -50; x <= 850; x += 50) {
               const py = y + Math.sin((x + phase) * freq) * amp;
@@ -2470,11 +2526,10 @@
             }
             riserPts += `850,${y + 12}`;
 
-            terrace += `<polygon points="${shelfPts}" fill="${p[Math.min(4, Math.max(0, 4 - l))]}" />`;
-            /* Terraced riser contour stroke */
+            const fillCol = p[Math.min(4, Math.max(0, 4 - l))];
+            terrace += `<polygon points="${shelfPts}" fill="${fillCol}" ${VectorHelpers.microStroke(fillCol)} />`;
             terrace += `<path d="M ${riserPts}" fill="none" stroke="${p[1]}" stroke-width="6" />`;
 
-            // Perspective Furrow Stripes along Contour
             const furrowCount = rng.range(5, 7);
             const furrowSpacing = 720 / Math.max(1, furrowCount - 1);
             for (let f = 0; f < furrowCount; f++) {
@@ -2486,34 +2541,35 @@
               terrace += `<line x1="${fx.toFixed(1)}" y1="${fy.toFixed(1)}" x2="${(fx + fLenX).toFixed(1)}" y2="${(fy + fLenY).toFixed(1)}" stroke="${p[0]}" stroke-width="1.8" stroke-dasharray="6 8" />`;
             }
             terrace += `</g>`;
-
-            const filter =
-              l === 0
-                ? `style="filter: blur(2.5px);"`
-                : `style="filter: drop-shadow(0 -6px 14px rgba(0,0,0,0.55));"`;
-            svg += `<g ${filter}>${terrace}</g>`;
+            terraceMarkup.push(terrace);
           }
-          return svg;
+
+          const layer1 = terraceMarkup[0];
+          const layer2 = `${terraceMarkup[1]}${terraceMarkup[2]}`;
+          const layer3 = terraceMarkup[3];
+          const layer4 = terraceMarkup[4];
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Vale: (rng, p) => {
-          let svg = `<defs>
-            <linearGradient id="vSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1">
+          const skyId = `vSky-${rng.seed}`;
+          let layer0 = `<defs>
+            <linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="${p[4]}" stop-opacity="0.8"/>
               <stop offset="50%" stop-color="${p[3]}"/>
               <stop offset="100%" stop-color="${p[1]}"/>
             </linearGradient>
           </defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#vSky-${rng.seed})" />`;
-
-          svg += `<g style="filter: blur(4px); opacity: 0.4;">`;
+          layer0 += `<rect width="100%" height="100%" fill="url(#${skyId})" />`;
+          layer0 += `<g style="filter: blur(4px); opacity: 0.4;">`;
           for (let i = 0; i < 3; i++) {
             const cy = rng.range(15, 75),
               cx = rng.range(80, 720),
               cw = rng.range(160, 320);
-            svg += `<polygon points="${cx - cw / 2},${cy} ${cx + cw / 2},${cy} ${cx + cw / 2 - 25},${cy + 14} ${cx - cw / 2 + 25},${cy + 14}" fill="#ffffff" />`;
+            layer0 += `<polygon points="${cx - cw / 2},${cy} ${cx + cw / 2},${cy} ${cx + cw / 2 - 25},${cy + 14} ${cx - cw / 2 + 25},${cy + 14}" fill="#ffffff" />`;
           }
-          svg += `</g>`;
+          layer0 += `</g>`;
 
           const distPeaks = [
             { x: 450, y: rng.range(50, 90), w: rng.range(400, 500) },
@@ -2530,8 +2586,8 @@
               pw = peak.w,
               botY = 450;
             const ridgeBotX = px + rng.range(-pw * 0.1, pw * 0.1);
-            distMarkup += `<polygon points="${px - pw / 2},${botY} ${px},${py} ${ridgeBotX},${botY}" fill="${p[2]}" />`;
-            distMarkup += `<polygon points="${ridgeBotX},${botY} ${px},${py} ${px + pw / 2},${botY}" fill="${p[3]}" />`;
+            distMarkup += `<polygon points="${px - pw / 2},${botY} ${px},${py} ${ridgeBotX},${botY}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+            distMarkup += `<polygon points="${ridgeBotX},${botY} ${px},${py} ${px + pw / 2},${botY}" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
             const snowH = rng.range(40, 60),
               snowRatio = snowH / (botY - py);
             const slX = px - (pw / 2) * snowRatio,
@@ -2542,45 +2598,45 @@
             distMarkup += `<polygon points="${slX},${sBotY} ${px},${py} ${smX},${jaggedY}" fill="#f0f0f5" />`;
             distMarkup += `<polygon points="${smX},${jaggedY} ${px},${py} ${srX},${sBotY}" fill="#ffffff" />`;
           }
-          svg += `<g style="filter: blur(3px); opacity: 0.75;">${distMarkup}</g>`;
+          const layer1 = distMarkup;
 
           const waterY = rng.range(250, 270);
-          svg += `<g style="filter: drop-shadow(0px -3px 6px rgba(0,0,0,0.3)); opacity: 0.9;">`;
-          svg += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
+          let water = `<g>`;
+          water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
           for (let i = 0; i < 6; i++) {
-            svg += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
+            water += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
           }
-          svg += `</g>`;
+          water += `</g>`;
 
           const mlX = rng.range(150, 250),
             mlY = rng.range(160, 200),
             mlW = rng.range(500, 600),
             mlRidge = mlX + rng.range(-30, 30);
-          let midLeft = `<polygon points="${mlX - mlW / 2},450 ${mlX},${mlY} ${mlRidge},450" fill="${p[1]}" />`;
-          midLeft += `<polygon points="${mlRidge},450 ${mlX},${mlY} ${mlX + mlW / 2},450" fill="${p[2]}" />`;
+          let midLeft = `<polygon points="${mlX - mlW / 2},450 ${mlX},${mlY} ${mlRidge},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          midLeft += `<polygon points="${mlRidge},450 ${mlX},${mlY} ${mlX + mlW / 2},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
 
           const mrX = rng.range(550, 650),
             mrY = rng.range(120, 160),
             mrW = rng.range(600, 700),
             mrRidge = mrX + rng.range(-40, 40);
-          let midRight = `<polygon points="${mrX - mrW / 2},450 ${mrX},${mrY} ${mrRidge},450" fill="${p[1]}" />`;
-          midRight += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" />`;
-          svg += `<g style="filter: blur(1px) drop-shadow(0px -5px 10px rgba(0,0,0,0.45)); opacity: 0.95;">${midLeft}${midRight}</g>`;
+          let midRight = `<polygon points="${mrX - mrW / 2},450 ${mrX},${mrY} ${mrRidge},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          midRight += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+          const layer2 = `${water}${midLeft}${midRight}`;
 
           const flX = rng.range(80, 150),
             flY = rng.range(280, 320),
             flW = rng.range(500, 700),
             flRidge = flX + rng.range(-20, 20);
-          let foreLeft = `<polygon points="${flX - flW / 2},450 ${flX},${flY} ${flRidge},450" fill="${p[0]}" />`;
-          foreLeft += `<polygon points="${flRidge},450 ${flX},${flY} ${flX + flW / 2},450" fill="${p[1]}" />`;
+          let foreLeft = `<polygon points="${flX - flW / 2},450 ${flX},${flY} ${flRidge},450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          foreLeft += `<polygon points="${flRidge},450 ${flX},${flY} ${flX + flW / 2},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
 
           const frX = rng.range(650, 750),
             frY = rng.range(250, 300),
             frW = rng.range(600, 800),
             frRidge = frX + rng.range(-20, 20);
-          let foreRight = `<polygon points="${frX - frW / 2},450 ${frX},${frY} ${frRidge},450" fill="${p[0]}" />`;
-          foreRight += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" />`;
-          svg += `<g style="filter: drop-shadow(0px -10px 18px rgba(0,0,0,0.7));">${foreLeft}${foreRight}</g>`;
+          let foreRight = `<polygon points="${frX - frW / 2},450 ${frX},${frY} ${frRidge},450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          foreRight += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          const layer3 = `${foreLeft}${foreRight}`;
 
           function drawTrees(startX, startY, endX, endY, count, color) {
             let tr = "";
@@ -2590,43 +2646,50 @@
                 ty = startY + (endY - startY) * t + rng.range(-2, 2);
               const th = rng.range(15, 30),
                 tw = th * 0.45;
-              tr += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${color}" />`;
-              tr += `<polygon points="${tx},${ty - th * 0.7} ${tx - tw * 0.8},${ty - th * 0.1} ${tx + tw * 0.8},${ty - th * 0.1}" fill="${color}" />`;
+              tr += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${color}" ${VectorHelpers.microStroke(color)} />`;
+              tr += `<polygon points="${tx},${ty - th * 0.7} ${tx - tw * 0.8},${ty - th * 0.1} ${tx + tw * 0.8},${ty - th * 0.1}" fill="${color}" ${VectorHelpers.microStroke(color)} />`;
             }
             return tr;
           }
           let trees =
             drawTrees(flX - flW / 2, 450, flX, flY, 20, p[0]) +
             drawTrees(frX, frY, frX + frW / 2, 450, 20, p[0]);
-          svg += `<g style="filter: drop-shadow(0px -4px 8px rgba(0,0,0,0.85));">${trees}</g>`;
+          const layer4 = trees;
 
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Canyon: (rng, p) => {
-          let svg = `<defs><linearGradient id="canyonSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#canyonSky-${rng.seed})" />`;
+          const skyId = `canyonSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
           const layers = 5;
+          const canyonLayers = ["", "", "", "", ""];
           for (let l = 0; l < layers; l++) {
-            const depth = l / (layers - 1),
-              sy = 130 + l * 55;
+            const sy = 130 + l * 55;
             let cx = -50,
-              blocks = "";
+              blocks = `<g stroke-linejoin="round">`;
             while (cx < 850) {
               const w = rng.range(100, 200),
                 y = sy + rng.range(-25, 25);
-              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w},450 ${cx},450" fill="${p[Math.min(3, Math.max(0, 3 - l))]}" />`;
-              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w - 20},${y - 15} ${cx + 20},${y - 15}" fill="${p[Math.min(4, Math.max(1, 4 - l))]}" />`;
+              const c1 = p[Math.min(3, Math.max(0, 3 - l))];
+              const c2 = p[Math.min(4, Math.max(1, 4 - l))];
+              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w},450 ${cx},450" fill="${c1}" ${VectorHelpers.microStroke(c1)} />`;
+              blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w - 20},${y - 15} ${cx + 20},${y - 15}" fill="${c2}" ${VectorHelpers.microStroke(c2)} />`;
               cx += w;
             }
-            const blurAmt = Math.max(0, (1 - depth) * 5.5);
-            const filterStyle =
-              blurAmt > 0.6
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.6 + depth * 0.4).toFixed(2)};"`
-                : `style="filter: drop-shadow(0px -${(l + 1) * 3.5}px ${(l + 1) * 4}px rgba(0,0,0,0.7));"`;
-            svg += `<g ${filterStyle}>${blocks}</g>`;
+            blocks += `</g>`;
+            canyonLayers[l] = blocks;
           }
-          return svg;
+
+          const layer1 = canyonLayers[0];
+          const layer2 = `${canyonLayers[1]}${canyonLayers[2]}`;
+          const layer3 = canyonLayers[3];
+          const layer4 = canyonLayers[4];
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         /* -------------------------------------------------------------------------
@@ -2636,36 +2699,27 @@
          * - Foreground: 1 Sinusoidal Sand Shelf Wave Layer
          * ------------------------------------------------------------------------- */
         Dunes: (rng, p) => {
-          let svg = `<defs><linearGradient id="duneSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="48%" stop-color="#ffffff"/><stop offset="100%" stop-color="#ffffff"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#duneSky-${rng.seed})" />`;
-
-          // Desert Sun & Atmosphere Corona
+          const skyId = `duneSky-${rng.seed}`;
           const sunX = rng.range(260, 560),
             sunY = rng.range(80, 130),
             sunR = rng.range(80, 110);
-          svg += `<circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.32" style="filter: blur(24px);" />`;
 
-          // 1. Helper: Sinusoidal Wave Layer (Full Width -50..850)
-          function generateSineWave(
-            yBase,
-            amp,
-            freq,
-            phase,
-            fillCol,
-            filterAttr = "",
-          ) {
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="48%" stop-color="#ffffff"/><stop offset="100%" stop-color="#ffffff"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.32" style="filter: blur(24px);" />
+          `;
+
+          function generateSineWave(yBase, amp, freq, phase, fillCol) {
             let pts = `-50,450 `;
             for (let x = -50; x <= 850; x += 30) {
               const py = yBase + Math.sin((x + phase) * freq) * amp;
               pts += `${x},${py.toFixed(1)} `;
             }
             pts += `850,450`;
-            return `<g ${filterAttr}><polygon points="${pts}" fill="${fillCol}" /></g>`;
+            return `<polygon points="${pts}" fill="${fillCol}" ${VectorHelpers.microStroke(fillCol)} />`;
           }
 
-          // 2. Helper: Triangle Dune Layer with Multi-Segment Chained S-Curve Divider
-          // - Base triangle: (-50, yStart) -> (peakX, peakY) -> (850, yEnd) down to 450
-          // - Chained 2-to-3 segment S-curve with wildly varying serpentine curvatures
           function generateSingleDune(
             yStart,
             peakX,
@@ -2675,34 +2729,28 @@
             colShadow,
             isRightShadow,
             rng,
-            filterAttr = "",
           ) {
             let dune = `<g stroke-linejoin="round">`;
-            // Base Triangle Dune Silhouette
-            dune += `<polygon points="-50,450 -50,${yStart} ${peakX},${peakY} 850,${yEnd} 850,450" fill="${colLit}" />`;
+            dune += `<polygon points="-50,450 -50,${yStart} ${peakX},${peakY} 850,${yEnd} 850,450" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
 
             const dir = isRightShadow ? 1 : -1;
             const spineBaseX = isRightShadow
               ? peakX + (850 - peakX) * rng.rangeFloat(0.25, 0.45)
               : peakX - (peakX - -50) * rng.rangeFloat(0.25, 0.45);
 
-            // Chained S-Curve Generation (2 to 3 chained cubic Bézier curves with varying curvature)
             const numSegments = rng.chance(0.5) ? 2 : 3;
             let chainedCurve = "";
 
             if (numSegments === 2) {
-              // 2 Chained Cubic Beziers (1 major inflection point)
               const midY = peakY + (450 - peakY) * rng.rangeFloat(0.42, 0.58);
               const swing1 = rng.range(40, 110) * dir;
               const midX = peakX + (spineBaseX - peakX) * 0.45 + swing1;
 
-              // Curve 1: Peak -> Mid
               const c1x = peakX + rng.range(-20, 30) * dir;
               const c1y = peakY + (midY - peakY) * rng.rangeFloat(0.3, 0.5);
               const c2x = midX + rng.range(30, 80) * dir;
               const c2y = peakY + (midY - peakY) * rng.rangeFloat(0.6, 0.85);
 
-              // Curve 2: Mid -> Base (Opposing inflection)
               const swing2 = rng.range(30, 90) * -dir;
               const c3x = midX + swing2;
               const c3y = midY + (450 - midY) * rng.rangeFloat(0.3, 0.5);
@@ -2713,7 +2761,6 @@
                 `C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${midX.toFixed(1)},${midY.toFixed(1)} ` +
                 `C ${c3x.toFixed(1)},${c3y.toFixed(1)} ${c4x.toFixed(1)},${c4y.toFixed(1)} ${spineBaseX.toFixed(1)},450`;
             } else {
-              // 3 Chained Cubic Beziers (Serpentine 2-inflection snaking ridge)
               const y1 = peakY + (450 - peakY) * 0.33;
               const y2 = peakY + (450 - peakY) * 0.67;
 
@@ -2745,71 +2792,41 @@
             }
 
             if (!isRightShadow) {
-              /* Left shadow facet of serpentine sand dune */
-              dune += `<path d="M -50,${yStart} L ${peakX},${peakY} ${chainedCurve} L -50,450 Z" fill="${colShadow}" />`;
+              dune += `<path d="M -50,${yStart} L ${peakX},${peakY} ${chainedCurve} L -50,450 Z" fill="${colShadow}" ${VectorHelpers.microStroke(colShadow)} />`;
             } else {
-              /* Right shadow facet of serpentine sand dune */
-              dune += `<path d="M ${peakX},${peakY} ${chainedCurve} L 850,450 L 850,${yEnd} Z" fill="${colShadow}" />`;
+              dune += `<path d="M ${peakX},${peakY} ${chainedCurve} L 850,450 L 850,${yEnd} Z" fill="${colShadow}" ${VectorHelpers.microStroke(colShadow)} />`;
             }
 
             dune += `</g>`;
-            return `<g ${filterAttr}>${dune}</g>`;
+            return dune;
           }
 
-          // -------------------------------------------------------------------------
-          // SECTION 1: BACKGROUND (3 Layers with High-Variance Sinusoidal Waves)
-          // -------------------------------------------------------------------------
-          // BG Wave 1 (Far horizon - 2x crest placement variance)
+          // BG Waves (3 layers)
           const bg1Y = 145 + rng.range(-14, 14);
           const bg1Amp = rng.range(14, 28);
           const bg1Freq = rng.rangeFloat(0.0045, 0.0085);
           const bg1Phase = rng.range(0, 1200);
-          svg += generateSineWave(
-            bg1Y,
-            bg1Amp,
-            bg1Freq,
-            bg1Phase,
-            p[2],
-            `style="filter: blur(3.5px); opacity: 0.7;"`,
-          );
 
-          // BG Wave 2 (Mid horizon - 2x crest placement variance)
           const bg2Y = 175 + rng.range(-14, 14);
           const bg2Amp = rng.range(18, 34);
           const bg2Freq = rng.rangeFloat(0.0055, 0.0095);
           const bg2Phase = rng.range(0, 1200);
-          svg += generateSineWave(
-            bg2Y,
-            bg2Amp,
-            bg2Freq,
-            bg2Phase,
-            p[3],
-            `style="filter: blur(2.5px); opacity: 0.85;"`,
-          );
 
-          // BG Wave 3 (Near horizon - 2x crest placement variance)
           const bg3Y = 205 + rng.range(-14, 14);
           const bg3Amp = rng.range(22, 40);
           const bg3Freq = rng.rangeFloat(0.0065, 0.011);
           const bg3Phase = rng.range(0, 1200);
-          svg += generateSineWave(
-            bg3Y,
-            bg3Amp,
-            bg3Freq,
-            bg3Phase,
-            p[2],
-            `style="filter: blur(1.5px); opacity: 0.95;"`,
-          );
 
-          // -------------------------------------------------------------------------
-          // SECTION 2: MIDGROUND (4 Layers, Exactly 1 Dune per Layer, Alternating Direction)
-          // - Back two mid dunes: 2 colour shade contrast (p3, p1) & (p4, p2)
-          // - Front two mid dunes: 1 colour shade contrast (p3, p2) & (p4, p3)
-          // -------------------------------------------------------------------------
-          // Mid Dune 1 (Back Mid 1 - 2-shade contrast: p3 lit, p1 shadow)
+          const layer1 = `
+            ${generateSineWave(bg1Y, bg1Amp, bg1Freq, bg1Phase, p[2])}
+            ${generateSineWave(bg2Y, bg2Amp, bg2Freq, bg2Phase, p[3])}
+            ${generateSineWave(bg3Y, bg3Amp, bg3Freq, bg3Phase, p[2])}
+          `;
+
+          // Mid Dunes
           const m1PeakX = rng.range(240, 360);
           const m1PeakY = rng.range(175, 205);
-          svg += generateSingleDune(
+          const d1 = generateSingleDune(
             245,
             m1PeakX,
             m1PeakY,
@@ -2818,13 +2835,11 @@
             p[1],
             false,
             rng,
-            `style="filter: drop-shadow(0 -4px 8px rgba(0,0,0,0.4));"`,
           );
 
-          // Mid Dune 2 (Back Mid 2 - 2-shade contrast: p4 lit, p2 shadow)
           const m2PeakX = rng.range(500, 640);
           const m2PeakY = rng.range(210, 240);
-          svg += generateSingleDune(
+          const d2 = generateSingleDune(
             280,
             m2PeakX,
             m2PeakY,
@@ -2833,13 +2848,12 @@
             p[2],
             true,
             rng,
-            `style="filter: drop-shadow(0 -6px 11px rgba(0,0,0,0.5));"`,
           );
+          const layer2 = `${d1}${d2}`;
 
-          // Mid Dune 3 (Front Mid 1 - 1-shade contrast: p3 lit, p2 shadow)
           const m3PeakX = rng.range(280, 420);
           const m3PeakY = rng.range(250, 280);
-          svg += generateSingleDune(
+          const d3 = generateSingleDune(
             320,
             m3PeakX,
             m3PeakY,
@@ -2848,13 +2862,11 @@
             p[2],
             false,
             rng,
-            `style="filter: drop-shadow(0 -8px 14px rgba(0,0,0,0.6));"`,
           );
 
-          // Mid Dune 4 (Front Mid 2 - 1-shade contrast: p4 lit, p3 shadow)
           const m4PeakX = rng.range(520, 660);
           const m4PeakY = rng.range(290, 320);
-          svg += generateSingleDune(
+          const d4 = generateSingleDune(
             360,
             m4PeakX,
             m4PeakY,
@@ -2863,25 +2875,15 @@
             p[3],
             true,
             rng,
-            `style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.7));"`,
           );
+          const layer3 = `${d3}${d4}`;
 
-          // -------------------------------------------------------------------------
-          // SECTION 3: FOREGROUND (1 Layer with Sinusoidal Wave - Pure Lit, No Shadow)
-          // -------------------------------------------------------------------------
           const fgY = 405 + rng.range(-5, 5);
           const fgAmp = 16 + rng.range(-3, 3);
           const fgPhase = rng.range(80, 180);
-          svg += generateSineWave(
-            fgY,
-            fgAmp,
-            0.009,
-            fgPhase,
-            p[4],
-            `style="filter: drop-shadow(0 -12px 22px rgba(0,0,0,0.85));"`,
-          );
+          const layer4 = generateSineWave(fgY, fgAmp, 0.009, fgPhase, p[4]);
 
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         // =========================================================================
@@ -2889,15 +2891,22 @@
         // =========================================================================
 
         Catacombs: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          for (let i = 4; i >= 0; i--) {
+          const layer0 = `
+            <rect width="100%" height="100%" fill="${p[0]}" />
+            <circle cx="400" cy="240" r="12" fill="${p[4]}" style="filter: blur(2px);" />
+          `;
+          function drawArch(i) {
             const pad = i * 45,
               col = p[i];
-            /* Descending crypt archway portal */
-            svg += `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="18" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));" />`;
+            return `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="18" ${VectorHelpers.microStroke(col)} />`;
           }
-          svg += `<circle cx="400" cy="240" r="12" fill="${p[4]}" style="filter: blur(2px);" />`;
-          return svg;
+
+          const layer1 = drawArch(0);
+          const layer2 = `${drawArch(1)}${drawArch(2)}`;
+          const layer3 = drawArch(3);
+          const layer4 = drawArch(4);
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         /* =========================================================================
@@ -2920,7 +2929,7 @@
          *    Loop Invariant: sum(dX) = 0 and sum(dY) = 0 | oint grad(h) * dr = 12*dh != 0
          * ========================================================================= */
         Labyrinth: (rng, p) => {
-          let svg = `<defs>
+          const layer0 = `<defs>
             <linearGradient id="treadGrad-${rng.seed}" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stop-color="${p[4]}"/>
               <stop offset="100%" stop-color="${p[3]}"/>
@@ -2937,10 +2946,9 @@
               <stop offset="0%" stop-color="${p[0]}"/>
               <stop offset="100%" stop-color="${p[2]}"/>
             </linearGradient>
-          </defs>`;
-
-          svg += `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          svg += `<circle cx="400" cy="225" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(32px);" />`;
+          </defs>
+          <rect width="100%" height="100%" fill="${p[0]}" />
+          <circle cx="400" cy="225" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(32px);" />`;
 
           const tg = `url(#treadGrad-${rng.seed})`;
           const rg = `url(#riserGrad-${rng.seed})`;
@@ -3007,16 +3015,17 @@
             <polygon points="630,482 630,464 720,414 720,432" fill="${wo}"/>
           `;
 
-          svg += `
-            <g style="filter: drop-shadow(0 14px 26px rgba(0,0,0,0.85));">
-              <g transform="translate(400, 225) scale(0.68) translate(-450, -446)"
-                 stroke="${p[0]}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
-                ${figure}
-              </g>
+          const layer1 = "";
+          const layer2 = "";
+          const layer3 = `
+            <g transform="translate(400, 225) scale(0.68) translate(-450, -446)"
+               stroke="${p[0]}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+              ${figure}
             </g>
           `;
+          const layer4 = "";
 
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         /* -------------------------------------------------------------------------
@@ -3025,10 +3034,12 @@
          * - Flared hyperbolic needle silhouette with central lit/shadow ridge
          * ------------------------------------------------------------------------- */
         Spire: (rng, p) => {
-          let svg = `<defs><linearGradient id="spireSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#spireSky-${rng.seed})" />`;
+          const skyId = `spireSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
 
-          // 1. Helper: Draw a Flared Hyperbolic Spire Needle with Central Lit/Shadow Split
           function drawFlaredSpire(
             cx,
             topY,
@@ -3045,63 +3056,35 @@
             const leftTop = cx - topW / 2;
             const rightTop = cx + topW / 2;
 
-            // Flared concave control points
             const ctrlY = topY + h * 0.68;
             const leftCtrlX = cx - topW * 0.8;
             const rightCtrlX = cx + topW * 0.8;
 
             let spire = `<g stroke-linejoin="round">`;
-            // Lit Left Flank
-            /* Lit left flank of hyperbolic spire needle */
-            spire += `<path d="M ${leftTop.toFixed(1)},${topY.toFixed(1)} Q ${leftCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${leftBase.toFixed(1)},${botY} L ${cx.toFixed(1)},${botY} L ${cx.toFixed(1)},${topY.toFixed(1)} Z" fill="${colLit}" />`;
-            // Shadow Right Flank
-            /* Shadow right flank of hyperbolic spire needle */
-            spire += `<path d="M ${cx.toFixed(1)},${topY.toFixed(1)} L ${cx.toFixed(1)},${botY} L ${rightBase.toFixed(1)},${botY} Q ${rightCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} Z" fill="${colShadow}" />`;
-            // Glowing Needle Apex Tip
-            spire += `<polygon points="${leftTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY - 6).toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY + 10).toFixed(1)}" fill="${colTip}" />`;
+            spire += `<path d="M ${leftTop.toFixed(1)},${topY.toFixed(1)} Q ${leftCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${leftBase.toFixed(1)},${botY} L ${cx.toFixed(1)},${botY} L ${cx.toFixed(1)},${topY.toFixed(1)} Z" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
+            spire += `<path d="M ${cx.toFixed(1)},${topY.toFixed(1)} L ${cx.toFixed(1)},${botY} L ${rightBase.toFixed(1)},${botY} Q ${rightCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} Z" fill="${colShadow}" ${VectorHelpers.microStroke(colShadow)} />`;
+            spire += `<polygon points="${leftTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY - 6).toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY + 10).toFixed(1)}" fill="${colTip}" ${VectorHelpers.microStroke(colTip)} />`;
             spire += `</g>`;
             return spire;
           }
 
-          // 2. Dynamic Spire Count: Prefer 1 (45%) or 3 (45%) over 2 (10%)
           const countRoll = rng.range(1, 100);
           const count = countRoll <= 45 ? 1 : countRoll <= 90 ? 3 : 2;
 
+          let layer1 = "";
+          let layer2 = "";
+          let layer3 = "";
+          let layer4 = "";
+
           if (count === 1) {
-            // --- 1 SPIRE: Solo Majestic Monolith ---
             const mainX = 400 + rng.range(-35, 35);
             const mainY = 22 + rng.range(-10, 10);
             const mainW = rng.range(280, 340);
 
-            // Celestial Halo behind apex
-            svg += `<circle cx="${mainX}" cy="${mainY + 55}" r="90" fill="${p[4]}" opacity="0.32" style="filter: blur(22px);" />`;
-
-            // Faint distant horizon peak
             const distX = (mainX < 400 ? 590 : 210) + rng.range(-20, 20);
-            let distSpire = drawFlaredSpire(
-              distX,
-              115,
-              4,
-              110,
-              p[3],
-              p[2],
-              p[4],
-            );
-            svg += `<g style="filter: blur(3.5px); opacity: 0.55;">${distSpire}</g>`;
-
-            // Solo Grand Spire
-            let mainSpire = drawFlaredSpire(
-              mainX,
-              mainY,
-              6,
-              mainW,
-              p[3],
-              p[1],
-              p[4],
-            );
-            svg += `<g style="filter: drop-shadow(0 0 25px rgba(0,0,0,0.85));">${mainSpire}</g>`;
+            layer1 = drawFlaredSpire(distX, 115, 4, 110, p[3], p[2], p[4]);
+            layer3 = drawFlaredSpire(mainX, mainY, 6, mainW, p[3], p[1], p[4]);
           } else if (count === 2) {
-            // --- 2 SPIRES: Twin Staggered Pinnacles ---
             const s1X = 290 + rng.range(-30, 30);
             const s1Y = 26 + rng.range(-10, 10);
             const s1W = rng.range(250, 300);
@@ -3110,18 +3093,9 @@
             const s2Y = 70 + rng.range(-12, 14);
             const s2W = rng.range(200, 240);
 
-            // Celestial Halo
-            svg += `<circle cx="${(s1X + s2X) / 2}" cy="110" r="100" fill="${p[4]}" opacity="0.3" style="filter: blur(24px);" />`;
-
-            // Farther Spire
-            let spire2 = drawFlaredSpire(s2X, s2Y, 5, s2W, p[3], p[1], p[4]);
-            svg += `<g style="filter: drop-shadow(-8px 0 16px rgba(0,0,0,0.7));">${spire2}</g>`;
-
-            // Primary Closer Spire
-            let spire1 = drawFlaredSpire(s1X, s1Y, 6, s1W, p[3], p[1], p[4]);
-            svg += `<g style="filter: drop-shadow(0 0 25px rgba(0,0,0,0.85));">${spire1}</g>`;
+            layer2 = drawFlaredSpire(s2X, s2Y, 5, s2W, p[3], p[1], p[4]);
+            layer3 = drawFlaredSpire(s1X, s1Y, 6, s1W, p[3], p[1], p[4]);
           } else {
-            // --- 3 SPIRES: Triad Mountain Hierarchy ---
             const cX = 400 + rng.range(-25, 25);
             const cY = 20 + rng.range(-8, 8);
             const cW = rng.range(250, 300);
@@ -3134,49 +3108,51 @@
             const rY = 90 + rng.range(-12, 15);
             const rW = rng.range(160, 200);
 
-            // Celestial Halo behind central peak
-            svg += `<circle cx="${cX}" cy="${cY + 50}" r="95" fill="${p[4]}" opacity="0.3" style="filter: blur(22px);" />`;
-
-            // Flanking Spires
-            let lSpire = drawFlaredSpire(lX, lY, 4, lW, p[3], p[2], p[4]);
-            svg += `<g style="filter: blur(1.5px); opacity: 0.85;">${lSpire}</g>`;
-
-            let rSpire = drawFlaredSpire(rX, rY, 4, rW, p[3], p[2], p[4]);
-            svg += `<g style="filter: blur(1.5px); opacity: 0.85;">${rSpire}</g>`;
-
-            // Central Grand Spire
-            let centerSpire = drawFlaredSpire(cX, cY, 6, cW, p[3], p[1], p[4]);
-            svg += `<g style="filter: drop-shadow(0 0 25px rgba(0,0,0,0.85));">${centerSpire}</g>`;
+            layer1 = `${drawFlaredSpire(lX, lY, 4, lW, p[3], p[2], p[4])}${drawFlaredSpire(rX, rY, 4, rW, p[3], p[2], p[4])}`;
+            layer3 = drawFlaredSpire(cX, cY, 6, cW, p[3], p[1], p[4]);
           }
 
-          return svg;
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Ruins: (rng, p) => {
-          let svg = `<defs><linearGradient id="ruinSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#ruinSky-${rng.seed})" />`;
-          svg += `<g style="filter: blur(3px); opacity: 0.6;">`;
-          svg += `<rect x="250" y="160" width="300" height="20" fill="${p[2]}" />`;
-          svg += `<rect x="280" y="180" width="25" height="150" fill="${p[2]}" />`;
-          svg += `<rect x="495" y="180" width="25" height="150" fill="${p[2]}" />`;
-          svg += `</g>`;
-          let cols = `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" />`;
+          const skyId = `ruinSky-${rng.seed}`;
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+          `;
+
+          const layer1 = `
+            <rect x="250" y="160" width="300" height="20" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+            <rect x="280" y="180" width="25" height="150" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+            <rect x="495" y="180" width="25" height="150" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+          `;
+
+          let cols = "";
           for (let i = 0; i < 5; i++) {
             const cx = 100 + i * 140,
               h = 180 + (i % 3) * 35;
-            cols += `<rect x="${cx}" y="${330 - h}" width="36" height="${h}" fill="${p[1]}" />`;
-            cols += `<polygon points="${cx - 8},${330 - h} ${cx + 18},${310 - h} ${cx + 44},${330 - h}" fill="${p[2]}" />`;
+            cols += `<rect x="${cx}" y="${330 - h}" width="36" height="${h}" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+            cols += `<polygon points="${cx - 8},${330 - h} ${cx + 18},${310 - h} ${cx + 44},${330 - h}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
           }
-          svg += `<g style="filter: drop-shadow(0 -10px 18px rgba(0,0,0,0.85));">${cols}</g>`;
-          return svg;
+          const layer2 = cols;
+          const layer3 = "";
+          const layer4 = `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         Abyss: (rng, p) => {
-          let svg = `<rect width="100%" height="100%" fill="${p[0]}" />`;
-          svg += `<rect x="350" y="0" width="100" height="450" fill="${p[4]}" opacity="0.4" style="filter: blur(20px);" />`;
-          svg += `<polygon points="0,0 360,0 280,450 0,450" fill="${p[1]}" style="filter: drop-shadow(10px 0 15px rgba(0,0,0,0.9));" />`;
-          svg += `<polygon points="800,0 440,0 520,450 800,450" fill="${p[2]}" style="filter: drop-shadow(-10px 0 15px rgba(0,0,0,0.9));" />`;
-          return svg;
+          const layer0 = `
+            <rect width="100%" height="100%" fill="${p[0]}" />
+            <rect x="350" y="0" width="100" height="450" fill="${p[4]}" opacity="0.4" style="filter: blur(20px);" />
+          `;
+          const layer1 = "";
+          const layer2 = `<polygon points="0,0 360,0 280,450 0,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          const layer3 = `<polygon points="800,0 440,0 520,450 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+          const layer4 = "";
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
 
         /* -------------------------------------------------------------------------
@@ -3185,53 +3161,60 @@
          * - Replaced solid triangles with clean 3-tier faceted pines (Wilds geometry)
          * ------------------------------------------------------------------------- */
         Woods: (rng, p) => {
-          let svg = `<defs><linearGradient id="woodsSky-${rng.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>`;
-          svg += `<rect width="100%" height="100%" fill="url(#woodsSky-${rng.seed})" />`;
-
-          // Perfectly Round Moon with Radiant Atmospheric Glow Halo
+          const skyId = `woodsSky-${rng.seed}`;
           const moonX = rng.range(200, 600),
             moonY = rng.range(90, 170),
             moonR = rng.range(70, 105);
-          svg += `<circle cx="${moonX}" cy="${moonY}" r="${moonR + 32}" fill="${p[4]}" opacity="0.32" style="filter: blur(25px);" />`;
-          svg += `<circle cx="${moonX}" cy="${moonY}" r="${moonR}" fill="${p[4]}" opacity="0.92" />`;
+
+          const layer0 = `
+            <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            <circle cx="${moonX}" cy="${moonY}" r="${moonR + 32}" fill="${p[4]}" opacity="0.32" style="filter: blur(25px);" />
+            <circle cx="${moonX}" cy="${moonY}" r="${moonR}" fill="${p[4]}" opacity="0.92" />
+          `;
 
           const layers = 6;
           let prevPositions = [];
+          const woodsLayers = ["", "", "", "", "", ""];
 
           for (let l = 0; l < layers; l++) {
-            const depth = l / (layers - 1),
-              yMin = 180 - l * 20;
-            // Tree count progression: 8 in BG (l=0) -> 2 in FG (l=5)
+            const yMin = 180 - l * 20;
             const spCount = Math.round(8 - l * (6 / (layers - 1)));
             const step = 800 / spCount;
 
-            // Random initial start offset guaranteed to not coincide with previous layer
             let baseOffset = rng.rangeFloat(0.1, 0.4) * step;
             if (l > 0 && prevPositions.length > 0) {
-              // Stagger by half-step from previous layer to guarantee gap alignment
               baseOffset = (prevPositions[l - 1] + 0.5 * step) % step;
             }
             prevPositions.push(baseOffset);
 
             const col =
               l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
-            const blurAmt = Math.max(0, (1 - depth) * 5.5);
-            const filterStyle =
-              blurAmt > 0.6
-                ? `style="filter: blur(${blurAmt.toFixed(1)}px); opacity: ${(0.65 + depth * 0.35).toFixed(2)};"`
-                : ``;
-            svg += `<g ${filterStyle}>`;
+            let layerMarkup = `<g stroke-linejoin="round">`;
             for (let i = 0; i < spCount; i++) {
-              // Evenly distributed across the canvas width
               const cx =
                 (baseOffset + (i + 0.5) * step + rng.range(-6, 6)) % 800;
               const sy = rng.range(yMin, yMin + 70);
               const th = 450 - sy;
-              svg += VectorHelpers.facetedPine(cx, 450, th, col, col, 3);
+              layerMarkup += VectorHelpers.facetedPine(
+                cx,
+                450,
+                th,
+                col,
+                col,
+                3,
+              );
             }
-            svg += `</g>`;
+            layerMarkup += `</g>`;
+            woodsLayers[l] = layerMarkup;
           }
-          return svg;
+
+          const layer1 = `${woodsLayers[0]}${woodsLayers[1]}`;
+          const layer2 = `${woodsLayers[2]}${woodsLayers[3]}`;
+          const layer3 = woodsLayers[4];
+          const layer4 = woodsLayers[5];
+
+          return { layer0, layer1, layer2, layer3, layer4 };
         },
       };
 
