@@ -4289,145 +4289,157 @@
         </g>
       `;
 
-      function getOvergrownFrameVines() {
-        return `
-          <g class="overgrown-frame-vines" style="pointer-events: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.55));">
-            <!-- 1. Top-Left Corner Gnarly Vine Overhang -->
-            <g stroke-linecap="round" stroke-linejoin="round">
-              <path d="M -15,-10 C 20,15 45,5 85,45 C 115,75 105,105 125,95 C 135,90 130,78 122,82 Q 116,85 118,92" fill="none" stroke="#162e14" stroke-width="5" />
-              <path d="M -15,-10 C 20,15 45,5 85,45 C 115,75 105,105 125,95 C 135,90 130,78 122,82 Q 116,85 118,92" fill="none" stroke="#2d5e28" stroke-width="3" />
-              <path d="M -15,-10 C 20,15 45,5 85,45 C 115,75 105,105 125,95" fill="none" stroke="#4a8f42" stroke-width="1" opacity="0.85" />
-              <path d="M 45,18 C 65,30 60,65 42,75 Q 32,80 36,90 Q 42,95 48,88" fill="none" stroke="#22471e" stroke-width="2" />
-            </g>
-            <!-- Top-Left Thorns -->
-            <g fill="#162e14">
-              <path d="M 28,14 Q 22,5 16,3 Q 23,12 30,20 Z" />
-              <path d="M 68,34 Q 72,24 76,21 Q 70,30 64,38 Z" />
-              <path d="M 98,62 Q 108,60 114,57 Q 104,65 95,68 Z" />
-              <path d="M 52,48 Q 58,54 62,56 Q 54,52 48,46 Z" />
-            </g>
-            <!-- Top-Left Leaves -->
-            <g stroke-linejoin="round">
-              <path d="M 38,24 C 28,12 35,-2 52,2 C 54,16 48,26 38,24 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 38,24 Q 44,10 52,2" stroke="#5cb352" stroke-width="0.6" fill="none" />
-              <path d="M 80,42 C 92,30 108,35 112,50 C 98,54 86,48 80,42 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 80,42 Q 98,42 112,50" stroke="#5cb352" stroke-width="0.6" fill="none" />
-              <path d="M 108,82 C 122,72 136,80 134,96 C 120,96 112,88 108,82 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 108,82 Q 124,84 134,96" stroke="#4a8f42" stroke-width="0.6" fill="none" />
-              <path d="M 45,72 C 35,65 30,50 42,44 C 48,54 48,65 45,72 Z" fill="#3a7534" stroke="#162e14" stroke-width="0.7" />
-            </g>
-            <!-- Top-Left Flower Rosette -->
-            <g transform="translate(85, 45)">
-              <circle cx="0" cy="-4" r="3" fill="#a83244" />
-              <circle cx="3.8" cy="-1.2" r="3" fill="#bd3a4e" />
-              <circle cx="2.4" cy="3.2" r="3" fill="#a83244" />
-              <circle cx="-2.4" cy="3.2" r="3" fill="#912838" />
-              <circle cx="-3.8" cy="-1.2" r="3" fill="#a83244" />
-              <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
-              <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
-            </g>
+      class LSystemVine {
+        constructor(rng) {
+          this.rng = rng ? () => rng.range(0, 1000) / 1000 : Math.random;
+          this.stems = [];
+          this.thorns = [];
+          this.leaves = [];
+          this.flowers = [];
+          this.flowerCores = [];
+        }
 
-            <!-- 2. Top-Right Corner Curling Vine -->
-            <g stroke-linecap="round" stroke-linejoin="round">
-              <path d="M 815,-10 C 780,20 755,10 715,48 C 685,78 695,110 675,100 C 665,95 670,82 678,86 Q 684,89 682,96" fill="none" stroke="#162e14" stroke-width="4.5" />
-              <path d="M 815,-10 C 780,20 755,10 715,48 C 685,78 695,110 675,100 C 665,95 670,82 678,86 Q 684,89 682,96" fill="none" stroke="#2d5e28" stroke-width="2.6" />
-              <path d="M 815,-10 C 780,20 755,10 715,48 C 685,78 695,110 675,100" fill="none" stroke="#4a8f42" stroke-width="0.9" opacity="0.85" />
-              <path d="M 755,22 C 735,35 740,70 758,80 Q 768,85 764,95" fill="none" stroke="#22471e" stroke-width="1.8" />
-            </g>
-            <!-- Top-Right Thorns -->
-            <g fill="#162e14">
-              <path d="M 772,16 Q 778,7 784,5 Q 777,14 770,22 Z" />
-              <path d="M 732,36 Q 728,26 724,23 Q 730,32 736,40 Z" />
-              <path d="M 702,64 Q 692,62 686,59 Q 696,67 705,70 Z" />
-            </g>
-            <!-- Top-Right Leaves -->
-            <g stroke-linejoin="round">
-              <path d="M 762,26 C 772,14 765,0 748,4 C 746,18 752,28 762,26 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 762,26 Q 756,12 748,4" stroke="#5cb352" stroke-width="0.6" fill="none" />
-              <path d="M 720,44 C 708,32 692,37 688,52 C 702,56 714,50 720,44 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 720,44 Q 702,44 688,52" stroke="#5cb352" stroke-width="0.6" fill="none" />
-              <path d="M 692,84 C 678,74 664,82 666,98 C 680,98 688,90 692,84 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-            </g>
-            <!-- Top-Right Flower Rosette -->
-            <g transform="translate(715, 48)">
-              <circle cx="0" cy="-3.5" r="2.6" fill="#a83244" />
-              <circle cx="3.3" cy="-1.1" r="2.6" fill="#bd3a4e" />
-              <circle cx="2.1" cy="2.8" r="2.6" fill="#a83244" />
-              <circle cx="-2.1" cy="2.8" r="2.6" fill="#912838" />
-              <circle cx="-3.3" cy="-1.1" r="2.6" fill="#a83244" />
-              <circle cx="0" cy="0" r="1.5" fill="#e5b83b" />
-            </g>
+        grow(x, y, angle, length, depth, maxDepth = 4, width = 4) {
+          if (depth > maxDepth || length < 3) return;
 
-            <!-- 3. Bottom-Left Heavy Creeping Root/Vine Trunk -->
-            <g stroke-linecap="round" stroke-linejoin="round">
-              <path d="M -10,460 C 25,430 40,445 75,410 C 110,375 95,340 120,350 Q 130,355 125,365 Q 118,368 116,360" fill="none" stroke="#162e14" stroke-width="5" />
-              <path d="M -10,460 C 25,430 40,445 75,410 C 110,375 95,340 120,350 Q 130,355 125,365 Q 118,368 116,360" fill="none" stroke="#2d5e28" stroke-width="3" />
-              <path d="M -10,460 C 25,430 40,445 75,410" fill="none" stroke="#4a8f42" stroke-width="1" opacity="0.85" />
-              <path d="M 40,440 C 60,420 50,385 35,375 Q 25,370 28,360" fill="none" stroke="#22471e" stroke-width="2" />
-            </g>
-            <!-- Bottom-Left Thorns -->
-            <g fill="#162e14">
-              <path d="M 25,436 Q 18,444 14,448 Q 22,439 29,431 Z" />
-              <path d="M 58,418 Q 54,428 50,432 Q 56,423 62,414 Z" />
-              <path d="M 94,386 Q 84,390 78,392 Q 88,384 97,380 Z" />
-            </g>
-            <!-- Bottom-Left Leaves -->
-            <g stroke-linejoin="round">
-              <path d="M 32,430 C 22,442 28,458 45,454 C 47,440 42,430 32,430 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 72,408 C 60,420 44,415 40,400 C 54,396 66,402 72,408 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 104,368 C 90,378 76,370 78,354 C 92,354 100,362 104,368 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-            </g>
-            <!-- Bottom-Left Rose -->
-            <g transform="translate(75, 410)">
-              <circle cx="0" cy="-3.5" r="2.6" fill="#a83244" />
-              <circle cx="3.3" cy="-1.1" r="2.6" fill="#bd3a4e" />
-              <circle cx="2.1" cy="2.8" r="2.6" fill="#a83244" />
-              <circle cx="-2.1" cy="2.8" r="2.6" fill="#912838" />
-              <circle cx="-3.3" cy="-1.1" r="2.6" fill="#a83244" />
-              <circle cx="0" cy="0" r="1.5" fill="#e5b83b" />
-            </g>
+          const curveSign =
+            (depth % 2 === 0 ? 1 : -1) * (0.8 + 0.4 * this.rng());
+          const midAngle = angle + curveSign * 0.25;
+          const endAngle = angle + curveSign * 0.1;
 
-            <!-- 4. Bottom-Right Heavy Creeping Root/Vine Trunk -->
-            <g stroke-linecap="round" stroke-linejoin="round">
-              <path d="M 810,460 C 775,430 760,445 725,410 C 690,375 705,340 680,350 Q 670,355 675,365 Q 682,368 684,360" fill="none" stroke="#162e14" stroke-width="5" />
-              <path d="M 810,460 C 775,430 760,445 725,410 C 690,375 705,340 680,350 Q 670,355 675,365 Q 682,368 684,360" fill="none" stroke="#2d5e28" stroke-width="3" />
-              <path d="M 810,460 C 775,430 760,445 725,410" fill="none" stroke="#4a8f42" stroke-width="1" opacity="0.85" />
-              <path d="M 760,440 C 740,420 750,385 765,375 Q 775,370 772,360" fill="none" stroke="#22471e" stroke-width="2" />
-            </g>
-            <!-- Bottom-Right Thorns -->
-            <g fill="#162e14">
-              <path d="M 775,436 Q 782,444 786,448 Q 778,439 771,431 Z" />
-              <path d="M 742,418 Q 746,428 750,432 Q 744,423 738,414 Z" />
-              <path d="M 706,386 Q 716,390 722,392 Q 712,384 703,380 Z" />
-            </g>
-            <!-- Bottom-Right Leaves -->
-            <g stroke-linejoin="round">
-              <path d="M 768,430 C 778,442 772,458 755,454 C 753,440 758,430 768,430 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 728,408 C 740,420 756,415 760,400 C 746,396 734,402 728,408 Z" fill="#356d2f" stroke="#162e14" stroke-width="0.8" />
-              <path d="M 696,368 C 710,378 724,370 722,354 C 708,354 700,362 696,368 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.8" />
-            </g>
-            <!-- Bottom-Right Rose -->
-            <g transform="translate(725, 410)">
-              <circle cx="0" cy="-3.5" r="2.6" fill="#a83244" />
-              <circle cx="3.3" cy="-1.1" r="2.6" fill="#bd3a4e" />
-              <circle cx="2.1" cy="2.8" r="2.6" fill="#a83244" />
-              <circle cx="-2.1" cy="2.8" r="2.6" fill="#912838" />
-              <circle cx="-3.3" cy="-1.1" r="2.6" fill="#a83244" />
-              <circle cx="0" cy="0" r="1.5" fill="#e5b83b" />
-            </g>
+          const cp1x = x + Math.cos(angle) * (length * 0.4);
+          const cp1y = y + Math.sin(angle) * (length * 0.4);
+          const cp2x = x + Math.cos(midAngle) * (length * 0.8);
+          const cp2y = y + Math.sin(midAngle) * (length * 0.8);
+          const endX = x + Math.cos(endAngle) * length;
+          const endY = y + Math.sin(endAngle) * length;
 
-            <!-- 5. Side Margin Sinuous Tendril Climbers -->
-            <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M -5,220 C 25,210 15,245 35,235 Q 45,230 40,240 Q 34,242 36,236" stroke="#22471e" stroke-width="2" />
-              <path d="M 805,200 C 775,190 785,225 765,215 Q 755,210 760,220 Q 766,222 764,216" stroke="#22471e" stroke-width="2" />
+          this.stems.push(
+            `M ${x.toFixed(1)},${y.toFixed(1)} C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}`,
+          );
+
+          const midX = (x + 3 * cp1x + 3 * cp2x + endX) / 8;
+          const midY = (y + 3 * cp1y + 3 * cp2y + endY) / 8;
+
+          // 1. Thorns (alternating at internodes)
+          const thornSide = depth % 2 === 0 ? 1 : -1;
+          const tAngle = midAngle + thornSide * (Math.PI * 0.65);
+          const tLen = Math.max(3, length * 0.22);
+          const tTipX = midX + Math.cos(tAngle) * tLen;
+          const tTipY = midY + Math.sin(tAngle) * tLen;
+          const tBase1X = midX + Math.cos(midAngle) * (tLen * 0.4);
+          const tBase1Y = midY + Math.sin(midAngle) * (tLen * 0.4);
+          const tBase2X = midX - Math.cos(midAngle) * (tLen * 0.4);
+          const tBase2Y = midY - Math.sin(midAngle) * (tLen * 0.4);
+          this.thorns.push(
+            `M ${tBase1X.toFixed(1)},${tBase1Y.toFixed(1)} Q ${midX.toFixed(1)},${midY.toFixed(1)} ${tTipX.toFixed(1)},${tTipY.toFixed(1)} Q ${midX.toFixed(1)},${midY.toFixed(1)} ${tBase2X.toFixed(1)},${tBase2Y.toFixed(1)} Z`,
+          );
+
+          // 2. Leaves (lanceolate with golden angle)
+          const leafSide = -thornSide;
+          const lAngle = midAngle + leafSide * (Math.PI * 0.42);
+          const lLen = Math.max(6, length * 0.55);
+          const lTipX = midX + Math.cos(lAngle) * lLen;
+          const lTipY = midY + Math.sin(lAngle) * lLen;
+          const lPerpX = -Math.sin(lAngle) * (lLen * 0.35);
+          const lPerpY = Math.cos(lAngle) * (lLen * 0.35);
+          const cpL1x = midX + Math.cos(lAngle) * (lLen * 0.4) + lPerpX;
+          const cpL1y = midY + Math.sin(lAngle) * (lLen * 0.4) + lPerpY;
+          const cpL2x = midX + Math.cos(lAngle) * (lLen * 0.4) - lPerpX;
+          const cpL2y = midY + Math.sin(lAngle) * (lLen * 0.4) - lPerpY;
+          this.leaves.push(
+            `M ${midX.toFixed(1)},${midY.toFixed(1)} Q ${cpL1x.toFixed(1)},${cpL1y.toFixed(1)} ${lTipX.toFixed(1)},${lTipY.toFixed(1)} Q ${cpL2x.toFixed(1)},${cpL2y.toFixed(1)} ${midX.toFixed(1)},${midY.toFixed(1)} Z`,
+          );
+
+          // 3. Flower rosettes at sub-terminal nodes or deep branch tips
+          if (depth >= maxDepth - 1 || (depth >= 2 && this.rng() < 0.4)) {
+            const fRadius = Math.max(2.2, 5.5 - depth * 0.8);
+            let flowerPetals = "";
+            for (let p = 0; p < 5; p++) {
+              const pAng = (p * Math.PI * 2) / 5 + depth * 0.5;
+              const pcx = endX + Math.cos(pAng) * (fRadius * 0.8);
+              const pcy = endY + Math.sin(pAng) * (fRadius * 0.8);
+              const r = fRadius * 0.7;
+              flowerPetals += `M ${(pcx - r).toFixed(1)},${pcy.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(pcx + r).toFixed(1)},${pcy.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(pcx - r).toFixed(1)},${pcy.toFixed(1)} `;
+            }
+            this.flowers.push(flowerPetals.trim());
+            const cr = fRadius * 0.4;
+            this.flowerCores.push(
+              `M ${(endX - cr).toFixed(1)},${endY.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(endX + cr).toFixed(1)},${endY.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(endX - cr).toFixed(1)},${endY.toFixed(1)}`,
+            );
+          }
+
+          // Recursive branching: Golden Ratio branch length decay (1 / phi ≈ 0.618)
+          const decay = 0.68 + 0.08 * this.rng();
+          const branchAngle1 = endAngle + 0.42 + 0.15 * this.rng();
+          const branchAngle2 = endAngle - 0.38 - 0.15 * this.rng();
+
+          this.grow(
+            endX,
+            endY,
+            branchAngle1,
+            length * decay,
+            depth + 1,
+            maxDepth,
+            width * 0.7,
+          );
+          if (depth < maxDepth - 1) {
+            this.grow(
+              endX,
+              endY,
+              branchAngle2,
+              length * (decay * 0.75),
+              depth + 2,
+              maxDepth,
+              width * 0.55,
+            );
+          }
+        }
+
+        render() {
+          const stemD = this.stems.join(" ");
+          const thornD = this.thorns.join(" ");
+          const leafD = this.leaves.join(" ");
+          const flowerD = this.flowers.join(" ");
+          const coreD = this.flowerCores.join(" ");
+
+          return `
+            <g class="overgrown-frame-vines" style="pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));">
+              <!-- Unified Stem Spine Paths -->
+              <path d="${stemD}" fill="none" stroke="#122410" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="${stemD}" fill="none" stroke="#254f21" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="${stemD}" fill="none" stroke="#488c40" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+              
+              <!-- Unified Thorns Path -->
+              <path d="${thornD}" fill="#122410" />
+
+              <!-- Unified Leaves Path -->
+              <path d="${leafD}" fill="#2e6629" stroke="#122410" stroke-width="0.8" stroke-linejoin="round" />
+
+              <!-- Unified Flowers & Rosettes Path -->
+              <path d="${flowerD}" fill="#a83244" opacity="0.95" />
+              <path d="${coreD}" fill="#e5b83b" />
             </g>
-            <!-- Side Leaves -->
-            <g stroke-linejoin="round">
-              <path d="M 18,225 C 26,215 36,220 34,232 C 24,234 18,228 18,225 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.6" />
-              <path d="M 782,205 C 774,195 764,200 766,212 C 776,214 782,208 782,205 Z" fill="#2d5e28" stroke="#162e14" stroke-width="0.6" />
-            </g>
-          </g>
-        `;
+          `;
+        }
+      }
+
+      function getOvergrownFrameVines(rng) {
+        const lsys = new LSystemVine(rng);
+        // Top-Left corner
+        lsys.grow(-5, -5, Math.PI * 0.22, 65, 0, 4, 5);
+        // Top-Right corner
+        lsys.grow(805, -5, Math.PI * 0.78, 62, 0, 4, 5);
+        // Bottom-Left corner
+        lsys.grow(-5, 455, -Math.PI * 0.22, 68, 0, 4, 5);
+        // Bottom-Right corner
+        lsys.grow(805, 455, -Math.PI * 0.78, 64, 0, 4, 5);
+        // Left side runner
+        lsys.grow(-2, 225, Math.PI * 0.05, 40, 1, 3, 3);
+        // Right side runner
+        lsys.grow(802, 210, Math.PI * 0.95, 38, 1, 3, 3);
+
+        return lsys.render();
       }
 
       function createVectorSVG(noun, adjective, rng, palette) {
@@ -4550,7 +4562,7 @@
         }
 
         const overgrownFrameVines =
-          adjective === "Overgrown" ? getOvergrownFrameVines() : "";
+          adjective === "Overgrown" ? getOvergrownFrameVines(rng) : "";
 
         return `
           <svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg" style="overflow: hidden; border-radius: 6px;">
