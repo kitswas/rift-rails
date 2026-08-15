@@ -134,7 +134,7 @@
       }
 
       input[type="text"] {
-        width: 170px;
+        width: 180px;
         cursor: text;
       }
 
@@ -272,6 +272,7 @@
         pointer-events: none;
         backdrop-filter: blur(4px);
         border: 1px solid rgba(255, 255, 255, 0.15);
+        z-index: 2;
       }
 
       .engine-label.pixel {
@@ -536,15 +537,16 @@
     </style>
   </head>
   <body>
-    <!-- Global Post-Processing SVG Filters -->
+    <!-- Global Post-Processing SVG Filter Pipeline -->
     <svg style="width: 0; height: 0; position: absolute" aria-hidden="true">
       <defs>
-        <!-- Distance Atmosphere Fog (Layer 1) -->
-        <filter id="distantFog" x="-30%" y="-30%" width="160%" height="160%">
+        <!-- Distance Atmosphere Fog -->
+        <filter id="distantFog" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="3" />
         </filter>
-        <!-- Paper-Cutout Drop Shadow (Layers 2, 3, 4) -->
-        <filter id="paperShadow" x="-30%" y="-30%" width="160%" height="160%">
+
+        <!-- Drop Shadows -->
+        <filter id="paperShadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow
             dx="0"
             dy="-6"
@@ -555,10 +557,10 @@
         </filter>
         <filter
           id="paperShadowDeep"
-          x="-30%"
-          y="-30%"
-          width="160%"
-          height="160%"
+          x="-20%"
+          y="-20%"
+          width="140%"
+          height="140%"
         >
           <feDropShadow
             dx="0"
@@ -570,10 +572,10 @@
         </filter>
         <filter
           id="paperShadowOmni"
-          x="-30%"
-          y="-30%"
-          width="160%"
-          height="160%"
+          x="-20%"
+          y="-20%"
+          width="140%"
+          height="140%"
         >
           <feDropShadow
             dx="0"
@@ -583,42 +585,371 @@
             flood-opacity="0.85"
           />
         </filter>
-        <filter id="filter-glitch">
+
+        <!-- 1. Adjective: Fractured (Multi-channel slice displacement & RGB split) -->
+        <filter id="filter-glitch" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.25 0.02"
+            baseFrequency="0.04 0.005"
             numOctaves="1"
             result="noise"
           />
           <feColorMatrix
             type="matrix"
-            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 -2"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 8 -3"
             in="noise"
-            result="stepped"
+            result="sliceMap"
           />
           <feDisplacementMap
             in="SourceGraphic"
-            in2="stepped"
+            in2="sliceMap"
             scale="18"
             xChannelSelector="R"
-            yChannelSelector="G"
+            yChannelSelector="A"
+            result="displaced"
+          />
+          <feColorMatrix
+            in="displaced"
+            type="matrix"
+            values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="red"
+          />
+          <feOffset in="red" dx="4" dy="0" result="redShift" />
+          <feColorMatrix
+            in="displaced"
+            type="matrix"
+            values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="green"
+          />
+          <feColorMatrix
+            in="displaced"
+            type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
+            result="blue"
+          />
+          <feOffset in="blue" dx="-4" dy="0" result="blueShift" />
+          <feBlend in="redShift" in2="green" mode="screen" result="rg" />
+          <feBlend in="rg" in2="blueShift" mode="screen" />
+        </filter>
+
+        <!-- 2. Adjective: Shattered (Prism shard displacement & chromatic grade) -->
+        <filter
+          id="filter-shatter"
+          x="-10%"
+          y="-10%"
+          width="120%"
+          height="120%"
+        >
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.05 0.05"
+            numOctaves="2"
+            result="turb"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="turb"
+            scale="12"
+            xChannelSelector="R"
+            yChannelSelector="B"
+            result="disp"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1.1 0 0 0 0.04  0 0.95 0 0 0.02  0 0 1.2 0 0.08  0 0 0 1 0"
+            in="disp"
           />
         </filter>
-        <filter id="filter-wobble">
+
+        <!-- 3. Adjective: Overgrown (Botanical organic sway) -->
+        <filter id="filter-wobble" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.03"
+            baseFrequency="0.015 0.02"
             numOctaves="2"
             result="noise"
           />
           <feDisplacementMap
             in="SourceGraphic"
             in2="noise"
-            scale="10"
+            scale="8"
             xChannelSelector="R"
             yChannelSelector="G"
           />
         </filter>
+
+        <!-- 4. Adjective: Clockwork (Mechanical blueprint displacement & sepia grade) -->
+        <filter
+          id="filter-clockwork"
+          x="-10%"
+          y="-10%"
+          width="120%"
+          height="120%"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.03 0.12"
+            numOctaves="1"
+            result="hatch"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="hatch"
+            scale="3.5"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="disp"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1.08 0 0 0 0.04  0 0.98 0 0 0.02  0 0 0.85 0 0  0 0 0 1 0"
+            in="disp"
+          />
+        </filter>
+
+        <!-- 5. Adjective: Frozen (Delicate crystalline frost refraction & micro-glint) -->
+        <filter id="filter-frost" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.08 0.08"
+            numOctaves="2"
+            result="frostNoise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="frostNoise"
+            scale="2.5"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="frosted"
+          />
+          <feSpecularLighting
+            in="frostNoise"
+            surfaceScale="1.0"
+            specularConstant="0.45"
+            specularExponent="32"
+            lighting-color="#dff2ff"
+            result="glint"
+          >
+            <feDistantLight azimuth="45" elevation="55" />
+          </feSpecularLighting>
+          <feComposite
+            in="glint"
+            in2="SourceGraphic"
+            operator="in"
+            result="glintMasked"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="0.96 0 0 0 0.01  0 0.98 0 0 0.03  0 0 1.10 0 0.07  0 0 0 1 0"
+            in="frosted"
+            result="tinted"
+          />
+          <feBlend in="tinted" in2="glintMasked" mode="screen" />
+        </filter>
+
+        <!-- 6. Adjective: Crimson (Rising thermal convection & heat haze) -->
+        <filter
+          id="filter-heathaze"
+          x="-10%"
+          y="-10%"
+          width="120%"
+          height="120%"
+        >
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.008 0.04"
+            numOctaves="2"
+            result="heat"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="heat"
+            scale="8"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="shimmer"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1.1 0 0 0 0.06  0 0.94 0 0 0  0 0 0.92 0 0  0 0 0 1 0"
+            in="shimmer"
+          />
+        </filter>
+
+        <!-- 7. Adjective: Rusting (Corrosive edge pitting & oxide weathering) -->
+        <filter
+          id="filter-corrosion"
+          x="-10%"
+          y="-10%"
+          width="120%"
+          height="120%"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.14 0.14"
+            numOctaves="2"
+            result="rust"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="rust"
+            scale="5"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="decayed"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1.08 0 0 0 0.05  0 0.92 0 0 0.02  0 0 0.82 0 0  0 0 0 1 0"
+            in="decayed"
+          />
+        </filter>
+
+        <!-- 8. Adjective: Eldritch (Cosmic chromatic aberration & dimensional warp) -->
+        <filter
+          id="filter-eldritch"
+          x="-10%"
+          y="-10%"
+          width="120%"
+          height="120%"
+        >
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.02 0.02"
+            numOctaves="2"
+            result="warp"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="warp"
+            scale="12"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="warped"
+          />
+          <feColorMatrix
+            in="warped"
+            type="matrix"
+            values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="red"
+          />
+          <feOffset in="red" dx="4" dy="-2" result="redShift" />
+          <feColorMatrix
+            in="warped"
+            type="matrix"
+            values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="green"
+          />
+          <feColorMatrix
+            in="warped"
+            type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
+            result="blue"
+          />
+          <feOffset in="blue" dx="-4" dy="2" result="blueShift" />
+          <feBlend in="redShift" in2="green" mode="screen" result="rg" />
+          <feBlend in="rg" in2="blueShift" mode="screen" result="chroma" />
+          <feColorMatrix
+            type="matrix"
+            values="1.06 0 0 0 0.08  0 0.9 0 0 0  0 0 1.18 0 0.15  0 0 0 1 0"
+            in="chroma"
+          />
+        </filter>
+
+        <!-- 9. Adjective: Neon (Dual-stage phosphor cybernetic bloom) -->
+        <filter id="filter-neon" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur
+            in="SourceGraphic"
+            stdDeviation="2.5"
+            result="coreGlow"
+          />
+          <feGaussianBlur
+            in="SourceGraphic"
+            stdDeviation="8"
+            result="wideGlow"
+          />
+          <feMerge result="mergedGlow">
+            <feMergeNode in="wideGlow" />
+            <feMergeNode in="coreGlow" />
+          </feMerge>
+          <feColorMatrix
+            type="matrix"
+            values="1.25 0 0 0 0.1  0 1.25 0 0 0.1  0 0 1.5 0 0.2  0 0 0 1 0"
+            in="mergedGlow"
+            result="intenseGlow"
+          />
+          <feBlend in="SourceGraphic" in2="intenseGlow" mode="screen" />
+        </filter>
+
+        <!-- Water Caustics & Liquid Shimmer Filter -->
+        <filter id="waterShimmer" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.035 0.08"
+            numOctaves="2"
+            result="waterTurb"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="waterTurb"
+            scale="4.5"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+
+        <!-- Volumetric God-Rays Filter -->
+        <filter
+          id="volumetricGlow"
+          x="-20%"
+          y="-20%"
+          width="140%"
+          height="140%"
+        >
+          <feGaussianBlur
+            in="SourceGraphic"
+            stdDeviation="6 14"
+            result="beamGlow"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="1.1 0 0 0 0.08  0 1.1 0 0 0.08  0 0 1.1 0 0.08  0 0 0 1 0"
+            in="beamGlow"
+            result="tintedBeam"
+          />
+          <feMerge>
+            <feMergeNode in="tintedBeam" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <!-- Clockwork Intaglio Cross-Hatch Pattern -->
+        <pattern
+          id="clockworkHatch"
+          width="10"
+          height="10"
+          patternTransform="rotate(45 0 0)"
+          patternUnits="userSpaceOnUse"
+        >
+          <line
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="10"
+            stroke="#221203"
+            stroke-width="1.2"
+          />
+          <line
+            x1="5"
+            y1="0"
+            x2="5"
+            y2="10"
+            stroke="#221203"
+            stroke-width="0.7"
+            stroke-opacity="0.65"
+          />
+        </pattern>
       </defs>
     </svg>
 
@@ -743,7 +1074,6 @@
        *  0. CONSTANTS, TONE SEMANTICS, SEEDED PRNG & UNIFIED PALETTES
        *  ========================================================================= */
 
-      // Viewport & Rendering Dimensions
       const SVG_CONFIG = {
         WIDTH: 800,
         HEIGHT: 450,
@@ -757,23 +1087,20 @@
         HEIGHT: 90,
       };
 
-      // 5-Tone Color Semantics (Strictly aligns with Artwork-rules.md p[0]..p[4])
       const TONE = {
-        DEEP_DARK: 0, // p[0]: Foreground silhouettes and deep shadows
-        SHADOW: 1, // p[1]: Shaded sides of terrain and structures
-        MIDTONE: 2, // p[2]: Distant hills and neutral base ground
-        LIGHT: 3, // p[3]: Sunlit surfaces and upper sky
-        GLOW: 4, // p[4]: Sun, moon, stars, crystals, and light points
+        DEEP_DARK: 0,
+        SHADOW: 1,
+        MIDTONE: 2,
+        LIGHT: 3,
+        GLOW: 4,
       };
 
-      // Engine Modes
       const ENGINE_MODE = {
         DUAL: "dual",
         PIXEL: "pixel",
         VECTOR: "vector",
       };
 
-      // PRNG Hashing & Linear Congruential Parameters
       const PRNG_CONSTANTS = {
         HASH_INIT: 0xdeadbeef,
         HASH_PRIME: 2654435761,
@@ -781,7 +1108,6 @@
         MULBERRY_DIVISOR: 4294967296,
       };
 
-      // Bayer Dither & Glitch Post-Processing Configuration
       const DITHER_CONFIG = {
         BAYER_SIZE: 4,
         THRESHOLD_OFFSET: 0.5,
@@ -797,7 +1123,6 @@
         MAX_OFFSET: 5,
       };
 
-      // Adjective Post-Processing & Animation Effects (Single Source of Truth)
       const ADJECTIVE_EFFECTS = {
         Fractured: {
           svgFilter: "filter-glitch",
@@ -805,7 +1130,7 @@
           cssClass: null,
         },
         Shattered: {
-          svgFilter: "filter-glitch",
+          svgFilter: "filter-shatter",
           glitchPixel: true,
           cssClass: null,
         },
@@ -814,12 +1139,36 @@
           glitchPixel: false,
           cssClass: null,
         },
+        Clockwork: {
+          svgFilter: "filter-clockwork",
+          glitchPixel: false,
+          cssClass: null,
+        },
+        Frozen: {
+          svgFilter: "filter-frost",
+          glitchPixel: false,
+          cssClass: null,
+        },
+        Crimson: {
+          svgFilter: "filter-heathaze",
+          glitchPixel: false,
+          cssClass: null,
+        },
+        Rusting: {
+          svgFilter: "filter-corrosion",
+          glitchPixel: false,
+          cssClass: null,
+        },
         Eldritch: {
-          svgFilter: null,
+          svgFilter: "filter-eldritch",
           glitchPixel: false,
           cssClass: "anim-eldritch",
         },
-        Neon: { svgFilter: null, glitchPixel: false, cssClass: "anim-neon" },
+        Neon: {
+          svgFilter: "filter-neon",
+          glitchPixel: false,
+          cssClass: "anim-neon",
+        },
       };
 
       function generateSeed(str) {
@@ -861,7 +1210,6 @@
         }
       }
 
-      // Palettes: [0: Void/Dark, 1: Shadow, 2: Midtone, 3: Light/Primary, 4: Highlight/Glow]
       const PALETTES = {
         Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
         Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
@@ -1417,11 +1765,8 @@
       };
 
       /** =========================================================================
-       *  ENGINE 2: FACETED VECTOR DIORAMA (MULTI-LAYERED FANTASY / SACRED GEOMETRY)
+       *  ENGINE 2: FACETED VECTOR DIORAMA
        *  ========================================================================= */
-      /**
-       * Standardized Preset Visual Effects (Restoring historical exact visual styles)
-       */
       const EFFECT_PRESETS = {
         shadows: {
           paper: "drop-shadow(0 -6px 12px rgba(0,0,0,0.55))",
@@ -1517,9 +1862,7 @@
 
         apply_blur(radius = 3, opacity = null) {
           this.effects.push({ kind: "blur", radius });
-          if (opacity !== null) {
-            this.opacityVal = opacity;
-          }
+          if (opacity !== null) this.opacityVal = opacity;
           return this;
         }
 
@@ -1568,12 +1911,10 @@
           }
 
           const styleParts = [];
-          if (styleFilters.length > 0) {
+          if (styleFilters.length > 0)
             styleParts.push(`filter: ${styleFilters.join(" ")};`);
-          }
-          if (this.opacityVal !== null) {
+          if (this.opacityVal !== null)
             styleParts.push(`opacity: ${this.opacityVal};`);
-          }
 
           const styleAttr =
             styleParts.length > 0 ? `style="${styleParts.join(" ")}"` : "";
@@ -1585,65 +1926,10 @@
         }
       }
 
-      class DioramaScene {
-        constructor() {
-          this.layers = [
-            new DioramaLayer(0),
-            new DioramaLayer(1),
-            new DioramaLayer(2),
-            new DioramaLayer(3),
-            new DioramaLayer(4),
-          ];
-        }
-
-        layer(idx) {
-          return this.layers[idx];
-        }
-
-        layer0(content = "") {
-          if (content) this.layers[0].set(content);
-          return this.layers[0];
-        }
-        layer1(content = "") {
-          if (content) this.layers[1].set(content);
-          return this.layers[1];
-        }
-        layer2(content = "") {
-          if (content) this.layers[2].set(content);
-          return this.layers[2];
-        }
-        layer3(content = "") {
-          if (content) this.layers[3].set(content);
-          return this.layers[3];
-        }
-        layer4(content = "") {
-          if (content) this.layers[4].set(content);
-          return this.layers[4];
-        }
-
-        render() {
-          return this.layers
-            .map((l) => l.render())
-            .filter(Boolean)
-            .join("\n");
-        }
-
-        toString() {
-          return this.render();
-        }
-      }
-
       const VectorHelpers = {
-        /**
-         * Micro-stroke to prevent sub-pixel background bleed along touching polygon/spline seams
-         */
         microStroke: (color, width = 0.5) => {
           return `stroke="${color}" stroke-width="${width}" stroke-linejoin="round"`;
         },
-
-        /**
-         * 3-tier faceted pine tree with lit and dark halves and micro-strokes
-         */
         facetedPine: (tx, ty, th, colLit, colDark, tiers = 3) => {
           let tr = `<g stroke-linejoin="round">`;
           for (let t = 0; t < tiers; t++) {
@@ -1656,167 +1942,7 @@
           tr += `</g>`;
           return tr;
         },
-
-        /**
-         * Smooth Catmull-Rom or cubic Bézier spline terrain path with closed base anchoring (L W H L 0 H Z)
-         */
-        splinePath: (
-          points,
-          closeBase = true,
-          baseY = SVG_CONFIG.BASE_Y,
-          width = SVG_CONFIG.WIDTH,
-        ) => {
-          if (!points || points.length === 0) return "";
-          const pts = points.map((p) =>
-            Array.isArray(p) ? { x: p[0], y: p[1] } : p,
-          );
-          if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
-
-          let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-          for (let i = 0; i < pts.length - 1; i++) {
-            const p0 = i > 0 ? pts[i - 1] : pts[i];
-            const p1 = pts[i];
-            const p2 = pts[i + 1];
-            const p3 = i < pts.length - 2 ? pts[i + 2] : p2;
-
-            const cp1x = p1.x + (p2.x - p0.x) / 6;
-            const cp1y = p1.y + (p2.y - p0.y) / 6;
-            const cp2x = p2.x - (p3.x - p1.x) / 6;
-            const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-            d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
-          }
-
-          if (closeBase) {
-            const lastX = pts[pts.length - 1].x;
-            const firstX = pts[0].x;
-            d += ` L ${lastX.toFixed(1)},${baseY} L ${firstX.toFixed(1)},${baseY} Z`;
-          }
-          return d;
-        },
-
-        /**
-         * Generates seamless lit and shaded mountain / ridge facets sharing exact spinal coordinates
-         */
-        splitRidge: (
-          spinePts,
-          baseY = SVG_CONFIG.BASE_Y,
-          pLit = "#fff",
-          pDark = "#000",
-          leftX = 0,
-          rightX = SVG_CONFIG.WIDTH,
-        ) => {
-          const pts = spinePts.map((p) =>
-            Array.isArray(p) ? { x: p[0], y: p[1] } : p,
-          );
-          if (pts.length < 2) return "";
-          const peakIdx = pts.reduce(
-            (maxI, p, i, arr) => (p.y < arr[maxI].y ? i : maxI),
-            0,
-          );
-          const peak = pts[peakIdx];
-
-          // Lit side facet
-          let dLit = `M ${leftX},${baseY} L ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-          for (let i = 1; i <= peakIdx; i++) {
-            dLit += ` L ${pts[i].x.toFixed(1)},${pts[i].y.toFixed(1)}`;
-          }
-          dLit += ` L ${peak.x.toFixed(1)},${baseY} Z`;
-
-          // Dark side facet
-          let dDark = `M ${peak.x.toFixed(1)},${baseY}`;
-          for (let i = peakIdx; i < pts.length; i++) {
-            dDark += ` L ${pts[i].x.toFixed(1)},${pts[i].y.toFixed(1)}`;
-          }
-          dDark += ` L ${rightX},${baseY} Z`;
-
-          return `
-            <path d="${dLit}" fill="${pLit}" ${VectorHelpers.microStroke(pLit)} />
-            <path d="${dDark}" fill="${pDark}" ${VectorHelpers.microStroke(pDark)} />
-          `;
-        },
-
-        /**
-         * 1D Poisson-style scatter enforcing minDistance between sampled points
-         */
-        poissonScatter: (rng, xMin, xMax, minDistance, count = 10) => {
-          const points = [];
-          const maxAttempts = count * 6;
-          let attempts = 0;
-          while (points.length < count && attempts < maxAttempts) {
-            attempts++;
-            const candX = rng.range(xMin, xMax);
-            let valid = true;
-            for (const p of points) {
-              if (Math.abs(p - candX) < minDistance) {
-                valid = false;
-                break;
-              }
-            }
-            if (valid) points.push(candX);
-          }
-          return points.sort((a, b) => a - b);
-        },
-
-        /**
-         * Single-path recursive tree generator (Packed into unified path string to save DOM overhead)
-         */
-        singlePathTree: (
-          rng,
-          startX,
-          startY,
-          height,
-          depth = 4,
-          pCol = "#000000",
-        ) => {
-          let pathD = "";
-          const clampedDepth = Math.min(Math.max(depth, 2), 5);
-
-          function branch(x, y, len, angle, d) {
-            const endX = x + Math.sin(angle) * len;
-            const endY = y - Math.cos(angle) * len;
-            pathD += ` M ${x.toFixed(1)},${y.toFixed(1)} L ${endX.toFixed(1)},${endY.toFixed(1)}`;
-            if (d > 1) {
-              const branchDecay = rng.range(68, 76) / 100;
-              const spread = (rng.range(20, 35) * Math.PI) / 180;
-              branch(endX, endY, len * branchDecay, angle - spread, d - 1);
-              branch(endX, endY, len * branchDecay, angle + spread, d - 1);
-            }
-          }
-
-          branch(startX, startY, height * 0.38, 0, clampedDepth);
-          const strokeW = Math.max(1, height * 0.04).toFixed(1);
-          return `<path d="${pathD}" fill="none" stroke="${pCol}" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round" />`;
-        },
-
-        /**
-         * Quantized Lambertian Shading helper for 3D facets
-         */
-        quantizedLambert: (
-          normal,
-          lightDir = [-0.5, 0.7, 0.5],
-          palette = null,
-        ) => {
-          const lenN = Math.hypot(normal[0], normal[1], normal[2]) || 1;
-          const nx = normal[0] / lenN,
-            ny = normal[1] / lenN,
-            nz = normal[2] / lenN;
-          const lenL = Math.hypot(lightDir[0], lightDir[1], lightDir[2]) || 1;
-          const lx = lightDir[0] / lenL,
-            ly = lightDir[1] / lenL,
-            lz = lightDir[2] / lenL;
-
-          const dot = nx * lx + ny * ly + nz * lz;
-          const intensity = (dot + 1) / 2;
-          const toneIdx = Math.max(0, Math.min(4, Math.floor(intensity * 5)));
-          return palette ? palette[toneIdx] : toneIdx;
-        },
-
-        /**
-         * Factory helpers for fluent layer and scene construction
-         */
         layer: (index, content = "") => new DioramaLayer(index, content),
-        scene: () => new DioramaScene(),
         shadow: (markup, type = "paper") => {
           const val = EFFECT_PRESETS.shadows[type] || type;
           return `<g style="filter: ${val};">${markup}</g>`;
@@ -1828,79 +1954,9 @@
           const opStyle = opacity !== null ? ` opacity: ${opacity};` : "";
           return `<g style="filter: blur(${radius}px);${opStyle}">${markup}</g>`;
         },
-        filter: (markup, filterRef) => {
-          const attr =
-            filterRef.startsWith("url(") || filterRef.startsWith("filter-")
-              ? `filter="${filterRef.startsWith("url(") ? filterRef : "url(#" + filterRef + ")"}"`
-              : `style="filter: ${filterRef};"`;
-          return `<g ${attr}>${markup}</g>`;
-        },
-
-        /**
-         * Packages SVG groups into the standardized Painter's 5-Layer Stack
-         */
-        layerStack: (layers) => {
-          if (layers instanceof DioramaScene) {
-            return layers.render();
-          }
-          if (Array.isArray(layers)) {
-            return layers
-              .map((l, idx) =>
-                l instanceof DioramaLayer
-                  ? l.render()
-                  : l && l.trim()
-                    ? `<g class="layer-${idx}" data-layer="${idx}">${l}</g>`
-                    : "",
-              )
-              .filter(Boolean)
-              .join("\n");
-          }
-          const l0 = layers.layer0 || layers[0] || "";
-          const l1 = layers.layer1 || layers[1] || "";
-          const l2 = layers.layer2 || layers[2] || "";
-          const l3 = layers.layer3 || layers[3] || "";
-          const l4 = layers.layer4 || layers[4] || "";
-
-          const r0 =
-            l0 instanceof DioramaLayer
-              ? l0.render()
-              : l0 && l0.trim()
-                ? `<g class="layer-0" data-layer="0">${l0}</g>`
-                : "";
-          const r1 =
-            l1 instanceof DioramaLayer
-              ? l1.render()
-              : l1 && l1.trim()
-                ? `<g class="layer-1" data-layer="1">${l1}</g>`
-                : "";
-          const r2 =
-            l2 instanceof DioramaLayer
-              ? l2.render()
-              : l2 && l2.trim()
-                ? `<g class="layer-2" data-layer="2">${l2}</g>`
-                : "";
-          const r3 =
-            l3 instanceof DioramaLayer
-              ? l3.render()
-              : l3 && l3.trim()
-                ? `<g class="layer-3" data-layer="3">${l3}</g>`
-                : "";
-          const r4 =
-            l4 instanceof DioramaLayer
-              ? l4.render()
-              : l4 && l4.trim()
-                ? `<g class="layer-4" data-layer="4">${l4}</g>`
-                : "";
-
-          return [r0, r1, r2, r3, r4].filter(Boolean).join("\n");
-        },
       };
 
       const GenVectorBG = {
-        // =========================================================================
-        // HUB ARTIFACTS (Civic, Castles & Celestial Sanctuaries)
-        // =========================================================================
-
         Station: (rng, p) => {
           const skyId = `stnSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
@@ -1934,10 +1990,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        /* -------------------------------------------------------------------------
-         * NOUN: Bazaar (Silk-Road Canyon Pass & Procedurally Clustered Pavilions)
-         * - Random seed-driven tent placement bounded cleanly within canyon floor
-         * ------------------------------------------------------------------------- */
         Bazaar: (rng, p) => {
           const skyId = `bazSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
@@ -1946,14 +1998,12 @@
             <rect width="100%" height="100%" fill="url(#${skyId})" />`,
           );
 
-          // Sheer canyon walls
           const layer1 = VectorHelpers.layer(
             1,
             `<polygon points="0,0 260,0 110,450 0,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
             <polygon points="800,0 540,0 690,450 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
           ).apply_blur(4, 0.65);
 
-          // Scattered Far Tents (Bounded within canyon floor)
           const farCount = rng.range(3, 4);
           let farTents = `<g stroke-linejoin="round">`;
           for (let i = 0; i < farCount; i++) {
@@ -1970,7 +2020,6 @@
             .apply_blur(1.5)
             .apply_shadow("subtle");
 
-          // Midground Nomad Pavilions (Strictly bounded so rightmost tent does not exceed canyon)
           const midCount = rng.range(3, 4);
           let midTents = `<g stroke-linejoin="round">`;
           let prevApex = null;
@@ -1987,7 +2036,6 @@
 
             if (prevApex) {
               const midSagY = Math.max(prevApex.y, ty) + rng.range(25, 40);
-              /* Festoon banner string spanning pavilion apexes */
               midTents += `<path d="M ${prevApex.x},${prevApex.y + 12} Q ${(prevApex.x + apexX) / 2},${midSagY} ${apexX},${ty + 12}" fill="none" stroke="${p[4]}" stroke-width="1.8" stroke-dasharray="6 6" />`;
             }
             prevApex = { x: apexX, y: ty };
@@ -2110,10 +2158,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        // =========================================================================
-        // HUNT ARTIFACTS (Wilderness, Tundras & Primordial Frontiers)
-        // =========================================================================
-
         Wilds: (rng, p) => {
           const skyId = `wildsSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
@@ -2196,10 +2240,12 @@
           ).apply_blur(4, 0.65);
 
           const waterY = 270;
-          let water = `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[1]}" />`;
+          let water = `<g filter="url(#waterShimmer)">`;
+          water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[1]}" />`;
           for (let i = 0; i < 5; i++) {
             water += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(8, 45)}" width="${rng.range(30, 100)}" height="2" fill="${p[3]}" opacity="0.5" />`;
           }
+          water += `</g>`;
           const layer2 = VectorHelpers.layer(2, water);
 
           let icebergs = `<g stroke-linejoin="round">`;
@@ -2263,7 +2309,7 @@
           layer0Markup += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(40, 50)}" fill="${p[4]}" opacity="0.8" style="filter: blur(10px);" />`;
 
           const rayCount = rng.range(7, 10);
-          let rays = `<g style="filter: blur(6px); opacity: 0.38;">`;
+          let rays = `<g filter="url(#volumetricGlow)" style="filter: blur(6px); opacity: 0.38;">`;
           for (let r = 0; r < rayCount; r++) {
             const ang = isLeftDominant
               ? Math.PI * 0.58 + (r / (rayCount - 1)) * (Math.PI * 0.42)
@@ -2330,7 +2376,7 @@
           farMid += `<ellipse cx="${fallX}" cy="268" rx="72" ry="18" fill="#ffffff" opacity="0.45" style="filter: blur(8px);" />`;
 
           const waterY = rng.range(270, 285);
-          let water = `<g>`;
+          let water = `<g filter="url(#waterShimmer)">`;
           water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="url(#${waterId})" />`;
           for (let i = 0; i < 6; i++) {
             const gy = waterY + 16 + i * 26 + rng.range(-3, 3);
@@ -2362,7 +2408,6 @@
             ? rng.range(130, 170)
             : rng.range(630, 670);
           const treeY = rng.range(105, 120);
-
           const canopyCount = rng.range(5, 7);
           const canopyNodes = [];
           let canopySvg = `<g style="filter: blur(2.2px); opacity: 0.95;">`;
@@ -2524,25 +2569,6 @@
             );
           }
 
-          const rootFernCount = rng.range(1, 3);
-          for (let i = 0; i < rootFernCount; i++) {
-            const fx = isLeftDominant
-              ? 210 + i * 40 + rng.range(-8, 8)
-              : 590 - i * 40 + rng.range(-8, 8);
-            const fy = 345 + i * 15 + rng.range(-6, 6);
-            const frot = isLeftDominant ? -24 + i * 10 : 24 - i * 10;
-            flora += drawDetailedPalm(
-              fx,
-              fy,
-              rng.range(75, 90),
-              7,
-              frot,
-              isLeftDominant ? -1 : 1,
-              p[3],
-              p[1],
-            );
-          }
-
           const lilyPads = [
             {
               cx: 380 + rng.range(-15, 15),
@@ -2586,12 +2612,9 @@
             vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX},${midY} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
             vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX + 4},${midY + 2} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[1]}" stroke-width="1.8" />`;
             vines += `<path d="M ${midX - 25},${midY - 8} Q ${midX},${midY + 22} ${midX + 25},${midY - 8}" fill="none" stroke="${p[0]}" stroke-width="2" />`;
-
             vines += `<circle cx="${midX}" cy="${midY}" r="16" fill="${p[4]}" opacity="0.45" style="filter: blur(5px);" />`;
             vines += `<polygon points="${midX},${midY - 9} ${midX - 6},${midY} ${midX},${midY + 9} ${midX + 6},${midY}" fill="${p[4]}" />`;
             vines += `<circle cx="${midX}" cy="${midY}" r="3" fill="#ffffff" />`;
-            vines += `<polygon points="${midX - 4},${midY + 3} ${midX - 14},${midY + 12} ${midX - 2},${midY + 7}" fill="${p[2]}" />`;
-            vines += `<polygon points="${midX + 4},${midY + 3} ${midX + 14},${midY + 12} ${midX + 2},${midY + 7}" fill="${p[2]}" />`;
           }
           vines += `</g>`;
 
@@ -2612,15 +2635,8 @@
 
           fore += `<ellipse cx="380" cy="445" rx="360" ry="28" fill="${p[2]}" opacity="0.38" style="filter: blur(14px);" />`;
           fore += `<polygon points="0,450 0,405 220,380 380,430 540,390 800,410 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
-
-          const fireflyCount = rng.range(10, 16);
-          for (let f = 0; f < fireflyCount; f++) {
-            const fx = 70 + f * (680 / (fireflyCount - 1)) + rng.range(-20, 20);
-            const fy = 270 + (f % 4) * 38 + rng.range(-12, 12);
-            fore += `<circle cx="${fx}" cy="${fy}" r="5.5" fill="${p[4]}" opacity="0.5" style="filter: blur(2.5px);" />`;
-            fore += `<circle cx="${fx}" cy="${fy}" r="1.8" fill="#ffffff" />`;
-          }
           fore += `</g>`;
+
           const layer4 = VectorHelpers.layer(
             4,
             `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.55));">${flora}</g><g style="filter: drop-shadow(0 -16px 26px rgba(0,0,0,0.95));">${vines}${fore}</g>`,
@@ -2684,10 +2700,6 @@
 
           return { layer0, layer1, layer2, layer3, layer4 };
         },
-
-        // =========================================================================
-        // RES ARTIFACTS (Vistas, Minerals & Natural Extraction)
-        // =========================================================================
 
         Wastes: (rng, p) => {
           const skyId = `wasteSky-${rng.seed}`;
@@ -3003,7 +3015,7 @@
           const layer1 = VectorHelpers.layer(1, distMarkup).apply_blur(3, 0.75);
 
           const waterY = rng.range(250, 270);
-          let water = `<g>`;
+          let water = `<g filter="url(#waterShimmer)">`;
           water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
           for (let i = 0; i < 6; i++) {
             water += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
@@ -3111,12 +3123,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        /* -------------------------------------------------------------------------
-         * NOUN: Dunes (Aeolian Sand Sea: 3-4-1 Layer Architecture)
-         * - Background: 3 Distant Sinusoidal Wave Layers
-         * - Midground: 4 Layers, exactly 1 clean Dune per layer
-         * - Foreground: 1 Sinusoidal Sand Shelf Wave Layer
-         * ------------------------------------------------------------------------- */
         Dunes: (rng, p) => {
           const skyId = `duneSky-${rng.seed}`;
           const sunX = rng.range(260, 560),
@@ -3221,7 +3227,6 @@
             return dune;
           }
 
-          // BG Waves (3 layers with subtle progressive atmospheric blur)
           const bg1Y = 145 + rng.range(-14, 14);
           const bg1Amp = rng.range(14, 28);
           const bg1Freq = rng.rangeFloat(0.0045, 0.0085);
@@ -3244,7 +3249,6 @@
           `;
           const layer1 = VectorHelpers.layer(1, bgWaves);
 
-          // Mid Dunes
           const m1PeakX = rng.range(240, 360);
           const m1PeakY = rng.range(175, 205);
           const d1 = VectorHelpers.shadow(
@@ -3322,10 +3326,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        // =========================================================================
-        // MAZE ARTIFACTS (Architectural Depths, Crypts & Abyssal Chasms)
-        // =========================================================================
-
         Catacombs: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
@@ -3354,25 +3354,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        /* =========================================================================
-         * NOUN: Labyrinth (Penrose Impossible Staircase: Rigorous Isometric Closure)
-         *
-         * 1. Mathematical Flight Boundaries & Coordinate Grid:
-         *    Symmetrical horizontal span (X in [180, 720], width 540px)
-         *    Vertical span (Y in [210, 618], height 408px)
-         *
-         *    CORNER C (North Landing): Outer (450, 210) | Inner (450, 300)
-         *    CORNER B (East Landing):  Outer (720, 414) | Inner (600, 414)
-         *    CORNER A (South Landing): Outer (450, 618) | Inner (450, 528)
-         *    CORNER D (West Landing):  Outer (180, 414) | Inner (300, 414)
-         *
-         *    Flight 1 (South -> East):  (450,618)/(450,528) -> (720,414)/(600,414) | dX,dY = (+270,-204)/(+150,-114)
-         *    Flight 2 (East -> North):  (720,414)/(600,414) -> (450,210)/(450,300) | dX,dY = (-270,-204)/(-150,-114)
-         *    Flight 3 (North -> West):  (450,210)/(450,300) -> (180,414)/(300,414) | dX,dY = (-270,+204)/(-150,+114)
-         *    Flight 4 (West -> South):  (180,414)/(300,414) -> (450,618)/(450,528) | dX,dY = (+270,+204)/(+150,+114)
-         *
-         *    Loop Invariant: sum(dX) = 0 and sum(dY) = 0 | oint grad(h) * dr = 12*dh != 0
-         * ========================================================================= */
         Labyrinth: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
@@ -3404,7 +3385,6 @@
           const wi = `url(#wallInnerGrad-${rng.seed})`;
 
           let figure = `
-            <!-- 1. Foundation Skirt & Inner Courtyard Void -->
             <polygon points="180,414 450,618 450,700 180,496" fill="${wo}"/>
             <polygon points="450,618 720,414 720,496 450,700" fill="${wo}"/>
             <polygon points="450,300 600,414 600,450 450,336" fill="${wi}"/>
@@ -3412,52 +3392,40 @@
             <polygon points="300,414 450,528 450,600 300,486" fill="${wi}"/>
             <polygon points="450,528 600,414 600,486 450,600" fill="${wi}"/>
 
-            <!-- 2. Flight 2: East -> North (Ascends Top-Left) -->
-            <!-- Step 2.1 -->
+            <!-- Flight 2: East -> North -->
             <polygon points="720,414 600,414 600,396 720,396" fill="${rg}"/>
             <polygon points="720,396 600,396 550,376 630,346" fill="${tg}"/>
-            <!-- Step 2.2 -->
             <polygon points="630,346 550,376 550,358 630,328" fill="${rg}"/>
             <polygon points="630,328 550,358 500,338 540,278" fill="${tg}"/>
-            <!-- Step 2.3 (Landing C) -->
             <polygon points="540,278 500,338 500,320 540,260" fill="${rg}"/>
             <polygon points="540,260 500,320 450,300 450,210" fill="${tg}"/>
 
-            <!-- 3. Flight 3: North -> West (Ascends Bottom-Left) -->
-            <!-- Step 3.1 -->
+            <!-- Flight 3: North -> West -->
             <polygon points="450,210 450,300 450,282 450,192" fill="${rg}"/>
             <polygon points="450,192 450,282 400,338 360,278" fill="${tg}"/>
-            <!-- Step 3.2 -->
             <polygon points="360,278 400,338 400,320 360,260" fill="${rg}"/>
             <polygon points="360,260 400,320 350,376 270,346" fill="${tg}"/>
-            <!-- Step 3.3 (Landing D) -->
             <polygon points="270,346 350,376 350,358 270,328" fill="${rg}"/>
             <polygon points="270,328 350,358 300,414 180,414" fill="${tg}"/>
 
-            <!-- 4. Flight 4: West -> South (Ascends Bottom-Right) -->
-            <!-- Step 4.1 -->
+            <!-- Flight 4: West -> South -->
             <polygon points="180,414 300,414 300,396 180,396" fill="${rg}"/>
             <polygon points="180,396 300,396 350,452 270,482" fill="${tg}"/>
             <polygon points="180,414 180,396 270,482 270,500" fill="${wo}"/>
-            <!-- Step 4.2 -->
             <polygon points="270,482 350,452 350,434 270,464" fill="${rg}"/>
             <polygon points="270,464 350,434 400,490 360,550" fill="${tg}"/>
             <polygon points="270,482 270,464 360,550 360,568" fill="${wo}"/>
-            <!-- Step 4.3 (Landing A) -->
             <polygon points="360,550 400,490 400,472 360,532" fill="${rg}"/>
             <polygon points="360,532 400,472 450,528 450,618" fill="${tg}"/>
             <polygon points="360,550 360,532 450,618 450,636" fill="${wo}"/>
 
-            <!-- 5. Flight 1: South -> East (Ascends Top-Right) -->
-            <!-- Step 1.1 -->
+            <!-- Flight 1: South -> East -->
             <polygon points="450,618 450,528 450,510 450,600" fill="${rg}"/>
             <polygon points="450,600 450,510 500,490 540,550" fill="${tg}"/>
             <polygon points="450,618 450,600 540,550 540,568" fill="${wo}"/>
-            <!-- Step 1.2 -->
             <polygon points="540,550 500,490 500,472 540,532" fill="${rg}"/>
             <polygon points="540,532 500,472 550,452 630,482" fill="${tg}"/>
             <polygon points="540,550 540,532 630,482 630,500" fill="${wo}"/>
-            <!-- Step 1.3 (Landing B) -->
             <polygon points="630,482 550,452 550,434 630,464" fill="${rg}"/>
             <polygon points="630,464 550,434 600,414 720,414" fill="${tg}"/>
             <polygon points="630,482 630,464 720,414 720,432" fill="${wo}"/>
@@ -3477,11 +3445,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        /* -------------------------------------------------------------------------
-         * NOUN: Spire (Monumental Flared Pinnacle Needles: Dynamic 1-3 Spire Count)
-         * - Spire count varies dynamically: 1 Solo Spire, 2 Twin Spires, or 3 Tiered Spires
-         * - Flared hyperbolic needle silhouette with central lit/shadow ridge
-         * ------------------------------------------------------------------------- */
         Spire: (rng, p) => {
           const skyId = `spireSky-${rng.seed}`;
           let skyMarkup = `
@@ -3530,7 +3493,7 @@
             const mainX = 400 + rng.range(-35, 35);
             const mainY = 22 + rng.range(-10, 10);
             const mainW = rng.range(280, 340);
-            skyMarkup += `<circle cx="${mainX}" cy="${mainY + 55}" r="90" fill="${p[4]}" opacity="0.32" style="filter: blur(22px);" />`;
+            skyMarkup += `<g filter="url(#volumetricGlow)"><circle cx="${mainX}" cy="${mainY + 55}" r="90" fill="${p[4]}" opacity="0.32" style="filter: blur(22px);" /></g>`;
             layer0 = VectorHelpers.layer(0, skyMarkup);
 
             const distX = (mainX < 400 ? 590 : 210) + rng.range(-20, 20);
@@ -3550,7 +3513,7 @@
             const s2X = 540 + rng.range(-30, 30);
             const s2Y = 70 + rng.range(-12, 14);
             const s2W = rng.range(200, 240);
-            skyMarkup += `<circle cx="${(s1X + s2X) / 2}" cy="110" r="100" fill="${p[4]}" opacity="0.3" style="filter: blur(24px);" />`;
+            skyMarkup += `<g filter="url(#volumetricGlow)"><circle cx="${(s1X + s2X) / 2}" cy="110" r="100" fill="${p[4]}" opacity="0.3" style="filter: blur(24px);" /></g>`;
             layer0 = VectorHelpers.layer(0, skyMarkup);
 
             layer2 = VectorHelpers.layer(
@@ -3573,7 +3536,7 @@
             const rX = 605 + rng.range(-25, 25);
             const rY = 90 + rng.range(-12, 15);
             const rW = rng.range(160, 200);
-            skyMarkup += `<circle cx="${cX}" cy="${cY + 50}" r="95" fill="${p[4]}" opacity="0.3" style="filter: blur(22px);" />`;
+            skyMarkup += `<g filter="url(#volumetricGlow)"><circle cx="${cX}" cy="${cY + 50}" r="95" fill="${p[4]}" opacity="0.3" style="filter: blur(22px);" /></g>`;
             layer0 = VectorHelpers.layer(0, skyMarkup);
 
             layer1 = VectorHelpers.layer(
@@ -3641,11 +3604,6 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        /* -------------------------------------------------------------------------
-         * NOUN: Woods (Multi-Layered Faceted Pine Forest)
-         * - 6-layer depth structure from original Woods
-         * - Replaced solid triangles with clean 3-tier faceted pines (Wilds geometry)
-         * ------------------------------------------------------------------------- */
         Woods: (rng, p) => {
           const skyId = `woodsSky-${rng.seed}`;
           const moonX = rng.range(200, 600),
@@ -3718,69 +3676,86 @@
        *  MASTER DOM ASSEMBLER & CONTROLLER
        *  ========================================================================= */
 
-      /**
-       * Renders a pixel art canvas element with adjective post-processing
-       */
       function renderPixelCanvas(noun, adjective, rng, palette) {
         const renderer = new PixelRenderer(
           PIXEL_CONFIG.WIDTH,
           PIXEL_CONFIG.HEIGHT,
         );
         renderer.setPalette(palette);
-        if (GenPixel[noun]) {
-          GenPixel[noun](renderer, rng);
-        }
-        if (ADJECTIVE_EFFECTS[adjective]?.glitchPixel) {
+        if (GenPixel[noun]) GenPixel[noun](renderer, rng);
+        if (ADJECTIVE_EFFECTS[adjective]?.glitchPixel)
           renderer.applyGlitch(rng);
-        }
         return renderer.present();
       }
 
-      /**
-       * Applies adjective-specific CSS animation classes to a container
-       */
       function applyContainerEffects(container, adjective) {
         const effectClass = ADJECTIVE_EFFECTS[adjective]?.cssClass;
-        if (effectClass) {
-          container.classList.add(effectClass);
-        }
+        if (effectClass) container.classList.add(effectClass);
       }
 
-      /**
-       * Generates the SVG vector diorama string with adjective post-processing filters
-       */
       function createVectorSVG(noun, adjective, rng, palette) {
         const filterName = ADJECTIVE_EFFECTS[adjective]?.svgFilter;
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
+        const clipId = `clip-${rng.seed}`;
 
         const generator = GenVectorBG[noun] || GenVectorBG.Vale;
         const bgContent = generator(rng, palette);
 
-        let innerSVG;
+        let skyMarkup = "";
+        let terrainMarkup = "";
+
         if (typeof bgContent === "object" && bgContent !== null) {
-          innerSVG = `<g ${filterAttr}>${VectorHelpers.layerStack(bgContent)}</g>`;
+          skyMarkup = bgContent.layer0 ? bgContent.layer0.render() : "";
+
+          if (adjective === ADJECTIVE_EFFECTS.Frozen) {
+            // Keep far background (layer1) soft & atmospheric; apply crystalline frost to midground & foreground terrain/structures
+            const farBg = bgContent.layer1 ? bgContent.layer1.render() : "";
+            const surfaceLayers = [
+              bgContent.layer2,
+              bgContent.layer3,
+              bgContent.layer4,
+            ]
+              .map((l) => (l ? l.render() : ""))
+              .filter(Boolean)
+              .join("\n");
+
+            terrainMarkup = `${farBg}\n<g class="surface-stack" ${filterAttr}>${surfaceLayers}</g>`;
+          } else {
+            const terrainLayers = [
+              bgContent.layer1,
+              bgContent.layer2,
+              bgContent.layer3,
+              bgContent.layer4,
+            ]
+              .map((l) => (l ? l.render() : ""))
+              .filter(Boolean)
+              .join("\n");
+
+            terrainMarkup = `<g class="terrain-stack" ${filterAttr}>${terrainLayers}</g>`;
+          }
         } else {
-          innerSVG = `<g class="midground" ${filterAttr}>${bgContent}</g>`;
+          terrainMarkup = `<g class="midground" ${filterAttr}>${bgContent}</g>`;
         }
 
-        const defs = `
-          <defs>
-            <filter id="distantFog" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="3" />
-            </filter>
-            <filter id="paperShadow" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="0" dy="-6" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
-            </filter>
-            <filter id="paperShadowDeep" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="0" dy="-10" stdDeviation="12" flood-color="#000000" flood-opacity="0.8" />
-            </filter>
-            <filter id="paperShadowOmni" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#000000" flood-opacity="0.85" />
-            </filter>
-          </defs>
-        `;
+        const clockworkOverlay =
+          adjective === ADJECTIVE_EFFECTS.Clockwork
+            ? `<rect width="100%" height="100%" fill="url(#clockworkHatch)" style="mix-blend-mode: multiply; opacity: 0.35; pointer-events: none;" />`
+            : "";
 
-        return `<svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg">${defs}${innerSVG}</svg>`;
+        return `
+          <svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg" style="overflow: hidden; border-radius: 6px;">
+            <defs>
+              <clipPath id="${clipId}">
+                <rect x="0" y="0" width="${SVG_CONFIG.WIDTH}" height="${SVG_CONFIG.HEIGHT}" />
+              </clipPath>
+            </defs>
+            <g clip-path="url(#${clipId})">
+              ${skyMarkup}
+              ${terrainMarkup}
+              ${clockworkOverlay}
+            </g>
+          </svg>
+        `;
       }
 
       function buildCard(adjective, noun, category, engineMode) {
@@ -3820,7 +3795,6 @@
         mediaWrapper.className = "card-media-wrapper";
 
         if (engineMode === ENGINE_MODE.DUAL) {
-          // 1. Pixel container
           const pixelContainer = document.createElement("div");
           pixelContainer.className = "art-container";
           const pixelLabel = document.createElement("span");
@@ -3833,7 +3807,6 @@
             renderPixelCanvas(noun, adjective, pRng, palette),
           );
 
-          // 2. Vector container
           const vectorContainer = document.createElement("div");
           vectorContainer.className = "art-container";
           applyContainerEffects(vectorContainer, adjective);
@@ -3866,7 +3839,6 @@
             openInspector(adjective, noun, category, ENGINE_MODE.PIXEL);
           mediaWrapper.appendChild(container);
         } else {
-          // Vector mode
           const container = document.createElement("div");
           container.className = "art-container";
           applyContainerEffects(container, adjective);
@@ -3955,6 +3927,13 @@
         adjectiveSelect.appendChild(opt);
       });
 
+      function matchesQuery(noun, adjective, category, query) {
+        if (!query) return true;
+        const terms = query.trim().toLowerCase().split(/\s+/);
+        const target = `the ${adjective} ${noun} ${category}`.toLowerCase();
+        return terms.every((term) => target.includes(term));
+      }
+
       function renderGallery() {
         gallery.innerHTML = "";
         const selectedEngine = engineSelect.value;
@@ -3981,12 +3960,7 @@
         adjectives.forEach((adj) => {
           categories.forEach((cat) => {
             NOUN_DATA[cat].forEach((noun) => {
-              const fullName = `The ${adj} ${noun}`.toLowerCase();
-              if (
-                query &&
-                !fullName.includes(query) &&
-                !cat.toLowerCase().includes(query)
-              ) {
+              if (query && !matchesQuery(noun, adj, cat, query)) {
                 return;
               }
               gallery.appendChild(buildCard(adj, noun, cat, selectedEngine));
@@ -4110,7 +4084,12 @@
       engineSelect.addEventListener("change", renderGallery);
       categorySelect.addEventListener("change", renderGallery);
       adjectiveSelect.addEventListener("change", renderGallery);
-      searchInput.addEventListener("input", renderGallery);
+
+      let searchDebounceTimer;
+      searchInput.addEventListener("input", () => {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(renderGallery, 100);
+      });
 
       renderGallery();
     </script>
