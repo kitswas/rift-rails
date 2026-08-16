@@ -1,0 +1,94 @@
+name: Deploy to itch.io
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Target itch.io channel (e.g. html5, beta)"
+        required: true
+        default: "html5"
+        type: string
+      userversion:
+        description: "Version string (leave blank to auto-detect from tag/run number)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Push with Butler
+    runs-on: ubuntu-latest
+    environment:
+      name: itch.io
+      url: https://kitswas.itch.io/rift-rails
+
+    env:
+      ITCH_TARGET: "kitswas/rift-rails" # Format: user/game (itch.io project slug)
+      DEFAULT_CHANNEL: "html5"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare build directory
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp artwork-browser.html dist/
+          if [ -d "assets" ]; then
+            cp -r assets dist/
+          fi
+          if [ -f "LICENSE" ]; then
+            cp LICENSE dist/
+          fi
+          echo "Listing dist package contents:"
+          ls -la dist/
+
+      - name: Set up Butler CLI
+        uses: remarkablegames/setup-butler@v3
+
+      - name: Verify Butler installation
+        run: butler -V
+
+      - name: Resolve deployment parameters
+        id: meta
+        run: |
+          # Determine channel
+          CHANNEL="${{ inputs.channel }}"
+          if [ -z "$CHANNEL" ]; then
+            CHANNEL="$DEFAULT_CHANNEL"
+          fi
+
+          # Determine version
+          VERSION="${{ inputs.userversion }}"
+          if [ -z "$VERSION" ]; then
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              VERSION="${GITHUB_REF#refs/tags/}"
+            else
+              VERSION="build-${{ github.run_number }}-${GITHUB_SHA::7}"
+            fi
+          fi
+
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved target channel: $CHANNEL"
+          echo "Resolved version: $VERSION"
+
+      - name: Push build to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+        run: |
+          TARGET="${{ vars.ITCH_GAME || env.ITCH_TARGET }}"
+          CHANNEL="${{ steps.meta.outputs.channel }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          echo "Pushing dist directory to ${TARGET}:${CHANNEL}..."
+          butler push dist "${TARGET}:${CHANNEL}" --userversion "${VERSION}"
