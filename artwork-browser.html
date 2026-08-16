@@ -2314,21 +2314,103 @@
         }
       }
 
+      class UnifiedPathAccumulator {
+        constructor() {
+          this.channels = new Map();
+        }
+        add(channel, pathData) {
+          if (!pathData) return;
+          const trimmed = pathData.trim();
+          if (!trimmed) return;
+          if (!this.channels.has(channel)) {
+            this.channels.set(channel, []);
+          }
+          this.channels.get(channel).push(trimmed);
+        }
+        get(channel) {
+          return (this.channels.get(channel) || []).join(" ");
+        }
+        renderPath(channel, attributes = "") {
+          const d = this.get(channel);
+          if (!d) return "";
+          return `<path d="${d}" ${attributes} />`;
+        }
+      }
+
+      class UnifiedConiferEngine {
+        constructor() {
+          this.lit = [];
+          this.shadow = [];
+        }
+        addPine(tx, ty, th, tiers = 3) {
+          for (let t = 0; t < tiers; t++) {
+            const tierApexY = ty - th + t * (th * 0.25);
+            const tierBotY = ty - th * 0.45 + t * (th * 0.28);
+            const halfW = th * 0.18 + t * (th * 0.12);
+            this.lit.push(
+              `M ${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} L ${tx.toFixed(1)},${tierApexY.toFixed(1)} L ${tx.toFixed(1)},${tierBotY.toFixed(1)} Z`,
+            );
+            this.shadow.push(
+              `M ${tx.toFixed(1)},${tierBotY.toFixed(1)} L ${tx.toFixed(1)},${tierApexY.toFixed(1)} L ${(tx + halfW).toFixed(1)},${tierBotY.toFixed(1)} Z`,
+            );
+          }
+        }
+        render(colLit, colDark, strokeCol = null) {
+          if (!this.lit.length && !this.shadow.length) return "";
+          return `
+            <g class="unified-conifers" stroke-linejoin="round">
+              ${this.lit.length ? `<path d="${this.lit.join(" ")}" fill="${colLit}" ${VectorHelpers.microStroke(strokeCol || colLit)} />` : ""}
+              ${this.shadow.length ? `<path d="${this.shadow.join(" ")}" fill="${colDark}" ${VectorHelpers.microStroke(strokeCol || colDark)} />` : ""}
+            </g>
+          `;
+        }
+      }
+
+      class UnifiedCragEngine {
+        constructor() {
+          this.lit = [];
+          this.mid = [];
+          this.dark = [];
+        }
+        addCrag(cx, topY, width, botY = 450) {
+          const midY = topY + (botY - topY) * 0.45;
+          const spineX = cx - width * 0.12;
+          const leftX = cx - width / 2;
+          const rightX = cx + width / 2;
+          const shelfX = cx + width * 0.25;
+
+          // Lit side
+          this.lit.push(
+            `M ${leftX.toFixed(1)},${botY} L ${cx.toFixed(1)},${topY.toFixed(1)} L ${spineX.toFixed(1)},${midY.toFixed(1)} Z`,
+          );
+          // Mid side
+          this.mid.push(
+            `M ${leftX.toFixed(1)},${botY} L ${spineX.toFixed(1)},${midY.toFixed(1)} L ${cx.toFixed(1)},${botY} Z`,
+          );
+          // Dark sides (shelf + crevices)
+          this.dark.push(
+            `M ${cx.toFixed(1)},${topY.toFixed(1)} L ${rightX.toFixed(1)},${botY} L ${shelfX.toFixed(1)},${midY.toFixed(1)} Z M ${spineX.toFixed(1)},${midY.toFixed(1)} L ${shelfX.toFixed(1)},${midY.toFixed(1)} L ${cx.toFixed(1)},${botY} Z M ${shelfX.toFixed(1)},${midY.toFixed(1)} L ${rightX.toFixed(1)},${botY} L ${cx.toFixed(1)},${botY} Z`,
+          );
+        }
+        render(colLit, colMid, colDark) {
+          return `
+            <g class="unified-crags" stroke-linejoin="round">
+              ${this.lit.length ? `<path d="${this.lit.join(" ")}" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />` : ""}
+              ${this.mid.length ? `<path d="${this.mid.join(" ")}" fill="${colMid}" ${VectorHelpers.microStroke(colMid)} />` : ""}
+              ${this.dark.length ? `<path d="${this.dark.join(" ")}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />` : ""}
+            </g>
+          `;
+        }
+      }
+
       const VectorHelpers = {
         microStroke: (color, width = 0.5) => {
           return `stroke="${color}" stroke-width="${width}" stroke-linejoin="round"`;
         },
         facetedPine: (tx, ty, th, colLit, colDark, tiers = 3) => {
-          let tr = `<g stroke-linejoin="round">`;
-          for (let t = 0; t < tiers; t++) {
-            const tierApexY = ty - th + t * (th * 0.25);
-            const tierBotY = ty - th * 0.45 + t * (th * 0.28);
-            const halfW = (th * 0.18 + t * (th * 0.12)).toFixed(1);
-            tr += `<polygon points="${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${tx.toFixed(1)},${tierBotY.toFixed(1)}" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
-            tr += `<polygon points="${tx.toFixed(1)},${tierBotY.toFixed(1)} ${tx.toFixed(1)},${tierApexY.toFixed(1)} ${(tx + Number(halfW)).toFixed(1)},${tierBotY.toFixed(1)}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />`;
-          }
-          tr += `</g>`;
-          return tr;
+          const pine = new UnifiedConiferEngine();
+          pine.addPine(tx, ty, th, tiers);
+          return pine.render(colLit, colDark);
         },
         layer: (index, content = "") => new DioramaLayer(index, content),
         shadow: (markup, type = "paper") => {
@@ -2564,23 +2646,25 @@
             `<polygon points="0,450 0,220 200,160 420,230 620,150 800,240 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
           ).apply_blur(4, 0.65);
 
-          let mid = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+          const midForest = new UnifiedConiferEngine();
           for (let i = 0; i < 20; i++) {
             const tx = i * 42 + rng.range(-4, 4);
             const ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
             const th = rng.range(30, 52);
-            mid += VectorHelpers.facetedPine(tx, ty, th, p[2], p[0]);
+            midForest.addPine(tx, ty, th, 3);
           }
+          const mid = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />${midForest.render(p[2], p[0])}`;
           const layer2 = VectorHelpers.layer(2, mid).apply_shadow("paper");
           const layer3 = "";
 
-          let fore = `<polygon points="0,450 0,360 800,335 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+          const foreForest = new UnifiedConiferEngine();
           for (let i = 0; i < 11; i++) {
             const tx = i * 76 + rng.range(-8, 8);
             const ty = 360 + rng.range(-5, 25);
             const th = rng.range(55, 95);
-            fore += VectorHelpers.facetedPine(tx, ty, th, p[1], p[0]);
+            foreForest.addPine(tx, ty, th, 3);
           }
+          const fore = `<polygon points="0,450 0,360 800,335 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />${foreForest.render(p[1], p[0])}`;
           const layer4 = VectorHelpers.layer(4, fore).apply_shadow("paperDeep");
 
           return { layer0, layer1, layer2, layer3, layer4 };
@@ -3231,53 +3315,37 @@
             <rect width="100%" height="100%" fill="url(#${skyId})" />`,
           );
 
-          let dist = "";
+          const distAcc = [];
           for (let i = 0; i < 5; i++) {
             const x = 70 + i * 160 + rng.range(-20, 20),
               h = rng.range(200, 290),
               w = rng.range(70, 110);
-            dist += `<polygon points="${x - w / 2},450 ${x},${450 - h} ${x + w / 2},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+            distAcc.push(
+              `M ${(x - w / 2).toFixed(1)},450 L ${x.toFixed(1)},${(450 - h).toFixed(1)} L ${(x + w / 2).toFixed(1)},450 Z`,
+            );
           }
-          const layer1 = VectorHelpers.layer(1, dist).apply_blur(4, 0.65);
+          const layer1 = VectorHelpers.layer(
+            1,
+            `<path d="${distAcc.join(" ")}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+          ).apply_blur(4, 0.65);
 
-          function generateCragCluster(
-            cx,
-            topY,
-            width,
-            colLit,
-            colMid,
-            colDark,
-          ) {
-            const botY = 450;
-            const midY = topY + (botY - topY) * 0.45;
-            const spineX = cx - width * 0.12;
-            const leftX = cx - width / 2;
-            const rightX = cx + width / 2;
-            const shelfX = cx + width * 0.25;
-
-            let rock = `<g stroke-linejoin="round">`;
-            rock += `<polygon points="${leftX},${botY} ${cx},${topY} ${spineX},${midY}" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
-            rock += `<polygon points="${leftX},${botY} ${spineX},${midY} ${cx},${botY}" fill="${colMid}" ${VectorHelpers.microStroke(colMid)} />`;
-            rock += `<polygon points="${cx},${topY} ${rightX},${botY} ${shelfX},${midY}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />`;
-            rock += `<polygon points="${spineX},${midY} ${shelfX},${midY} ${cx},${botY}" fill="${colDark}" opacity="0.85" />`;
-            rock += `<polygon points="${shelfX},${midY} ${rightX},${botY} ${cx},${botY}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />`;
-            rock += `</g>`;
-            return rock;
-          }
-
-          let midCrags = "";
-          midCrags += generateCragCluster(220, 160, 160, p[3], p[2], p[1]);
-          midCrags += generateCragCluster(580, 140, 180, p[3], p[2], p[1]);
-          const layer2 = VectorHelpers.layer(2, midCrags).apply_shadow("paper");
+          const midCrags = new UnifiedCragEngine();
+          midCrags.addCrag(220, 160, 160);
+          midCrags.addCrag(580, 140, 180);
+          const layer2 = VectorHelpers.layer(
+            2,
+            midCrags.render(p[3], p[2], p[1]),
+          ).apply_shadow("paper");
           const layer3 = "";
 
-          let foreCrags = "";
-          foreCrags += generateCragCluster(100, 100, 220, p[3], p[1], p[0]);
-          foreCrags += generateCragCluster(380, 60, 260, p[4], p[2], p[0]);
-          foreCrags += generateCragCluster(700, 80, 240, p[3], p[1], p[0]);
-          const layer4 = VectorHelpers.layer(4, foreCrags).apply_shadow(
-            "paperDeep",
-          );
+          const foreCrags = new UnifiedCragEngine();
+          foreCrags.addCrag(100, 100, 220);
+          foreCrags.addCrag(380, 60, 260);
+          foreCrags.addCrag(700, 80, 240);
+          const layer4 = VectorHelpers.layer(
+            4,
+            foreCrags.render(p[3], p[1], p[0]),
+          ).apply_shadow("paperDeep");
 
           return { layer0, layer1, layer2, layer3, layer4 };
         },
@@ -3446,23 +3514,26 @@
             `${foreLeft}${foreRight}`,
           ).apply_shadow("paper");
 
-          function drawTrees(startX, startY, endX, endY, count, color) {
-            let tr = "";
+          function drawTreesUnified(startX, startY, endX, endY, count) {
+            const tr = [];
             for (let i = 0; i < count; i++) {
               const t = i / count + rng.range(-2, 2) * 0.01;
               const tx = startX + (endX - startX) * t,
                 ty = startY + (endY - startY) * t + rng.range(-2, 2);
               const th = rng.range(15, 30),
                 tw = th * 0.45;
-              tr += `<polygon points="${tx},${ty - th} ${tx - tw},${ty} ${tx + tw},${ty}" fill="${color}" ${VectorHelpers.microStroke(color)} />`;
-              tr += `<polygon points="${tx},${ty - th * 0.7} ${tx - tw * 0.8},${ty - th * 0.1} ${tx + tw * 0.8},${ty - th * 0.1}" fill="${color}" ${VectorHelpers.microStroke(color)} />`;
+              tr.push(
+                `M ${tx.toFixed(1)},${(ty - th).toFixed(1)} L ${(tx - tw).toFixed(1)},${ty.toFixed(1)} L ${(tx + tw).toFixed(1)},${ty.toFixed(1)} Z M ${tx.toFixed(1)},${(ty - th * 0.7).toFixed(1)} L ${(tx - tw * 0.8).toFixed(1)},${(ty - th * 0.1).toFixed(1)} L ${(tx + tw * 0.8).toFixed(1)},${(ty - th * 0.1).toFixed(1)} Z`,
+              );
             }
-            return tr;
+            return tr.join(" ");
           }
-          let trees =
-            drawTrees(flX - flW / 2, 450, flX, flY, 20, p[0]) +
-            drawTrees(frX, frY, frX + frW / 2, 450, 20, p[0]);
-          const layer4 = VectorHelpers.layer(4, trees).apply_shadow("subtle");
+          const allTreesD =
+            `${drawTreesUnified(flX - flW / 2, 450, flX, flY, 20)} ${drawTreesUnified(frX, frY, frX + frW / 2, 450, 20)}`.trim();
+          const layer4 = VectorHelpers.layer(
+            4,
+            `<path d="${allTreesD}" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`,
+          ).apply_shadow("subtle");
 
           return { layer0, layer1, layer2, layer3, layer4 };
         },
@@ -4023,23 +4094,15 @@
 
             const col =
               l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
-            let layerMarkup = `<g stroke-linejoin="round">`;
+            const forest = new UnifiedConiferEngine();
             for (let i = 0; i < spCount; i++) {
               const cx =
                 (baseOffset + (i + 0.5) * step + rng.range(-6, 6)) % 800;
               const sy = rng.range(yMin, yMin + 70);
               const th = 450 - sy;
-              layerMarkup += VectorHelpers.facetedPine(
-                cx,
-                450,
-                th,
-                col,
-                col,
-                3,
-              );
+              forest.addPine(cx, 450, th, 3);
             }
-            layerMarkup += `</g>`;
-            woodsLayers[l] = layerMarkup;
+            woodsLayers[l] = forest.render(col, col);
           }
 
           const layer1 = VectorHelpers.layer(
@@ -4442,6 +4505,134 @@
         return lsys.render();
       }
 
+      class FractalSnowflakeEngine {
+        constructor() {
+          this.spines = [];
+          this.gems = [];
+          this.cores = [];
+        }
+
+        addSnowflake(cx, cy, radius, complexity = 2) {
+          // 6-fold radial symmetry (exact 60° sectors)
+          for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI) / 3;
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+            const endX = cx + cosA * radius;
+            const endY = cy + sinA * radius;
+
+            // Main stellar spine ray
+            this.spines.push(
+              `M ${cx.toFixed(1)},${cy.toFixed(1)} L ${endX.toFixed(1)},${endY.toFixed(1)}`,
+            );
+
+            // Primary chevron barbs along golden ratio intervals
+            const barbPositions = [0.4, 0.7, 0.9];
+            for (const t of barbPositions) {
+              const bx = cx + cosA * (radius * t);
+              const by = cy + sinA * (radius * t);
+              const bLen = radius * (1 - t) * 0.75;
+              if (bLen < 2) continue;
+
+              const lAng = angle + Math.PI / 3;
+              const rAng = angle - Math.PI / 3;
+              const lTipX = bx + Math.cos(lAng) * bLen;
+              const lTipY = by + Math.sin(lAng) * bLen;
+              const rTipX = bx + Math.cos(rAng) * bLen;
+              const rTipY = by + Math.sin(rAng) * bLen;
+
+              this.spines.push(
+                `M ${bx.toFixed(1)},${by.toFixed(1)} L ${lTipX.toFixed(1)},${lTipY.toFixed(1)} M ${bx.toFixed(1)},${by.toFixed(1)} L ${rTipX.toFixed(1)},${rTipY.toFixed(1)}`,
+              );
+
+              // Sub-barbs if complexity >= 2
+              if (complexity >= 2 && t === 0.7 && bLen > 4) {
+                const subLen = bLen * 0.45;
+                const slx = bx + Math.cos(lAng) * (bLen * 0.5);
+                const sly = by + Math.sin(lAng) * (bLen * 0.5);
+                const srx = bx + Math.cos(rAng) * (bLen * 0.5);
+                const sry = by + Math.sin(rAng) * (bLen * 0.5);
+                this.spines.push(
+                  `M ${slx.toFixed(1)},${sly.toFixed(1)} L ${(slx + cosA * subLen).toFixed(1)},${(sly + sinA * subLen).toFixed(1)} ` +
+                    `M ${srx.toFixed(1)},${sry.toFixed(1)} L ${(srx + cosA * subLen).toFixed(1)},${(sry + sinA * subLen).toFixed(1)}`,
+                );
+              }
+            }
+
+            // Tip diamond gem
+            const tipGemSize = Math.max(1.5, radius * 0.08);
+            const tgX = endX + cosA * tipGemSize;
+            const tgY = endY + sinA * tipGemSize;
+            const perpX = -sinA * (tipGemSize * 0.6);
+            const perpY = cosA * (tipGemSize * 0.6);
+            this.gems.push(
+              `M ${endX.toFixed(1)},${endY.toFixed(1)} L ${(endX + perpX).toFixed(1)},${(endY + perpY).toFixed(1)} L ${tgX.toFixed(1)},${tgY.toFixed(1)} L ${(endX - perpX).toFixed(1)},${(endY - perpY).toFixed(1)} Z`,
+            );
+          }
+
+          // Central 6-point star core
+          const coreR = Math.max(3, radius * 0.22);
+          let starD = "";
+          for (let p = 0; p < 12; p++) {
+            const r = p % 2 === 0 ? coreR : coreR * 0.5;
+            const pAng = (p * Math.PI) / 6;
+            const px = cx + Math.cos(pAng) * r;
+            const py = cy + Math.sin(pAng) * r;
+            starD += `${p === 0 ? "M" : "L"} ${px.toFixed(1)},${py.toFixed(1)} `;
+          }
+          this.gems.push(starD.trim() + " Z");
+
+          const cr = Math.max(1.2, coreR * 0.4);
+          this.cores.push(
+            `M ${(cx - cr).toFixed(1)},${cy.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(cx + cr).toFixed(1)},${cy.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(cx - cr).toFixed(1)},${cy.toFixed(1)}`,
+          );
+        }
+
+        render() {
+          const spineD = this.spines.join(" ");
+          const gemD = this.gems.join(" ");
+          const coreD = this.cores.join(" ");
+
+          return `
+            <g class="frozen-frame-snowflakes" style="pointer-events: none; filter: drop-shadow(0 2px 10px rgba(10,34,56,0.7));">
+              <!-- Halo & Outer Rays -->
+              <path d="${spineD}" fill="none" stroke="#0a2238" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="${spineD}" fill="none" stroke="#4fa1db" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="${spineD}" fill="none" stroke="#ffffff" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+
+              <!-- Snowflake Gems & Central Star Core -->
+              <path d="${gemD}" fill="#d9f2ff" stroke="#1c4a73" stroke-width="0.6" stroke-linejoin="round" opacity="0.95" />
+              <path d="${coreD}" fill="#ffffff" />
+            </g>
+          `;
+        }
+      }
+
+      function getFrozenFrameSnowflakes(rng) {
+        const engine = new FractalSnowflakeEngine();
+        // 4 Corner Major Stellar Snowflakes
+        engine.addSnowflake(34, 34, 30, 2);
+        engine.addSnowflake(766, 34, 30, 2);
+        engine.addSnowflake(34, 416, 30, 2);
+        engine.addSnowflake(766, 416, 30, 2);
+
+        // Delicate Satellite Micro-Snowflakes
+        engine.addSnowflake(74, 24, 13, 1);
+        engine.addSnowflake(24, 76, 12, 1);
+        engine.addSnowflake(726, 24, 13, 1);
+        engine.addSnowflake(776, 76, 12, 1);
+        engine.addSnowflake(74, 426, 13, 1);
+        engine.addSnowflake(24, 374, 12, 1);
+        engine.addSnowflake(726, 426, 13, 1);
+        engine.addSnowflake(776, 374, 12, 1);
+
+        // Subtle Top/Bottom Centered Flurries
+        engine.addSnowflake(400, 18, 14, 1);
+        engine.addSnowflake(400, 432, 14, 1);
+
+        return engine.render();
+      }
+
       function createVectorSVG(noun, adjective, rng, palette) {
         const filterName = ADJECTIVE_EFFECTS[adjective]?.svgFilter;
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
@@ -4563,6 +4754,8 @@
 
         const overgrownFrameVines =
           adjective === "Overgrown" ? getOvergrownFrameVines(rng) : "";
+        const frozenFrameSnowflakes =
+          adjective === "Frozen" ? getFrozenFrameSnowflakes(rng) : "";
 
         return `
           <svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg" style="overflow: hidden; border-radius: 6px;">
@@ -4575,6 +4768,7 @@
               ${skyMarkup}
               ${terrainMarkup}
               ${overgrownFrameVines}
+              ${frozenFrameSnowflakes}
             </g>
           </svg>
         `;
