@@ -1171,7 +1171,7 @@
           return Engine.shuffleArray(bag);
         },
 
-        peekNextNodeId: () => {
+        resolveNextNodeId: (pop = false) => {
           const nextJump = state.jumpCount + 1;
           if (nextJump <= GAME_DATA.runway.length) {
             return GAME_DATA.runway[nextJump - 1];
@@ -1182,22 +1182,12 @@
           if (!state.sectorBag || state.sectorBag.length === 0) {
             state.sectorBag = Engine.createShuffledSectorBag();
           }
-          return state.sectorBag[state.sectorBag.length - 1];
+          return pop
+            ? state.sectorBag.pop()
+            : state.sectorBag[state.sectorBag.length - 1];
         },
-
-        popNextNodeId: () => {
-          const nextJump = state.jumpCount + 1;
-          if (nextJump <= GAME_DATA.runway.length) {
-            return GAME_DATA.runway[nextJump - 1];
-          }
-          if (nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0) {
-            return "hub";
-          }
-          if (!state.sectorBag || state.sectorBag.length === 0) {
-            state.sectorBag = Engine.createShuffledSectorBag();
-          }
-          return state.sectorBag.pop();
-        },
+        peekNextNodeId: () => Engine.resolveNextNodeId(false),
+        popNextNodeId: () => Engine.resolveNextNodeId(true),
 
         generateDimensionForId: (chosenId) => {
           const adj =
@@ -1494,6 +1484,25 @@
             state.weaponTier >= GAME_DATA.config.MAX_TIER;
         },
 
+        forgeUpgrade: (tierKey, onUpgrade) => {
+          const cost = Engine.getForgeCost(state[tierKey]);
+          if (state.flux >= cost) {
+            state.flux -= cost;
+            state[tierKey]++;
+            if (onUpgrade) onUpgrade();
+            Engine.updateUI();
+            Engine.evaluateSurvival();
+          }
+        },
+
+        lockdownGameOver: (logMessage) => {
+          document
+            .querySelectorAll(GAME_DATA.dom.tags.button)
+            .forEach((b) => (b.disabled = true));
+          DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
+          Engine.log(logMessage, GAME_DATA.dom.classes.logDamage);
+        },
+
         updateUI: () => {
           Engine.enforceStateBounds();
           Engine.renderVitals();
@@ -1531,24 +1540,11 @@
           );
 
           DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
-            const cost = Engine.getForgeCost(state.engineTier);
-            if (state.flux >= cost) {
-              state.flux -= cost;
-              state.engineTier++;
-              state.energy++;
-              Engine.updateUI();
-              Engine.evaluateSurvival();
-            }
+            Engine.forgeUpgrade("engineTier", () => state.energy++);
           });
 
           DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
-            const cost = Engine.getForgeCost(state.weaponTier);
-            if (state.flux >= cost) {
-              state.flux -= cost;
-              state.weaponTier++;
-              Engine.updateUI();
-              Engine.evaluateSurvival();
-            }
+            Engine.forgeUpgrade("weaponTier");
           });
 
           DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
@@ -1664,25 +1660,10 @@
             (DOM.navScreen.style.display = GAME_DATA.dom.styles.displayNone),
         },
         DEAD: {
-          onEnter: () => {
-            document
-              .querySelectorAll(GAME_DATA.dom.tags.button)
-              .forEach((b) => (b.disabled = true));
-            DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
-            Engine.log(GAME_DATA.text.logDead, GAME_DATA.dom.classes.logDamage);
-          },
+          onEnter: () => Engine.lockdownGameOver(GAME_DATA.text.logDead),
         },
         STRANDED: {
-          onEnter: () => {
-            document
-              .querySelectorAll(GAME_DATA.dom.tags.button)
-              .forEach((b) => (b.disabled = true));
-            DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
-            Engine.log(
-              GAME_DATA.text.logStranded,
-              GAME_DATA.dom.classes.logDamage,
-            );
-          },
+          onEnter: () => Engine.lockdownGameOver(GAME_DATA.text.logStranded),
         },
       };
 
