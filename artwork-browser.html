@@ -1157,51 +1157,92 @@
         MAX_OFFSET: 5,
       };
 
+      const ADJECTIVES = Object.freeze({
+        FRACTURED: "Fractured",
+        SHATTERED: "Shattered",
+        OVERGROWN: "Overgrown",
+        CLOCKWORK: "Clockwork",
+        FROZEN: "Frozen",
+        CRIMSON: "Crimson",
+        RUSTING: "Rusting",
+        ELDRITCH: "Eldritch",
+        NEON: "Neon",
+        // Direct access aliases
+        Fractured: "Fractured",
+        Shattered: "Shattered",
+        Overgrown: "Overgrown",
+        Clockwork: "Clockwork",
+        Frozen: "Frozen",
+        Crimson: "Crimson",
+        Rusting: "Rusting",
+        Eldritch: "Eldritch",
+        Neon: "Neon",
+      });
+
       const ADJECTIVE_EFFECTS = {
-        Fractured: {
+        [ADJECTIVES.FRACTURED]: {
           svgFilter: "filter-glitch",
           glitchPixel: true,
           cssClass: null,
+          selectiveSurface: false,
         },
-        Shattered: {
+        [ADJECTIVES.SHATTERED]: {
           svgFilter: "filter-shatter",
           glitchPixel: true,
           cssClass: null,
+          selectiveSurface: false,
         },
-        Overgrown: {
+        [ADJECTIVES.OVERGROWN]: {
           svgFilter: "filter-wobble",
           glitchPixel: false,
           cssClass: null,
+          selectiveSurface: true,
+          hasPattern: true,
+          patternPrefix: "vine",
+          patternBlendMode: "difference",
+          layerOpacities: { layer2: 0.48, layer3: 0.62, layer4: 0.72 },
+          getFrameOverlay: (rng) => getOvergrownFrameVines(rng),
         },
-        Clockwork: {
+        [ADJECTIVES.CLOCKWORK]: {
           svgFilter: null,
           glitchPixel: false,
           cssClass: null,
+          selectiveSurface: true,
+          hasPattern: true,
+          patternPrefix: "circuit",
+          patternBlendMode: "color-dodge",
+          layerOpacities: { layer2: 0.4, layer3: 0.55, layer4: 0.65 },
         },
-        Frozen: {
+        [ADJECTIVES.FROZEN]: {
           svgFilter: "filter-frost",
           glitchPixel: false,
           cssClass: null,
+          selectiveSurface: true,
+          getFrameOverlay: (rng) => getFrozenFrameSnowflakes(rng),
         },
-        Crimson: {
+        [ADJECTIVES.CRIMSON]: {
           svgFilter: "filter-heathaze",
           glitchPixel: false,
           cssClass: null,
+          selectiveSurface: false,
         },
-        Rusting: {
+        [ADJECTIVES.RUSTING]: {
           svgFilter: "filter-corrosion",
           glitchPixel: false,
           cssClass: null,
+          selectiveSurface: true,
         },
-        Eldritch: {
+        [ADJECTIVES.ELDRITCH]: {
           svgFilter: "filter-eldritch",
           glitchPixel: false,
           cssClass: "anim-eldritch",
+          selectiveSurface: false,
         },
-        Neon: {
+        [ADJECTIVES.NEON]: {
           svgFilter: "filter-neon",
           glitchPixel: false,
           cssClass: "anim-neon",
+          selectiveSurface: false,
         },
       };
 
@@ -1244,22 +1285,87 @@
         }
       }
 
+      const CATEGORY = Object.freeze({
+        HUB: "hub",
+        HUNT: "hunt",
+        RES: "res",
+        MAZE: "maze",
+        hub: "hub",
+        hunt: "hunt",
+        res: "res",
+        maze: "maze",
+      });
+
       const PALETTES = {
-        Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
-        Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
-        Clockwork: ["#140d02", "#331f05", "#7a4e0c", "#c4881a", "#ffcc4d"],
-        Overgrown: ["#02140a", "#093318", "#17662c", "#33a647", "#85e68b"],
-        Frozen: ["#020b14", "#0a2238", "#1c4a73", "#4fa1db", "#d9f2ff"],
-        Neon: ["#05021a", "#1b0a40", "#3a127a", "#ff007f", "#00ffff"],
-        Shattered: ["#0c0517", "#231138", "#4e287a", "#9b5de5", "#f15bb5"],
-        Eldritch: ["#090214", "#1c0733", "#45127a", "#7a22c4", "#c770ff"],
-        Rusting: ["#120804", "#2e160a", "#633016", "#b05d2c", "#f09858"],
+        [ADJECTIVES.CRIMSON]: [
+          "#140205",
+          "#330811",
+          "#7a121e",
+          "#c42127",
+          "#ff5c5c",
+        ],
+        [ADJECTIVES.FRACTURED]: [
+          "#0a0a0a",
+          "#222222",
+          "#555555",
+          "#999999",
+          "#ffffff",
+        ],
+        [ADJECTIVES.CLOCKWORK]: [
+          "#140d02",
+          "#331f05",
+          "#7a4e0c",
+          "#c4881a",
+          "#ffcc4d",
+        ],
+        [ADJECTIVES.OVERGROWN]: [
+          "#02140a",
+          "#093318",
+          "#17662c",
+          "#33a647",
+          "#85e68b",
+        ],
+        [ADJECTIVES.FROZEN]: [
+          "#020b14",
+          "#0a2238",
+          "#1c4a73",
+          "#4fa1db",
+          "#d9f2ff",
+        ],
+        [ADJECTIVES.NEON]: [
+          "#05021a",
+          "#1b0a40",
+          "#3a127a",
+          "#ff007f",
+          "#00ffff",
+        ],
+        [ADJECTIVES.SHATTERED]: [
+          "#0c0517",
+          "#231138",
+          "#4e287a",
+          "#9b5de5",
+          "#f15bb5",
+        ],
+        [ADJECTIVES.ELDRITCH]: [
+          "#090214",
+          "#1c0733",
+          "#45127a",
+          "#7a22c4",
+          "#c770ff",
+        ],
+        [ADJECTIVES.RUSTING]: [
+          "#120804",
+          "#2e160a",
+          "#633016",
+          "#b05d2c",
+          "#f09858",
+        ],
       };
 
       const NOUN_DATA = {
-        hub: ["Station", "Bazaar", "Outpost", "Nexus", "Sanctuary"],
-        hunt: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
-        res: [
+        [CATEGORY.HUB]: ["Station", "Bazaar", "Outpost", "Nexus", "Sanctuary"],
+        [CATEGORY.HUNT]: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
+        [CATEGORY.RES]: [
           "Wastes",
           "Quarry",
           "Nebula",
@@ -1269,7 +1375,14 @@
           "Canyon",
           "Dunes",
         ],
-        maze: ["Catacombs", "Labyrinth", "Spire", "Ruins", "Abyss", "Woods"],
+        [CATEGORY.MAZE]: [
+          "Catacombs",
+          "Labyrinth",
+          "Spire",
+          "Ruins",
+          "Abyss",
+          "Woods",
+        ],
       };
 
       /** =========================================================================
@@ -3789,7 +3902,7 @@
         if (effectClass) container.classList.add(effectClass);
       }
       const PATTERN_INNER_SVG = {
-        Clockwork: `
+        [ADJECTIVES.CLOCKWORK]: `
           <!-- Ground-plane subtle hatched shield corners (perfectly tileable) -->
           <g fill="none" stroke="#e5a93c" stroke-width="0.5" opacity="0.35">
             <line x1="0" y1="0" x2="15" y2="15" />
@@ -3851,7 +3964,7 @@
             <line x1="88" y1="46" x2="88" y2="54" />
           </g>
         `,
-        Overgrown: `
+        [ADJECTIVES.OVERGROWN]: `
           <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
           <g fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path
@@ -4012,7 +4125,7 @@
               <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
             </g>
           </g>
-        `
+        `,
       };
 
       class LSystemVine {
@@ -4297,7 +4410,8 @@
       }
 
       function createVectorSVG(noun, adjective, rng, palette) {
-        const filterName = ADJECTIVE_EFFECTS[adjective]?.svgFilter;
+        const effectConfig = ADJECTIVE_EFFECTS[adjective] || {};
+        const filterName = effectConfig.svgFilter;
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
         const clipId = `clip-${rng.seed}`;
 
@@ -4307,28 +4421,23 @@
         let skyMarkup = "";
         let terrainMarkup = "";
 
-        // Adjectives that use selective surface stack filtering (preserves pristine sky & atmospheric far horizon)
-        const selectiveSurfaceAdjectives = [
-          "Frozen",
-          "Clockwork",
-          "Rusting",
-          "Overgrown",
-        ];
-
         if (typeof bgContent === "object" && bgContent !== null) {
           skyMarkup = bgContent.layer0 ? bgContent.layer0.render() : "";
 
-          if (selectiveSurfaceAdjectives.includes(adjective)) {
+          if (effectConfig.selectiveSurface) {
             // Keep far background (layer1) soft & atmospheric; apply tactile material filter to midground & foreground terrain/structures
             const farBg = bgContent.layer1 ? bgContent.layer1.render() : "";
 
-            const isPatternAdjective =
-              adjective === "Clockwork" || adjective === "Overgrown";
+            const hasPattern = Boolean(effectConfig.hasPattern);
             const patternInnerSvg = PATTERN_INNER_SVG[adjective] || "";
-            const patternPrefix =
-              adjective === "Overgrown" ? "vine" : "circuit";
+            const patternPrefix = effectConfig.patternPrefix || "circuit";
             const patternBlendMode =
-              adjective === "Clockwork" ? "color-dodge" : "difference";
+              effectConfig.patternBlendMode || "difference";
+            const layerOpacities = effectConfig.layerOpacities || {
+              layer2: 0.4,
+              layer3: 0.55,
+              layer4: 0.65,
+            };
 
             const surfaceLayerConfigs = [
               {
@@ -4338,7 +4447,7 @@
                 dy: 0,
                 rot: 0,
                 scale: 0.85,
-                opacity: adjective === "Overgrown" ? 0.48 : 0.4,
+                opacity: layerOpacities.layer2,
               },
               {
                 key: "layer3",
@@ -4347,7 +4456,7 @@
                 dy: 62,
                 rot: 90,
                 scale: 1.05,
-                opacity: adjective === "Overgrown" ? 0.62 : 0.55,
+                opacity: layerOpacities.layer3,
               },
               {
                 key: "layer4",
@@ -4356,7 +4465,7 @@
                 dy: 28,
                 rot: 0,
                 scale: 1.35,
-                opacity: adjective === "Overgrown" ? 0.72 : 0.65,
+                opacity: layerOpacities.layer4,
               },
             ];
 
@@ -4368,7 +4477,7 @@
               const markup = cfg.data.render();
               if (!markup) return;
 
-              if (isPatternAdjective) {
+              if (hasPattern) {
                 const patternId = `${patternPrefix}-${rng.seed}-${cfg.key}`;
                 const maskId = `mask-${rng.seed}-${cfg.key}`;
                 const rotTransform = cfg.rot ? ` rotate(${cfg.rot} 50 50)` : "";
@@ -4412,10 +4521,9 @@
           terrainMarkup = `<g class="midground" ${filterAttr}>${bgContent}</g>`;
         }
 
-        const overgrownFrameVines =
-          adjective === "Overgrown" ? getOvergrownFrameVines(rng) : "";
-        const frozenFrameSnowflakes =
-          adjective === "Frozen" ? getFrozenFrameSnowflakes(rng) : "";
+        const frameOverlay = effectConfig.getFrameOverlay
+          ? effectConfig.getFrameOverlay(rng)
+          : "";
 
         return `
           <svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg" style="overflow: hidden; border-radius: 6px;">
@@ -4427,8 +4535,7 @@
             <g clip-path="url(#${clipId})">
               ${skyMarkup}
               ${terrainMarkup}
-              ${overgrownFrameVines}
-              ${frozenFrameSnowflakes}
+              ${frameOverlay}
             </g>
           </svg>
         `;
@@ -4437,7 +4544,7 @@
       function buildCard(adjective, noun, category, engineMode) {
         const fullName = `The ${adjective} ${noun}`;
         const rng = new SeededRNG(fullName);
-        const palette = PALETTES[adjective] || PALETTES.Fractured;
+        const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.FRACTURED];
 
         const card = document.createElement("div");
         card.className = "art-card";
@@ -4588,11 +4695,11 @@
       const modalDownloadSvg = document.getElementById("modal-download-svg");
 
       let currentInspectState = {
-        adjective: "Crimson",
+        adjective: ADJECTIVES.CRIMSON,
         noun: "Wilds",
-        category: "hunt",
+        category: CATEGORY.HUNT,
         engine: ENGINE_MODE.VECTOR,
-        seedStr: "The Crimson Wilds",
+        seedStr: `The ${ADJECTIVES.CRIMSON} Wilds`,
       };
 
       // Populate Palette Options
@@ -4673,7 +4780,7 @@
         const { adjective, noun, category, engine, seedStr } =
           currentInspectState;
         const rng = new SeededRNG(seedStr);
-        const palette = PALETTES[adjective] || PALETTES.Fractured;
+        const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.FRACTURED];
 
         modalTitle.innerText = `The ${adjective} ${noun}`;
         modalBadge.className = `art-badge cat-${category}`;
