@@ -1714,7 +1714,6 @@
           }
         }
         present() {
-          this.imageData.data.set(new Uint8ClampedArray(this.buf.buffer));
           this.ctx.putImageData(this.imageData, 0, 0);
           return this.canvas;
         }
