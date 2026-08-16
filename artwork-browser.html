@@ -1362,26 +1362,95 @@
         ],
       };
 
+      const NOUNS = Object.freeze({
+        // Hub
+        STATION: "Station",
+        BAZAAR: "Bazaar",
+        OUTPOST: "Outpost",
+        NEXUS: "Nexus",
+        SANCTUARY: "Sanctuary",
+        // Hunt
+        WILDS: "Wilds",
+        EXPANSE: "Expanse",
+        TUNDRA: "Tundra",
+        JUNGLE: "Jungle",
+        DOMINION: "Dominion",
+        // Res
+        WASTES: "Wastes",
+        QUARRY: "Quarry",
+        NEBULA: "Nebula",
+        CRAGS: "Crags",
+        FIELDS: "Fields",
+        VALE: "Vale",
+        CANYON: "Canyon",
+        DUNES: "Dunes",
+        // Maze
+        CATACOMBS: "Catacombs",
+        LABYRINTH: "Labyrinth",
+        SPIRE: "Spire",
+        RUINS: "Ruins",
+        ABYSS: "Abyss",
+        WOODS: "Woods",
+
+        // Direct access aliases
+        Station: "Station",
+        Bazaar: "Bazaar",
+        Outpost: "Outpost",
+        Nexus: "Nexus",
+        Sanctuary: "Sanctuary",
+        Wilds: "Wilds",
+        Expanse: "Expanse",
+        Tundra: "Tundra",
+        Jungle: "Jungle",
+        Dominion: "Dominion",
+        Wastes: "Wastes",
+        Quarry: "Quarry",
+        Nebula: "Nebula",
+        Crags: "Crags",
+        Fields: "Fields",
+        Vale: "Vale",
+        Canyon: "Canyon",
+        Dunes: "Dunes",
+        Catacombs: "Catacombs",
+        Labyrinth: "Labyrinth",
+        Spire: "Spire",
+        Ruins: "Ruins",
+        Abyss: "Abyss",
+        Woods: "Woods",
+      });
+
       const NOUN_DATA = {
-        [CATEGORY.HUB]: ["Station", "Bazaar", "Outpost", "Nexus", "Sanctuary"],
-        [CATEGORY.HUNT]: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
+        [CATEGORY.HUB]: [
+          NOUNS.STATION,
+          NOUNS.BAZAAR,
+          NOUNS.OUTPOST,
+          NOUNS.NEXUS,
+          NOUNS.SANCTUARY,
+        ],
+        [CATEGORY.HUNT]: [
+          NOUNS.WILDS,
+          NOUNS.EXPANSE,
+          NOUNS.TUNDRA,
+          NOUNS.JUNGLE,
+          NOUNS.DOMINION,
+        ],
         [CATEGORY.RES]: [
-          "Wastes",
-          "Quarry",
-          "Nebula",
-          "Crags",
-          "Fields",
-          "Vale",
-          "Canyon",
-          "Dunes",
+          NOUNS.WASTES,
+          NOUNS.QUARRY,
+          NOUNS.NEBULA,
+          NOUNS.CRAGS,
+          NOUNS.FIELDS,
+          NOUNS.VALE,
+          NOUNS.CANYON,
+          NOUNS.DUNES,
         ],
         [CATEGORY.MAZE]: [
-          "Catacombs",
-          "Labyrinth",
-          "Spire",
-          "Ruins",
-          "Abyss",
-          "Woods",
+          NOUNS.CATACOMBS,
+          NOUNS.LABYRINTH,
+          NOUNS.SPIRE,
+          NOUNS.RUINS,
+          NOUNS.ABYSS,
+          NOUNS.WOODS,
         ],
       };
 
@@ -1479,7 +1548,7 @@
       }
 
       const GenPixel = {
-        Station: (r, rng) => {
+        [NOUNS.STATION]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
@@ -1504,7 +1573,7 @@
             for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
           }
         },
-        Bazaar: (r, rng) => {
+        [NOUNS.BAZAAR]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1520,7 +1589,7 @@
             r.setPixel(bx + 14, by + 4, 4);
           }
         },
-        Outpost: (r, rng) => {
+        [NOUNS.OUTPOST]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++)
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
@@ -1537,7 +1606,7 @@
             r.setPixel(81, y, 4);
           }
         },
-        Nexus: (r, rng) => {
+        [NOUNS.NEXUS]: (r, rng) => {
           const cx = r.w / 2,
             cy = r.h / 2;
           for (let y = 0; y < r.h; y++) {
@@ -1553,7 +1622,7 @@
             }
           }
         },
-        Sanctuary: (r, rng) => {
+        [NOUNS.SANCTUARY]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1571,7 +1640,7 @@
           }
           r.setPixel(cx, 35, 4);
         },
-        Wilds: (r, rng) => {
+        [NOUNS.WILDS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1590,7 +1659,7 @@
             }
           }
         },
-        Expanse: (r, rng) => {
+        [NOUNS.EXPANSE]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               r.setPixelDither(x, y, 0, 1, y < 45 ? y / 45 : (y - 45) / 45);
@@ -1605,7 +1674,7 @@
             r.setPixel(px, py + 1, 3);
           }
         },
-        Tundra: (r, rng) => {
+        [NOUNS.TUNDRA]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1631,7 +1700,7 @@
             }
           }
         },
-        Jungle: (r, rng) => {
+        [NOUNS.JUNGLE]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1649,7 +1718,7 @@
             }
           }
         },
-        Dominion: (r, rng) => {
+        [NOUNS.DOMINION]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1674,7 +1743,7 @@
             for (let x = cx - w; x <= cx + w; x++) r.setPixel(x, y, 3);
           }
         },
-        Wastes: (r, rng) => {
+        [NOUNS.WASTES]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1687,7 +1756,7 @@
             }
           }
         },
-        Quarry: (r, rng) => {
+        [NOUNS.QUARRY]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
           }
@@ -1709,7 +1778,7 @@
             }
           }
         },
-        Nebula: (r, rng) => {
+        [NOUNS.NEBULA]: (r, rng) => {
           const gw = 20,
             gh = 12,
             noise = new Array(gw * gh);
@@ -1737,7 +1806,7 @@
             }
           }
         },
-        Crags: (r, rng) => {
+        [NOUNS.CRAGS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++)
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.4);
@@ -1763,7 +1832,7 @@
             }
           }
         },
-        Fields: (r, rng) => {
+        [NOUNS.FIELDS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1774,7 +1843,7 @@
             }
           }
         },
-        Vale: (r, rng) => {
+        [NOUNS.VALE]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++)
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
@@ -1803,7 +1872,7 @@
             }
           }
         },
-        Canyon: (r, rng) => {
+        [NOUNS.CANYON]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
           }
@@ -1816,7 +1885,7 @@
             }
           }
         },
-        Dunes: (r, rng) => {
+        [NOUNS.DUNES]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
           }
@@ -1832,7 +1901,7 @@
             }
           }
         },
-        Catacombs: (r, rng) => {
+        [NOUNS.CATACOMBS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               const wall = Math.sin(x * 0.1) * 15 + 20;
@@ -1841,7 +1910,7 @@
             }
           }
         },
-        Labyrinth: (r, rng) => {
+        [NOUNS.LABYRINTH]: (r, rng) => {
           const cx = r.w / 2,
             cy = r.h / 2;
           for (let y = 0; y < r.h; y++) {
@@ -1860,7 +1929,7 @@
             }
           }
         },
-        Spire: (r, rng) => {
+        [NOUNS.SPIRE]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++)
               r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
@@ -1872,7 +1941,7 @@
               r.setPixel(x, y, x < cx ? 2 : 3);
           }
         },
-        Ruins: (r, rng) => {
+        [NOUNS.RUINS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -1885,7 +1954,7 @@
             }
           }
         },
-        Abyss: (r, rng) => {
+        [NOUNS.ABYSS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               const riftW = (y / r.h) * 40 + 10;
@@ -1895,7 +1964,7 @@
             }
           }
         },
-        Woods: (r, rng) => {
+        [NOUNS.WOODS]: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
           }
@@ -2185,7 +2254,7 @@
       };
 
       const GenVectorBG = {
-        Station: (rng, p) => {
+        [NOUNS.STATION]: (rng, p) => {
           const skyId = `stnSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2218,7 +2287,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Bazaar: (rng, p) => {
+        [NOUNS.BAZAAR]: (rng, p) => {
           const skyId = `bazSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2288,7 +2357,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Outpost: (rng, p) => {
+        [NOUNS.OUTPOST]: (rng, p) => {
           const skyId = `outSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2315,7 +2384,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Nexus: (rng, p) => {
+        [NOUNS.NEXUS]: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -2347,7 +2416,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Sanctuary: (rng, p) => {
+        [NOUNS.SANCTUARY]: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -2386,7 +2455,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Wilds: (rng, p) => {
+        [NOUNS.WILDS]: (rng, p) => {
           const skyId = `wildsSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2428,7 +2497,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Expanse: (rng, p) => {
+        [NOUNS.EXPANSE]: (rng, p) => {
           const skyId = `expSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2456,7 +2525,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Tundra: (rng, p) => {
+        [NOUNS.TUNDRA]: (rng, p) => {
           const skyId = `tunSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2513,7 +2582,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Jungle: (rng, p) => {
+        [NOUNS.JUNGLE]: (rng, p) => {
           const isLeftDominant = rng.chance(0.5);
           const sunX = isLeftDominant
             ? rng.range(600, 680)
@@ -2875,7 +2944,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Dominion: (rng, p) => {
+        [NOUNS.DOMINION]: (rng, p) => {
           const skyId = `domSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2931,7 +3000,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Wastes: (rng, p) => {
+        [NOUNS.WASTES]: (rng, p) => {
           const skyId = `wasteSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2973,7 +3042,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Quarry: (rng, p) => {
+        [NOUNS.QUARRY]: (rng, p) => {
           const skyId = `quarrySky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -3009,7 +3078,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Nebula: (rng, p) => {
+        [NOUNS.NEBULA]: (rng, p) => {
           let deepPolys = "";
           for (let i = 0; i < 16; i++) {
             const cx = rng.range(40, 760),
@@ -3065,7 +3134,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Crags: (rng, p) => {
+        [NOUNS.CRAGS]: (rng, p) => {
           const skyId = `cragSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -3108,7 +3177,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Fields: (rng, p) => {
+        [NOUNS.FIELDS]: (rng, p) => {
           const skyId = `fldSky-${rng.seed}`;
           const sunX = rng.range(250, 650),
             sunY = rng.range(90, 150),
@@ -3179,7 +3248,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Vale: (rng, p) => {
+        [NOUNS.VALE]: (rng, p) => {
           const skyId = `vSky-${rng.seed}`;
           let layer0Markup = `<defs>
             <linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1">
@@ -3296,7 +3365,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Canyon: (rng, p) => {
+        [NOUNS.CANYON]: (rng, p) => {
           const skyId = `canyonSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -3340,7 +3409,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Dunes: (rng, p) => {
+        [NOUNS.DUNES]: (rng, p) => {
           const skyId = `duneSky-${rng.seed}`;
           const sunX = rng.range(260, 560),
             sunY = rng.range(80, 130),
@@ -3543,7 +3612,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Catacombs: (rng, p) => {
+        [NOUNS.CATACOMBS]: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -3571,7 +3640,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Labyrinth: (rng, p) => {
+        [NOUNS.LABYRINTH]: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<defs>
@@ -3662,7 +3731,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Spire: (rng, p) => {
+        [NOUNS.SPIRE]: (rng, p) => {
           const skyId = `spireSky-${rng.seed}`;
           let skyMarkup = `
             <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
@@ -3769,7 +3838,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Ruins: (rng, p) => {
+        [NOUNS.RUINS]: (rng, p) => {
           const skyId = `ruinSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -3801,7 +3870,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Abyss: (rng, p) => {
+        [NOUNS.ABYSS]: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -3821,7 +3890,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        Woods: (rng, p) => {
+        [NOUNS.WOODS]: (rng, p) => {
           const skyId = `woodsSky-${rng.seed}`;
           const moonX = rng.range(200, 600),
             moonY = rng.range(90, 170),
@@ -4415,7 +4484,7 @@
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
         const clipId = `clip-${rng.seed}`;
 
-        const generator = GenVectorBG[noun] || GenVectorBG.Vale;
+        const generator = GenVectorBG[noun] || GenVectorBG[NOUNS.VALE];
         const bgContent = generator(rng, palette);
 
         let skyMarkup = "";
@@ -4696,10 +4765,10 @@
 
       let currentInspectState = {
         adjective: ADJECTIVES.CRIMSON,
-        noun: "Wilds",
+        noun: NOUNS.WILDS,
         category: CATEGORY.HUNT,
         engine: ENGINE_MODE.VECTOR,
-        seedStr: `The ${ADJECTIVES.CRIMSON} Wilds`,
+        seedStr: `The ${ADJECTIVES.CRIMSON} ${NOUNS.WILDS}`,
       };
 
       // Populate Palette Options
