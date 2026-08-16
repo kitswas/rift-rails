@@ -1153,6 +1153,14 @@
           Engine.evaluateSurvival();
         },
 
+        shuffleArray: (arr) => {
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+          return arr;
+        },
+
         createShuffledSectorBag: () => {
           const bag = [];
           for (const [nodeType, count] of Object.entries(
@@ -1160,11 +1168,7 @@
           )) {
             for (let i = 0; i < count; i++) bag.push(nodeType);
           }
-          for (let i = bag.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [bag[i], bag[j]] = [bag[j], bag[i]];
-          }
-          return bag;
+          return Engine.shuffleArray(bag);
         },
 
         peekNextNodeId: () => {
@@ -1649,7 +1653,7 @@
               btn.addEventListener(GAME_DATA.dom.events.click, () => {
                 if (choice.returnId && state.sectorBag) {
                   state.sectorBag.push(choice.returnId);
-                  state.sectorBag.sort(() => Math.random() - 0.5);
+                  Engine.shuffleArray(state.sectorBag);
                 }
                 Engine.finalizeJump(choice.id, choice.name);
               });
