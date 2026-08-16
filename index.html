@@ -21,6 +21,7 @@
         --action: #f59e0b;
         --energy: #a855f7;
         --info: #38bdf8;
+        --theme-glow: rgba(56, 189, 248, 0.2);
         --overlay-bg: rgba(7, 9, 14, 0.96);
         --font-mono: "SF Mono", "Fira Code", monospace, "Courier New";
         --radius: 8px;
@@ -44,6 +45,55 @@
         display: flex;
         flex-direction: column;
         font-size: 14px;
+        transition:
+          filter 0.2s ease,
+          background-color 0.8s ease;
+      }
+
+      /* ================= JUMP TRANSITION & WARP FX ================= */
+      #fx-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 2500;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      #fx-canvas.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .screen-shake {
+        animation: riftTremor 0.05s infinite alternate;
+      }
+
+      .chromatic-flash {
+        animation: chromaticFlash 0.35s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+      }
+
+      @keyframes riftTremor {
+        0% {
+          transform: translate(-3px, 2px) rotate(-0.3deg);
+        }
+        100% {
+          transform: translate(3px, -2px) rotate(0.3deg);
+        }
+      }
+
+      @keyframes chromaticFlash {
+        0% {
+          filter: invert(0.9) contrast(220%) hue-rotate(180deg) brightness(2);
+        }
+        35% {
+          filter: invert(0.25) saturate(250%) contrast(140%);
+        }
+        100% {
+          filter: invert(0) contrast(100%) hue-rotate(0deg) brightness(1);
+        }
       }
 
       /* ================= START SCREEN ================= */
@@ -93,6 +143,7 @@
         gap: 6px;
         flex-shrink: 0;
         width: 100%;
+        transition: border-color 0.5s ease;
       }
 
       .hud-cell {
@@ -227,6 +278,7 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        transition: border-color 0.5s ease;
       }
 
       h2,
@@ -259,9 +311,12 @@
       }
 
       #art-glyph {
-        font-size: 3em;
+        font-size: 3.2em;
         color: var(--border-bright);
-        filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.2));
+        filter: drop-shadow(0 0 12px var(--theme-glow));
+        transition:
+          transform 0.4s ease,
+          color 0.4s ease;
       }
 
       .telemetry-grid {
@@ -270,7 +325,7 @@
         gap: 6px;
       }
 
-      /* ================= PANE 2: TACTICAL LOG & ACTIONS ================= */
+      /* ================= PANE 2: TACTICAL BRIDGE & LOG ================= */
       #story-log {
         flex: 1;
         min-height: 170px;
@@ -537,6 +592,8 @@
     ========================================================
     -->
 
+    <canvas id="fx-canvas"></canvas>
+
     <div id="start-screen">
       <div class="start-card">
         <h1>Rift Rails:<br />The Infinite Express</h1>
@@ -762,6 +819,23 @@
           HUB_HARD_FLUX_YIELD: 100,
 
           WAYPOINT_HUB_INTERVAL: 10,
+
+          JUMP_CHARGE_MS: 900,
+          JUMP_TOTAL_MS: 1250,
+          FX_STAR_COUNT: 220,
+          FX_VIBRATE_PATTERN: [35, 45, 100],
+        },
+
+        audio: {
+          chargeRumbleStartFreq: 55,
+          chargeRumbleEndFreq: 360,
+          chargeBandpassStartFreq: 200,
+          chargeBandpassEndFreq: 3600,
+          chargeBandpassQ: 4,
+          chargeWhistleStartFreq: 220,
+          chargeWhistleEndFreq: 1300,
+          chimeNoteStart: 587.33,
+          chimeNoteEnd: 880,
         },
 
         runway: ["hub", "res", "res", "hunt", "hub"],
@@ -785,6 +859,7 @@
           idle: "IDLE",
           encounter: "ENCOUNTER",
           navigating: "NAVIGATING",
+          jumping: "JUMPING",
           dead: "DEAD",
           stranded: "STRANDED",
           yard_root: "YARD_ROOT",
@@ -793,11 +868,26 @@
 
         transitions: {
           START: ["IDLE"],
-          IDLE: ["ENCOUNTER", "NAVIGATING", "DEAD", "STRANDED", "IDLE"],
-          ENCOUNTER: ["IDLE", "YARD_ROOT", "DEAD", "STRANDED", "NAVIGATING"],
+          IDLE: [
+            "ENCOUNTER",
+            "NAVIGATING",
+            "JUMPING",
+            "DEAD",
+            "STRANDED",
+            "IDLE",
+          ],
+          ENCOUNTER: [
+            "IDLE",
+            "YARD_ROOT",
+            "DEAD",
+            "STRANDED",
+            "NAVIGATING",
+            "JUMPING",
+          ],
           YARD_ROOT: ["YARD_CATEGORY", "ENCOUNTER"],
           YARD_CATEGORY: ["YARD_ROOT"],
-          NAVIGATING: ["IDLE", "DEAD", "STRANDED"],
+          NAVIGATING: ["JUMPING", "IDLE", "DEAD", "STRANDED"],
+          JUMPING: ["IDLE", "DEAD", "STRANDED"],
           DEAD: [],
           STRANDED: [],
         },
@@ -809,6 +899,7 @@
           YARD_ROOT: { explore: false, travel: false, forge: false },
           YARD_CATEGORY: { explore: false, travel: false, forge: false },
           NAVIGATING: { explore: false, travel: false, forge: false },
+          JUMPING: { explore: false, travel: false, forge: false },
           DEAD: { explore: false, travel: false, forge: false },
           STRANDED: { explore: false, travel: false, forge: false },
         },
@@ -829,6 +920,9 @@
             navBtn: "nav-btn",
             dimName: "dim-name",
             dimType: "dim-type",
+            screenShake: "screen-shake",
+            chromaticFlash: "chromatic-flash",
+            fxActive: "active",
           },
           ids: {
             startScreen: "start-screen",
@@ -868,6 +962,8 @@
             tabForge: "tab-forge",
             dimTypeCodex: "dim-type-codex",
             artLabel: "art-label",
+            artGlyph: "art-glyph",
+            fxCanvas: "fx-canvas",
           },
           styles: {
             displayNone: "none",
@@ -878,6 +974,12 @@
             colorSuccess: "var(--success)",
             colorAction: "var(--action)",
             colorEnergy: "var(--energy)",
+          },
+          cssVars: {
+            accent: "--accent",
+            info: "--info",
+            themeGlow: "--theme-glow",
+            bg: "--bg",
           },
           events: { click: "click" },
           tags: { div: "div", span: "span", button: "button" },
@@ -967,6 +1069,68 @@
             hunt: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
             res: ["Wastes", "Quarry", "Nebula", "Crags", "Fields"],
             maze: ["Catacombs", "Labyrinth", "Spire", "Ruins", "Abyss"],
+          },
+          themes: {
+            Crimson: {
+              primary: "#ff2a5f",
+              secondary: "#ff8008",
+              glyph: "☣",
+              bg: "#0f0508",
+            },
+            Fractured: {
+              primary: "#38bdf8",
+              secondary: "#e0e7ff",
+              glyph: "❄",
+              bg: "#060912",
+            },
+            Clockwork: {
+              primary: "#f59e0b",
+              secondary: "#fbbf24",
+              glyph: "⚙",
+              bg: "#100c05",
+            },
+            Overgrown: {
+              primary: "#10b981",
+              secondary: "#84cc16",
+              glyph: "❦",
+              bg: "#040d08",
+            },
+            Frozen: {
+              primary: "#06b6d4",
+              secondary: "#93c5fd",
+              glyph: "❅",
+              bg: "#040c14",
+            },
+            Neon: {
+              primary: "#ec4899",
+              secondary: "#06b6d4",
+              glyph: "❖",
+              bg: "#0d0414",
+            },
+            Shattered: {
+              primary: "#94a3b8",
+              secondary: "#cbd5e1",
+              glyph: "✦",
+              bg: "#0a0a0f",
+            },
+            Eldritch: {
+              primary: "#a855f7",
+              secondary: "#22c55e",
+              glyph: "🜏",
+              bg: "#0b0414",
+            },
+            Rusting: {
+              primary: "#ea580c",
+              secondary: "#78350f",
+              glyph: "☵",
+              bg: "#120804",
+            },
+          },
+          defaultTheme: {
+            primary: "#38bdf8",
+            secondary: "#a855f7",
+            glyph: "✦",
+            bg: "#07090e",
           },
         },
 
@@ -1252,8 +1416,314 @@
         crew: GAME_DATA.text.noneState,
         dimId: GAME_DATA.nodes.hub.id,
         dimName: "Scrapyard Outpost",
+        targetDimId: null,
+        targetDimName: null,
         navChoices: [],
         yardCat: null,
+      };
+
+      /* ========================================================
+         AUDIO SYNTHESIZER & SOUND FX (Web Audio API)
+         ======================================================== */
+      const SoundFX = {
+        ctx: null,
+        init: () => {
+          if (!SoundFX.ctx) {
+            const AudioContext =
+              window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) SoundFX.ctx = new AudioContext();
+          }
+          if (SoundFX.ctx && SoundFX.ctx.state === "suspended") {
+            SoundFX.ctx.resume();
+          }
+        },
+
+        playJumpCharge: (breachSec) => {
+          if (!SoundFX.ctx) return;
+          const now = SoundFX.ctx.currentTime;
+
+          // Charge rumble (Sawtooth rising)
+          const osc1 = SoundFX.ctx.createOscillator();
+          const gain1 = SoundFX.ctx.createGain();
+          osc1.type = "sawtooth";
+          osc1.frequency.setValueAtTime(GAME_DATA.audio.chargeRumbleStartFreq, now);
+          osc1.frequency.exponentialRampToValueAtTime(
+            GAME_DATA.audio.chargeRumbleEndFreq,
+            now + breachSec,
+          );
+
+          gain1.gain.setValueAtTime(0.01, now);
+          gain1.gain.linearRampToValueAtTime(0.2, now + breachSec * 0.9);
+          gain1.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + breachSec + 0.04,
+          );
+
+          // Dynamic bandpass resonance sweep
+          const filter = SoundFX.ctx.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.setValueAtTime(
+            GAME_DATA.audio.chargeBandpassStartFreq,
+            now,
+          );
+          filter.frequency.exponentialRampToValueAtTime(
+            GAME_DATA.audio.chargeBandpassEndFreq,
+            now + breachSec,
+          );
+          filter.Q.setValueAtTime(GAME_DATA.audio.chargeBandpassQ, now);
+
+          osc1.connect(filter);
+          filter.connect(gain1);
+          gain1.connect(SoundFX.ctx.destination);
+
+          // Warp harmonic whistle
+          const osc2 = SoundFX.ctx.createOscillator();
+          const gain2 = SoundFX.ctx.createGain();
+          osc2.type = "sine";
+          osc2.frequency.setValueAtTime(GAME_DATA.audio.chargeWhistleStartFreq, now);
+          osc2.frequency.exponentialRampToValueAtTime(
+            GAME_DATA.audio.chargeWhistleEndFreq,
+            now + breachSec,
+          );
+
+          gain2.gain.setValueAtTime(0.01, now);
+          gain2.gain.linearRampToValueAtTime(0.14, now + breachSec * 0.9);
+          gain2.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + breachSec + 0.04,
+          );
+
+          osc2.connect(gain2);
+          gain2.connect(SoundFX.ctx.destination);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + breachSec + 0.05);
+          osc2.stop(now + breachSec + 0.05);
+        },
+
+        playArrivalChime: () => {
+          if (!SoundFX.ctx) return;
+          const now = SoundFX.ctx.currentTime;
+          const osc = SoundFX.ctx.createOscillator();
+          const gain = SoundFX.ctx.createGain();
+
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(GAME_DATA.audio.chimeNoteStart, now); // D5
+          osc.frequency.exponentialRampToValueAtTime(
+            GAME_DATA.audio.chimeNoteEnd,
+            now + 0.08,
+          ); // A5
+
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+          osc.connect(gain);
+          gain.connect(SoundFX.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.55);
+        },
+      };
+
+      /* ========================================================
+         TRIPPY JUMP TRANSITION & WARP CANVAS FX
+         ======================================================== */
+      const TransitionFX = {
+        canvas: null,
+        ctx: null,
+        animId: null,
+        stars: [],
+        running: false,
+
+        init: () => {
+          TransitionFX.canvas = DOM.fxCanvas;
+          TransitionFX.ctx = TransitionFX.canvas.getContext("2d");
+          TransitionFX.resize();
+          window.addEventListener("resize", TransitionFX.resize);
+          TransitionFX.initStars();
+        },
+
+        resize: () => {
+          if (!TransitionFX.canvas) return;
+          TransitionFX.canvas.width = window.innerWidth;
+          TransitionFX.canvas.height = window.innerHeight;
+        },
+
+        initStars: () => {
+          TransitionFX.stars = [];
+          for (let i = 0; i < GAME_DATA.config.FX_STAR_COUNT; i++) {
+            TransitionFX.stars.push({
+              x: (Math.random() - 0.5) * window.innerWidth * 2,
+              y: (Math.random() - 0.5) * window.innerHeight * 2,
+              z: Math.random() * window.innerWidth,
+              pz: Math.random() * window.innerWidth,
+              angle: Math.random() * Math.PI * 2,
+              colorShift: Math.random(),
+            });
+          }
+        },
+
+        applyThemeStyles: (adj) => {
+          const theme =
+            GAME_DATA.procedural.themes[adj] ||
+            GAME_DATA.procedural.defaultTheme;
+          document.documentElement.style.setProperty(
+            GAME_DATA.dom.cssVars.accent,
+            theme.primary,
+          );
+          document.documentElement.style.setProperty(
+            GAME_DATA.dom.cssVars.info,
+            theme.secondary,
+          );
+          document.documentElement.style.setProperty(
+            GAME_DATA.dom.cssVars.themeGlow,
+            `${theme.primary}55`,
+          );
+          document.documentElement.style.setProperty(
+            GAME_DATA.dom.cssVars.bg,
+            theme.bg,
+          );
+          DOM.artGlyph.innerText = theme.glyph;
+          DOM.artGlyph.style.color = theme.primary;
+        },
+
+        playJumpEffect: (targetDimId, targetDimName, onBreach, onComplete) => {
+          SoundFX.init();
+          SoundFX.playJumpCharge(GAME_DATA.config.JUMP_CHARGE_MS / 1000);
+
+          if (navigator.vibrate) {
+            navigator.vibrate(GAME_DATA.config.FX_VIBRATE_PATTERN);
+          }
+
+          document.body.classList.add(GAME_DATA.dom.classes.screenShake);
+          DOM.fxCanvas.classList.add(GAME_DATA.dom.classes.fxActive);
+          TransitionFX.running = true;
+
+          const adjective = targetDimName.split(" ")[0];
+          const theme =
+            GAME_DATA.procedural.themes[adjective] ||
+            GAME_DATA.procedural.defaultTheme;
+          const startTime = performance.now();
+
+          const renderFrame = (now) => {
+            if (!TransitionFX.running) return;
+            const elapsed = now - startTime;
+
+            const w = TransitionFX.canvas.width;
+            const h = TransitionFX.canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            TransitionFX.ctx.fillStyle = "rgba(7, 9, 14, 0.22)";
+            TransitionFX.ctx.fillRect(0, 0, w, h);
+
+            if (elapsed < GAME_DATA.config.JUMP_CHARGE_MS) {
+              // Accelerate streaks toward breach
+              const chargeRatio = elapsed / GAME_DATA.config.JUMP_CHARGE_MS;
+              const speed = 10 + Math.pow(chargeRatio, 3) * 85;
+              const warpRotation = elapsed * 0.003;
+
+              for (let i = 0; i < TransitionFX.stars.length; i++) {
+                const s = TransitionFX.stars[i];
+                s.pz = s.z;
+                s.z -= speed;
+
+                if (s.z <= 0) {
+                  s.z = w;
+                  s.pz = s.z;
+                  s.x = (Math.random() - 0.5) * w * 2;
+                  s.y = (Math.random() - 0.5) * h * 2;
+                }
+
+                const k = 280 / s.z;
+                const pk = 280 / s.pz;
+                const px = s.x * pk + cx;
+                const py = s.y * pk + cy;
+                const sx = s.x * k + cx;
+                const sy = s.y * k + cy;
+
+                const alpha = Math.min(1, (1 - s.z / w) * 1.5);
+                TransitionFX.ctx.beginPath();
+                TransitionFX.ctx.moveTo(px, py);
+                TransitionFX.ctx.lineTo(sx, sy);
+                TransitionFX.ctx.strokeStyle =
+                  s.colorShift > 0.5 ? theme.primary : theme.secondary;
+                TransitionFX.ctx.globalAlpha = alpha;
+                TransitionFX.ctx.lineWidth = Math.max(1, (1 - s.z / w) * 4);
+                TransitionFX.ctx.stroke();
+              }
+
+              // Radial Hyperspace Ring (only while charging)
+              TransitionFX.ctx.save();
+              TransitionFX.ctx.translate(cx, cy);
+              TransitionFX.ctx.rotate(warpRotation);
+              const radius =
+                (Math.sin(elapsed * 0.01) + 1.2) * 50 + chargeRatio * 130;
+              TransitionFX.ctx.beginPath();
+              TransitionFX.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+              TransitionFX.ctx.strokeStyle = theme.primary;
+              TransitionFX.ctx.lineWidth = 3 + Math.sin(elapsed * 0.02) * 2;
+              TransitionFX.ctx.shadowColor = theme.secondary;
+              TransitionFX.ctx.shadowBlur = 18;
+              TransitionFX.ctx.stroke();
+              TransitionFX.ctx.restore();
+            } else {
+              // Post-breach: Rapid decay - no pulsing ring
+              const postProgress = (elapsed - GAME_DATA.config.JUMP_CHARGE_MS) / (GAME_DATA.config.JUMP_TOTAL_MS - GAME_DATA.config.JUMP_CHARGE_MS);
+              const fadeAlpha = Math.max(0, 1 - postProgress * 2.5);
+
+              for (let i = 0; i < TransitionFX.stars.length; i++) {
+                const s = TransitionFX.stars[i];
+                s.pz = s.z;
+                s.z -= 10;
+                if (s.z <= 0) s.z = w;
+
+                const k = 280 / s.z;
+                const sx = s.x * k + cx;
+                const sy = s.y * k + cy;
+
+                TransitionFX.ctx.beginPath();
+                TransitionFX.ctx.arc(
+                  sx,
+                  sy,
+                  Math.max(0.8, (1 - s.z / w) * 2),
+                  0,
+                  Math.PI * 2,
+                );
+                TransitionFX.ctx.fillStyle =
+                  s.colorShift > 0.5 ? theme.primary : theme.secondary;
+                TransitionFX.ctx.globalAlpha = fadeAlpha;
+                TransitionFX.ctx.fill();
+              }
+            }
+
+            if (elapsed < GAME_DATA.config.JUMP_TOTAL_MS) {
+              TransitionFX.animId = requestAnimationFrame(renderFrame);
+            }
+          };
+
+          TransitionFX.animId = requestAnimationFrame(renderFrame);
+
+          // Synchronized Breach Apex
+          setTimeout(() => {
+            if (onBreach) onBreach();
+            TransitionFX.applyThemeStyles(adjective);
+            document.body.classList.remove(GAME_DATA.dom.classes.screenShake);
+            document.body.classList.add(GAME_DATA.dom.classes.chromaticFlash);
+            SoundFX.playArrivalChime();
+          }, GAME_DATA.config.JUMP_CHARGE_MS);
+
+          // Clean Transition Exit
+          setTimeout(() => {
+            TransitionFX.running = false;
+            cancelAnimationFrame(TransitionFX.animId);
+            DOM.fxCanvas.classList.remove(GAME_DATA.dom.classes.fxActive);
+            document.body.classList.remove(
+              GAME_DATA.dom.classes.chromaticFlash,
+            );
+            if (onComplete) onComplete();
+          }, GAME_DATA.config.JUMP_TOTAL_MS);
+        },
       };
 
       const Engine = {
@@ -1537,46 +2007,9 @@
         },
 
         finalizeJump: (dimId, dimName) => {
-          state.jumpCount++;
-          state.energy = Engine.getMaxEnergy();
-
-          if (state.carriage === GAME_DATA.yard.green.name) {
-            state.fuel += GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
-            Engine.log(
-              GAME_DATA.text.logGreenhouse(
-                GAME_DATA.config.GREENHOUSE_FUEL_YIELD,
-              ),
-              GAME_DATA.dom.classes.logSystem,
-            );
-          }
-          if (
-            state.crew === GAME_DATA.yard.goblin.name &&
-            state.hull < GAME_DATA.config.MAX_HULL
-          ) {
-            state.hull = Math.min(
-              GAME_DATA.config.MAX_HULL,
-              state.hull + GAME_DATA.config.GOBLIN_HULL_YIELD,
-            );
-            Engine.log(
-              GAME_DATA.text.logGoblin(GAME_DATA.config.GOBLIN_HULL_YIELD),
-              GAME_DATA.dom.classes.logSystem,
-            );
-          }
-
-          state.dimId = dimId;
-          state.dimName = dimName;
-
-          Engine.log(
-            GAME_DATA.text.logLocEnter(
-              dimName,
-              GAME_DATA.nodes[state.dimId].label,
-              state.jumpCount,
-            ),
-            GAME_DATA.dom.classes.logSystem,
-          );
-
-          Engine.transitionTo(GAME_DATA.phases.idle);
-          Engine.evaluateSurvival();
+          state.targetDimId = dimId;
+          state.targetDimName = dimName;
+          Engine.transitionTo(GAME_DATA.phases.jumping);
         },
 
         desperateScavenge: () => {
@@ -1824,6 +2257,7 @@
           DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
           DOM.lblForge.innerText = GAME_DATA.text.lblForge;
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
+          TransitionFX.applyThemeStyles(state.dimName.split(" ")[0]);
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
         },
 
@@ -1865,6 +2299,7 @@
           });
 
           DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
+            SoundFX.init();
             DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
             DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayFlex;
             Engine.transitionTo(GAME_DATA.phases.idle);
@@ -1872,14 +2307,12 @@
             setTimeout(() => Engine.scrollToPane(1), 50);
           });
 
-          // Bottom nav click handlers
           DOM.tabSensors.addEventListener("click", () =>
             Engine.scrollToPane(0),
           );
           DOM.tabBridge.addEventListener("click", () => Engine.scrollToPane(1));
           DOM.tabForge.addEventListener("click", () => Engine.scrollToPane(2));
 
-          // Slider scroll tracker
           DOM.snapSlider.addEventListener("scroll", Engine.syncTabsWithScroll, {
             passive: true,
           });
@@ -1888,6 +2321,7 @@
         init: () => {
           Engine.verifyGraphIntegrity();
           Engine.cacheDOM();
+          TransitionFX.init();
           Engine.setupStaticText();
           Engine.bindEvents();
         },
@@ -1989,6 +2423,64 @@
           },
           onExit: () =>
             (DOM.navScreen.style.display = GAME_DATA.dom.styles.displayNone),
+        },
+        JUMPING: {
+          onEnter: () => {
+            const targetDimId = state.targetDimId;
+            const targetDimName = state.targetDimName;
+
+            TransitionFX.playJumpEffect(
+              targetDimId,
+              targetDimName,
+              () => {
+                state.jumpCount++;
+                state.energy = Engine.getMaxEnergy();
+
+                if (state.carriage === GAME_DATA.yard.green.name) {
+                  state.fuel += GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
+                  Engine.log(
+                    GAME_DATA.text.logGreenhouse(
+                      GAME_DATA.config.GREENHOUSE_FUEL_YIELD,
+                    ),
+                    GAME_DATA.dom.classes.logSystem,
+                  );
+                }
+                if (
+                  state.crew === GAME_DATA.yard.goblin.name &&
+                  state.hull < GAME_DATA.config.MAX_HULL
+                ) {
+                  state.hull = Math.min(
+                    GAME_DATA.config.MAX_HULL,
+                    state.hull + GAME_DATA.config.GOBLIN_HULL_YIELD,
+                  );
+                  Engine.log(
+                    GAME_DATA.text.logGoblin(
+                      GAME_DATA.config.GOBLIN_HULL_YIELD,
+                    ),
+                    GAME_DATA.dom.classes.logSystem,
+                  );
+                }
+
+                state.dimId = targetDimId;
+                state.dimName = targetDimName;
+
+                Engine.log(
+                  GAME_DATA.text.logLocEnter(
+                    targetDimName,
+                    GAME_DATA.nodes[state.dimId].label,
+                    state.jumpCount,
+                  ),
+                  GAME_DATA.dom.classes.logSystem,
+                );
+              },
+              () => {
+                state.targetDimId = null;
+                state.targetDimName = null;
+                Engine.transitionTo(GAME_DATA.phases.idle);
+                Engine.evaluateSurvival();
+              },
+            );
+          },
         },
         DEAD: {
           onEnter: () => Engine.lockdownGameOver(GAME_DATA.text.logDead),
