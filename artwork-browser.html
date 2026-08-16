@@ -984,360 +984,6 @@
                     0 0 0 1 0"
           />
         </filter>
-
-        <!-- Clockwork: Fractal Circuit Pattern with Multiline Bus Splitting in Luminous Brass (100% Tileable) -->
-        <pattern
-          id="clockworkCircuit"
-          width="100"
-          height="100"
-          patternUnits="userSpaceOnUse"
-        >
-          <!-- Ground-plane subtle hatched shield corners (perfectly tileable) -->
-          <g fill="none" stroke="#e5a93c" stroke-width="0.5" opacity="0.35">
-            <line x1="0" y1="0" x2="15" y2="15" />
-            <line x1="85" y1="85" x2="100" y2="100" />
-            <line x1="0" y1="100" x2="15" y2="85" />
-            <line x1="85" y1="15" x2="100" y2="0" />
-          </g>
-
-          <!-- 1. Primary 4-Line Parallel Ribbon Bus Trunk (Left x=0 <-> Right x=100) -->
-          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M 0,20 H 20 L 35,35 H 65 L 80,20 H 100"
-              stroke="#ffd269"
-              stroke-width="1.3"
-            />
-            <path
-              d="M 0,25 H 18 L 33,40 H 67 L 82,25 H 100"
-              stroke="#e5a93c"
-              stroke-width="1.1"
-            />
-            <path
-              d="M 0,30 H 16 L 31,45 H 69 L 84,30 H 100"
-              stroke="#c4881a"
-              stroke-width="1.0"
-            />
-            <path
-              d="M 0,35 H 14 L 29,50 H 71 L 86,35 H 100"
-              stroke="#9e680a"
-              stroke-width="0.9"
-            />
-          </g>
-
-          <!-- 2. Secondary 2-Line Horizontal Sub-Bus (Left x=0 <-> Right x=100) -->
-          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M 0,75 H 25 L 35,65 H 65 L 75,75 H 100"
-              stroke="#e5a93c"
-              stroke-width="1.0"
-            />
-            <path
-              d="M 0,80 H 23 L 33,70 H 67 L 77,80 H 100"
-              stroke="#c4881a"
-              stroke-width="0.8"
-            />
-          </g>
-
-          <!-- 3. Vertical Power & Clock Feeder Buses (Top y=0 <-> Bottom y=100) -->
-          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M 8,0 V 10 L 14,16 V 40 L 8,46 V 100"
-              stroke="#e5a93c"
-              stroke-width="1.0"
-            />
-            <path
-              d="M 13,0 V 8 L 19,14 V 42 L 13,48 V 100"
-              stroke="#c4881a"
-              stroke-width="0.8"
-            />
-            <path d="M 50,0 V 15 L 45,20" stroke="#c4881a" stroke-width="0.8" />
-            <path
-              d="M 45,65 L 50,70 V 100"
-              stroke="#c4881a"
-              stroke-width="0.8"
-            />
-            <path
-              d="M 92,0 V 20 L 96,24 V 76 L 92,80 V 100"
-              stroke="#e5a93c"
-              stroke-width="0.8"
-            />
-          </g>
-
-          <!-- 4. Fractal Bifurcation Sub-Traces (Internal branch tree) -->
-          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M 50,35 V 45 L 42,53 V 58"
-              stroke="#ffd269"
-              stroke-width="0.8"
-            />
-            <path
-              d="M 50,45 L 58,53 V 58"
-              stroke="#ffd269"
-              stroke-width="0.8"
-            />
-            <path
-              d="M 29,50 L 25,54 V 62"
-              stroke="#e5a93c"
-              stroke-width="0.7"
-            />
-            <path
-              d="M 71,50 L 75,54 V 62"
-              stroke="#e5a93c"
-              stroke-width="0.7"
-            />
-          </g>
-
-          <!-- 5. Plated Solder Vias (Concentrically aligned, zero overlaps) -->
-          <g>
-            <circle cx="20" cy="20" r="2.8" fill="#ffd269" />
-            <circle cx="20" cy="20" r="1.2" fill="#331f05" />
-            <circle cx="80" cy="20" r="2.8" fill="#ffd269" />
-            <circle cx="80" cy="20" r="1.2" fill="#331f05" />
-            <circle cx="25" cy="75" r="2.5" fill="#e5a93c" />
-            <circle cx="25" cy="75" r="1.0" fill="#331f05" />
-            <circle cx="75" cy="75" r="2.5" fill="#e5a93c" />
-            <circle cx="75" cy="75" r="1.0" fill="#331f05" />
-            <circle cx="45" cy="20" r="2.2" fill="#e5a93c" />
-            <circle cx="45" cy="20" r="0.9" fill="#331f05" />
-            <circle cx="45" cy="65" r="2.2" fill="#e5a93c" />
-            <circle cx="45" cy="65" r="0.9" fill="#331f05" />
-            <circle cx="25" cy="62" r="2.2" fill="#e5a93c" />
-            <circle cx="25" cy="62" r="0.9" fill="#331f05" />
-            <circle cx="75" cy="62" r="2.2" fill="#e5a93c" />
-            <circle cx="75" cy="62" r="0.9" fill="#331f05" />
-            <circle cx="14" cy="16" r="2.2" fill="#e5a93c" />
-            <circle cx="14" cy="16" r="0.9" fill="#331f05" />
-            <circle cx="8" cy="46" r="2.2" fill="#e5a93c" />
-            <circle cx="8" cy="46" r="0.9" fill="#331f05" />
-          </g>
-
-          <!-- 6. Surface-Mount Dual-Pad Component Footprints (SMD) -->
-          <g fill="#ffd269" opacity="0.9">
-            <rect x="40" y="57" width="4" height="2" rx="0.3" />
-            <rect x="40" y="63" width="4" height="2" rx="0.3" />
-            <rect x="56" y="57" width="4" height="2" rx="0.3" />
-            <rect x="56" y="63" width="4" height="2" rx="0.3" />
-          </g>
-
-          <!-- 7. Precision Optical Alignment Fiducial Crosshair -->
-          <g stroke="#ffd269" stroke-width="0.7" fill="none" opacity="0.85">
-            <circle cx="88" cy="50" r="2.5" />
-            <line x1="84" y1="50" x2="92" y2="50" />
-            <line x1="88" y1="46" x2="88" y2="54" />
-          </g>
-        </pattern>
-
-        <!-- Golden Ratio Fractal Corrosion Crackle & Delamination Flakes -->
-        <pattern
-          id="rustingGoldenCrackle"
-          width="75"
-          height="75"
-          patternUnits="userSpaceOnUse"
-        >
-          <g fill="none" stroke="#2e160a" stroke-linecap="round" opacity="0.45">
-            <!-- Golden ratio crack bifurcation (lengths step by 1.618) -->
-            <path
-              d="M 0,15 L 25,22 L 42,16 L 68,26 L 75,30"
-              stroke-width="1.2"
-            />
-            <path d="M 25,22 L 32,38 L 48,46 L 55,65" stroke-width="0.8" />
-            <path d="M 42,16 L 52,5 L 65,0" stroke-width="0.6" />
-            <path d="M 48,46 L 62,50 L 75,48" stroke-width="0.5" />
-            <!-- Flaking oxide delamination spots -->
-            <circle
-              cx="32"
-              cy="38"
-              r="2.8"
-              fill="#633016"
-              stroke="none"
-              opacity="0.7"
-            />
-            <circle
-              cx="52"
-              cy="5"
-              r="2.0"
-              fill="#b05d2c"
-              stroke="none"
-              opacity="0.6"
-            />
-            <circle
-              cx="15"
-              cy="20"
-              r="1.6"
-              fill="#f09858"
-              stroke="none"
-              opacity="0.5"
-            />
-          </g>
-        </pattern>
-        <!-- Overgrown: S-Curve Golden Ratio Vine Pattern with Alternating Thorns, Leaves, and Flowers (100% Tileable) -->
-        <pattern
-          id="overgrownVines"
-          width="100"
-          height="100"
-          patternUnits="userSpaceOnUse"
-        >
-          <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
-          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
-              stroke="#142b12"
-              stroke-width="3.2"
-            />
-            <path
-              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
-              stroke="#2a5825"
-              stroke-width="2.0"
-            />
-            <path
-              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
-              stroke="#529e49"
-              stroke-width="0.8"
-              opacity="0.85"
-            />
-          </g>
-
-          <!-- 2. Golden Spiral Tendril Offshoots at Golden Nodes (u=0.382 and u=0.618) -->
-          <g fill="none" stroke="#3d7e35" stroke-width="0.9" opacity="0.75">
-            <path
-              d="M 39,28 C 45,18 52,16 55,22 C 57,26 53,30 49,28 Q 47,26 49,24"
-            />
-            <path
-              d="M 61,72 C 55,82 48,84 45,78 C 43,74 47,70 51,72 Q 53,74 51,76"
-            />
-          </g>
-
-          <!-- 3. Alternating Curved Rose Thorns along Golden Ratio sequence -->
-          <g fill="#142b12">
-            <path d="M 9,34 Q 4,26 1,24 Q 7,31 12,37 Z" />
-            <path d="M 39,28 Q 38,38 35,44 Q 41,36 43,29 Z" />
-            <path d="M 70,80 Q 72,70 75,64 Q 69,72 67,79 Z" />
-            <path d="M 97,54 Q 99,62 100,66 Q 96,60 94,53 Z" />
-            <path d="M 0,54 Q 2,62 3,66 Q -1,60 -3,53 Z" />
-          </g>
-
-          <!-- 4. Sinuous Botanical Leaves with Golden Angle Ribs -->
-          <g stroke-linejoin="round">
-            <path
-              d="M 20,22 C 10,12 8,-2 22,-8 C 30,2 26,16 20,22 Z"
-              fill="#2d5e28"
-              stroke="#142b12"
-              stroke-width="0.7"
-            />
-            <path
-              d="M 20,22 Q 18,6 22,-8"
-              stroke="#5cb352"
-              stroke-width="0.5"
-              fill="none"
-            />
-
-            <path
-              d="M 50,50 C 38,60 28,62 26,46 C 36,40 46,44 50,50 Z"
-              fill="#356d2f"
-              stroke="#142b12"
-              stroke-width="0.7"
-            />
-            <path
-              d="M 50,50 Q 38,52 26,46"
-              stroke="#5cb352"
-              stroke-width="0.5"
-              fill="none"
-            />
-
-            <path
-              d="M 80,78 C 90,88 92,102 78,108 C 70,98 74,84 80,78 Z"
-              fill="#2d5e28"
-              stroke="#142b12"
-              stroke-width="0.7"
-            />
-            <path
-              d="M 80,78 Q 82,94 78,108"
-              stroke="#5cb352"
-              stroke-width="0.5"
-              fill="none"
-            />
-            <path
-              d="M 80,-22 C 90,-12 92,2 78,8 C 70,-2 74,-16 80,-22 Z"
-              fill="#2d5e28"
-              stroke="#142b12"
-              stroke-width="0.7"
-            />
-            <path
-              d="M 80,-22 Q 82,-6 78,8"
-              stroke="#5cb352"
-              stroke-width="0.5"
-              fill="none"
-            />
-
-            <path
-              d="M 20,122 C 10,112 8,98 22,92 C 30,102 26,116 20,122 Z"
-              fill="#2d5e28"
-              stroke="#142b12"
-              stroke-width="0.7"
-            />
-            <path
-              d="M 20,122 Q 18,106 22,92"
-              stroke="#5cb352"
-              stroke-width="0.5"
-              fill="none"
-            />
-          </g>
-
-          <!-- 5. Golden Ratio Floral Rosettes & Blossoms -->
-          <g>
-            <!-- Flower 1 (u=0.28, Upper Arc Golden Peak) -->
-            <g transform="translate(30, 20)">
-              <circle cx="0" cy="-3.8" r="2.8" fill="#a83244" opacity="0.95" />
-              <circle
-                cx="3.6"
-                cy="-1.2"
-                r="2.8"
-                fill="#bd3a4e"
-                opacity="0.95"
-              />
-              <circle cx="2.3" cy="3.1" r="2.8" fill="#a83244" opacity="0.95" />
-              <circle
-                cx="-2.3"
-                cy="3.1"
-                r="2.8"
-                fill="#912838"
-                opacity="0.95"
-              />
-              <circle
-                cx="-3.6"
-                cy="-1.2"
-                r="2.8"
-                fill="#a83244"
-                opacity="0.95"
-              />
-              <circle cx="0" cy="0" r="1.6" fill="#e5b83b" />
-              <circle cx="0" cy="0" r="0.7" fill="#ffffff" />
-            </g>
-
-            <!-- Flower 2 (u=0.618, Major Golden Ratio Node - Full Radiant Blossom) -->
-            <g transform="translate(61, 72)">
-              <circle cx="0" cy="-4.2" r="3.2" fill="#912838" />
-              <circle cx="4.0" cy="-1.4" r="3.2" fill="#a83244" />
-              <circle cx="2.5" cy="3.4" r="3.2" fill="#bd3a4e" />
-              <circle cx="-2.5" cy="3.4" r="3.2" fill="#a83244" />
-              <circle cx="-4.0" cy="-1.4" r="3.2" fill="#912838" />
-              <circle cx="0" cy="-1.8" r="2.0" fill="#c94458" />
-              <circle cx="1.8" cy="0.6" r="2.0" fill="#c94458" />
-              <circle cx="-1.8" cy="0.6" r="2.0" fill="#c94458" />
-              <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
-              <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
-            </g>
-
-            <!-- Bud 3 (u=0.92, Delicate Sprouting Rose Bud) -->
-            <g transform="translate(91, 66)">
-              <circle cx="0" cy="0" r="2.4" fill="#a83244" />
-              <circle cx="-0.8" cy="-0.8" r="1.5" fill="#bd3a4e" />
-              <circle cx="0.8" cy="0.8" r="1.0" fill="#e5b83b" />
-              <path d="M 0,2.4 Q -3,5 -2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
-              <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
-            </g>
-          </g>
-        </pattern>
       </defs>
     </svg>
 
@@ -4142,214 +3788,232 @@
         const effectClass = ADJECTIVE_EFFECTS[adjective]?.cssClass;
         if (effectClass) container.classList.add(effectClass);
       }
-
-      const CLOCKWORK_CIRCUIT_INNER_SVG = `
-        <!-- Ground-plane subtle hatched shield corners (perfectly tileable) -->
-        <g fill="none" stroke="#e5a93c" stroke-width="0.5" opacity="0.35">
-          <line x1="0" y1="0" x2="15" y2="15" />
-          <line x1="85" y1="85" x2="100" y2="100" />
-          <line x1="0" y1="100" x2="15" y2="85" />
-          <line x1="85" y1="15" x2="100" y2="0" />
-        </g>
-        <!-- 1. Primary 4-Line Parallel Ribbon Bus Trunk (Left x=0 <-> Right x=100) -->
-        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M 0,20 H 20 L 35,35 H 65 L 80,20 H 100" stroke="#ffd269" stroke-width="1.3" />
-          <path d="M 0,25 H 18 L 33,40 H 67 L 82,25 H 100" stroke="#e5a93c" stroke-width="1.1" />
-          <path d="M 0,30 H 16 L 31,45 H 69 L 84,30 H 100" stroke="#c4881a" stroke-width="1.0" />
-          <path d="M 0,35 H 14 L 29,50 H 71 L 86,35 H 100" stroke="#9e680a" stroke-width="0.9" />
-        </g>
-        <!-- 2. Secondary 2-Line Horizontal Sub-Bus (Left x=0 <-> Right x=100) -->
-        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M 0,75 H 25 L 35,65 H 65 L 75,75 H 100" stroke="#e5a93c" stroke-width="1.0" />
-          <path d="M 0,80 H 23 L 33,70 H 67 L 77,80 H 100" stroke="#c4881a" stroke-width="0.8" />
-        </g>
-        <!-- 3. Vertical Power & Clock Feeder Buses (Top y=0 <-> Bottom y=100) -->
-        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M 8,0 V 10 L 14,16 V 40 L 8,46 V 100" stroke="#e5a93c" stroke-width="1.0" />
-          <path d="M 13,0 V 8 L 19,14 V 42 L 13,48 V 100" stroke="#c4881a" stroke-width="0.8" />
-          <path d="M 50,0 V 15 L 45,20" stroke="#c4881a" stroke-width="0.8" />
-          <path d="M 45,65 L 50,70 V 100" stroke="#c4881a" stroke-width="0.8" />
-          <path d="M 92,0 V 20 L 96,24 V 76 L 92,80 V 100" stroke="#e5a93c" stroke-width="0.8" />
-        </g>
-        <!-- 4. Fractal Bifurcation Sub-Traces (Internal branch tree) -->
-        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M 50,35 V 45 L 42,53 V 58" stroke="#ffd269" stroke-width="0.8" />
-          <path d="M 50,45 L 58,53 V 58" stroke="#ffd269" stroke-width="0.8" />
-          <path d="M 29,50 L 25,54 V 62" stroke="#e5a93c" stroke-width="0.7" />
-          <path d="M 71,50 L 75,54 V 62" stroke="#e5a93c" stroke-width="0.7" />
-        </g>
-        <!-- 5. Plated Solder Vias (Concentrically aligned, zero overlaps) -->
-        <g>
-          <circle cx="20" cy="20" r="2.8" fill="#ffd269" /><circle cx="20" cy="20" r="1.2" fill="#331f05" />
-          <circle cx="80" cy="20" r="2.8" fill="#ffd269" /><circle cx="80" cy="20" r="1.2" fill="#331f05" />
-          <circle cx="25" cy="75" r="2.5" fill="#e5a93c" /><circle cx="25" cy="75" r="1.0" fill="#331f05" />
-          <circle cx="75" cy="75" r="2.5" fill="#e5a93c" /><circle cx="75" cy="75" r="1.0" fill="#331f05" />
-          <circle cx="45" cy="20" r="2.2" fill="#e5a93c" /><circle cx="45" cy="20" r="0.9" fill="#331f05" />
-          <circle cx="45" cy="65" r="2.2" fill="#e5a93c" /><circle cx="45" cy="65" r="0.9" fill="#331f05" />
-          <circle cx="25" cy="62" r="2.2" fill="#e5a93c" /><circle cx="25" cy="62" r="0.9" fill="#331f05" />
-          <circle cx="75" cy="62" r="2.2" fill="#e5a93c" /><circle cx="75" cy="62" r="0.9" fill="#331f05" />
-          <circle cx="14" cy="16" r="2.2" fill="#e5a93c" /><circle cx="14" cy="16" r="0.9" fill="#331f05" />
-          <circle cx="8" cy="46" r="2.2" fill="#e5a93c" /><circle cx="8" cy="46" r="0.9" fill="#331f05" />
-        </g>
-        <!-- 6. Surface-Mount Dual-Pad Component Footprints (SMD) -->
-        <g fill="#ffd269" opacity="0.9">
-          <rect x="40" y="57" width="4" height="2" rx="0.3" />
-          <rect x="40" y="63" width="4" height="2" rx="0.3" />
-          <rect x="56" y="57" width="4" height="2" rx="0.3" />
-          <rect x="56" y="63" width="4" height="2" rx="0.3" />
-        </g>
-        <!-- 7. Precision Optical Alignment Fiducial Crosshair -->
-        <g stroke="#ffd269" stroke-width="0.7" fill="none" opacity="0.85">
-          <circle cx="88" cy="50" r="2.5" />
-          <line x1="84" y1="50" x2="92" y2="50" />
-          <line x1="88" y1="46" x2="88" y2="54" />
-        </g>
-      `;
-
-      const OVERGROWN_VINE_INNER_SVG = `
-        <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
-        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
-            stroke="#142b12"
-            stroke-width="3.2"
-          />
-          <path
-            d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
-            stroke="#2a5825"
-            stroke-width="2.0"
-          />
-          <path
-            d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
-            stroke="#529e49"
-            stroke-width="0.8"
-            opacity="0.85"
-          />
-        </g>
-
-        <!-- 2. Golden Spiral Tendril Offshoots at Golden Nodes (u=0.382 and u=0.618) -->
-        <g fill="none" stroke="#3d7e35" stroke-width="0.9" opacity="0.75">
-          <path
-            d="M 39,28 C 45,18 52,16 55,22 C 57,26 53,30 49,28 Q 47,26 49,24"
-          />
-          <path
-            d="M 61,72 C 55,82 48,84 45,78 C 43,74 47,70 51,72 Q 53,74 51,76"
-          />
-        </g>
-
-        <!-- 3. Alternating Curved Rose Thorns along Golden Ratio sequence -->
-        <g fill="#142b12">
-          <path d="M 9,34 Q 4,26 1,24 Q 7,31 12,37 Z" />
-          <path d="M 39,28 Q 38,38 35,44 Q 41,36 43,29 Z" />
-          <path d="M 70,80 Q 72,70 75,64 Q 69,72 67,79 Z" />
-          <path d="M 97,54 Q 99,62 100,66 Q 96,60 94,53 Z" />
-          <path d="M 0,54 Q 2,62 3,66 Q -1,60 -3,53 Z" />
-        </g>
-
-        <!-- 4. Sinuous Botanical Leaves with Golden Angle Ribs -->
-        <g stroke-linejoin="round">
-          <path
-            d="M 20,22 C 10,12 8,-2 22,-8 C 30,2 26,16 20,22 Z"
-            fill="#2d5e28"
-            stroke="#142b12"
-            stroke-width="0.7"
-          />
-          <path
-            d="M 20,22 Q 18,6 22,-8"
-            stroke="#5cb352"
-            stroke-width="0.5"
-            fill="none"
-          />
-
-          <path
-            d="M 50,50 C 38,60 28,62 26,46 C 36,40 46,44 50,50 Z"
-            fill="#356d2f"
-            stroke="#142b12"
-            stroke-width="0.7"
-          />
-          <path
-            d="M 50,50 Q 38,52 26,46"
-            stroke="#5cb352"
-            stroke-width="0.5"
-            fill="none"
-          />
-
-          <path
-            d="M 80,78 C 90,88 92,102 78,108 C 70,98 74,84 80,78 Z"
-            fill="#2d5e28"
-            stroke="#142b12"
-            stroke-width="0.7"
-          />
-          <path
-            d="M 80,78 Q 82,94 78,108"
-            stroke="#5cb352"
-            stroke-width="0.5"
-            fill="none"
-          />
-          <path
-            d="M 80,-22 C 90,-12 92,2 78,8 C 70,-2 74,-16 80,-22 Z"
-            fill="#2d5e28"
-            stroke="#142b12"
-            stroke-width="0.7"
-          />
-          <path
-            d="M 80,-22 Q 82,-6 78,8"
-            stroke="#5cb352"
-            stroke-width="0.5"
-            fill="none"
-          />
-
-          <path
-            d="M 20,122 C 10,112 8,98 22,92 C 30,102 26,116 20,122 Z"
-            fill="#2d5e28"
-            stroke="#142b12"
-            stroke-width="0.7"
-          />
-          <path
-            d="M 20,122 Q 18,106 22,92"
-            stroke="#5cb352"
-            stroke-width="0.5"
-            fill="none"
-          />
-        </g>
-
-        <!-- 5. Golden Ratio Floral Rosettes & Blossoms -->
-        <g>
-          <!-- Flower 1 (u=0.28, Upper Arc Golden Peak) -->
-          <g transform="translate(30, 20)">
-            <circle cx="0" cy="-3.8" r="2.8" fill="#a83244" opacity="0.95" />
-            <circle cx="3.6" cy="-1.2" r="2.8" fill="#bd3a4e" opacity="0.95" />
-            <circle cx="2.3" cy="3.1" r="2.8" fill="#a83244" opacity="0.95" />
-            <circle cx="-2.3" cy="3.1" r="2.8" fill="#912838" opacity="0.95" />
-            <circle cx="-3.6" cy="-1.2" r="2.8" fill="#a83244" opacity="0.95" />
-            <circle cx="0" cy="0" r="1.6" fill="#e5b83b" />
-            <circle cx="0" cy="0" r="0.7" fill="#ffffff" />
+      const PATTERN_INNER_SVG = {
+        Clockwork: `
+          <!-- Ground-plane subtle hatched shield corners (perfectly tileable) -->
+          <g fill="none" stroke="#e5a93c" stroke-width="0.5" opacity="0.35">
+            <line x1="0" y1="0" x2="15" y2="15" />
+            <line x1="85" y1="85" x2="100" y2="100" />
+            <line x1="0" y1="100" x2="15" y2="85" />
+            <line x1="85" y1="15" x2="100" y2="0" />
+          </g>
+          <!-- 1. Primary 4-Line Parallel Ribbon Bus Trunk (Left x=0 <-> Right x=100) -->
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M 0,20 H 20 L 35,35 H 65 L 80,20 H 100" stroke="#ffd269" stroke-width="1.3" />
+            <path d="M 0,25 H 18 L 33,40 H 67 L 82,25 H 100" stroke="#e5a93c" stroke-width="1.1" />
+            <path d="M 0,30 H 16 L 31,45 H 69 L 84,30 H 100" stroke="#c4881a" stroke-width="1.0" />
+            <path d="M 0,35 H 14 L 29,50 H 71 L 86,35 H 100" stroke="#9e680a" stroke-width="0.9" />
+          </g>
+          <!-- 2. Secondary 2-Line Horizontal Sub-Bus (Left x=0 <-> Right x=100) -->
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M 0,75 H 25 L 35,65 H 65 L 75,75 H 100" stroke="#e5a93c" stroke-width="1.0" />
+            <path d="M 0,80 H 23 L 33,70 H 67 L 77,80 H 100" stroke="#c4881a" stroke-width="0.8" />
+          </g>
+          <!-- 3. Vertical Power & Clock Feeder Buses (Top y=0 <-> Bottom y=100) -->
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M 8,0 V 10 L 14,16 V 40 L 8,46 V 100" stroke="#e5a93c" stroke-width="1.0" />
+            <path d="M 13,0 V 8 L 19,14 V 42 L 13,48 V 100" stroke="#c4881a" stroke-width="0.8" />
+            <path d="M 50,0 V 15 L 45,20" stroke="#c4881a" stroke-width="0.8" />
+            <path d="M 45,65 L 50,70 V 100" stroke="#c4881a" stroke-width="0.8" />
+            <path d="M 92,0 V 20 L 96,24 V 76 L 92,80 V 100" stroke="#e5a93c" stroke-width="0.8" />
+          </g>
+          <!-- 4. Fractal Bifurcation Sub-Traces (Internal branch tree) -->
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M 50,35 V 45 L 42,53 V 58" stroke="#ffd269" stroke-width="0.8" />
+            <path d="M 50,45 L 58,53 V 58" stroke="#ffd269" stroke-width="0.8" />
+            <path d="M 29,50 L 25,54 V 62" stroke="#e5a93c" stroke-width="0.7" />
+            <path d="M 71,50 L 75,54 V 62" stroke="#e5a93c" stroke-width="0.7" />
+          </g>
+          <!-- 5. Plated Solder Vias (Concentrically aligned, zero overlaps) -->
+          <g>
+            <circle cx="20" cy="20" r="2.8" fill="#ffd269" /><circle cx="20" cy="20" r="1.2" fill="#331f05" />
+            <circle cx="80" cy="20" r="2.8" fill="#ffd269" /><circle cx="80" cy="20" r="1.2" fill="#331f05" />
+            <circle cx="25" cy="75" r="2.5" fill="#e5a93c" /><circle cx="25" cy="75" r="1.0" fill="#331f05" />
+            <circle cx="75" cy="75" r="2.5" fill="#e5a93c" /><circle cx="75" cy="75" r="1.0" fill="#331f05" />
+            <circle cx="45" cy="20" r="2.2" fill="#e5a93c" /><circle cx="45" cy="20" r="0.9" fill="#331f05" />
+            <circle cx="45" cy="65" r="2.2" fill="#e5a93c" /><circle cx="45" cy="65" r="0.9" fill="#331f05" />
+            <circle cx="25" cy="62" r="2.2" fill="#e5a93c" /><circle cx="25" cy="62" r="0.9" fill="#331f05" />
+            <circle cx="75" cy="62" r="2.2" fill="#e5a93c" /><circle cx="75" cy="62" r="0.9" fill="#331f05" />
+            <circle cx="14" cy="16" r="2.2" fill="#e5a93c" /><circle cx="14" cy="16" r="0.9" fill="#331f05" />
+            <circle cx="8" cy="46" r="2.2" fill="#e5a93c" /><circle cx="8" cy="46" r="0.9" fill="#331f05" />
+          </g>
+          <!-- 6. Surface-Mount Dual-Pad Component Footprints (SMD) -->
+          <g fill="#ffd269" opacity="0.9">
+            <rect x="40" y="57" width="4" height="2" rx="0.3" />
+            <rect x="40" y="63" width="4" height="2" rx="0.3" />
+            <rect x="56" y="57" width="4" height="2" rx="0.3" />
+            <rect x="56" y="63" width="4" height="2" rx="0.3" />
+          </g>
+          <!-- 7. Precision Optical Alignment Fiducial Crosshair -->
+          <g stroke="#ffd269" stroke-width="0.7" fill="none" opacity="0.85">
+            <circle cx="88" cy="50" r="2.5" />
+            <line x1="84" y1="50" x2="92" y2="50" />
+            <line x1="88" y1="46" x2="88" y2="54" />
+          </g>
+        `,
+        Overgrown: `
+          <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+              stroke="#142b12"
+              stroke-width="3.2"
+            />
+            <path
+              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+              stroke="#2a5825"
+              stroke-width="2.0"
+            />
+            <path
+              d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+              stroke="#529e49"
+              stroke-width="0.8"
+              opacity="0.85"
+            />
           </g>
 
-          <!-- Flower 2 (u=0.618, Major Golden Ratio Node - Full Radiant Blossom) -->
-          <g transform="translate(61, 72)">
-            <circle cx="0" cy="-4.2" r="3.2" fill="#912838" />
-            <circle cx="4.0" cy="-1.4" r="3.2" fill="#a83244" />
-            <circle cx="2.5" cy="3.4" r="3.2" fill="#bd3a4e" />
-            <circle cx="-2.5" cy="3.4" r="3.2" fill="#a83244" />
-            <circle cx="-4.0" cy="-1.4" r="3.2" fill="#912838" />
-            <circle cx="0" cy="-1.8" r="2.0" fill="#c94458" />
-            <circle cx="1.8" cy="0.6" r="2.0" fill="#c94458" />
-            <circle cx="-1.8" cy="0.6" r="2.0" fill="#c94458" />
-            <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
-            <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
+          <!-- 2. Golden Spiral Tendril Offshoots at Golden Nodes (u=0.382 and u=0.618) -->
+          <g fill="none" stroke="#3d7e35" stroke-width="0.9" opacity="0.75">
+            <path
+              d="M 39,28 C 45,18 52,16 55,22 C 57,26 53,30 49,28 Q 47,26 49,24"
+            />
+            <path
+              d="M 61,72 C 55,82 48,84 45,78 C 43,74 47,70 51,72 Q 53,74 51,76"
+            />
           </g>
 
-          <!-- Bud 3 (u=0.92, Delicate Sprouting Rose Bud) -->
-          <g transform="translate(91, 66)">
-            <circle cx="0" cy="0" r="2.4" fill="#a83244" />
-            <circle cx="-0.8" cy="-0.8" r="1.5" fill="#bd3a4e" />
-            <circle cx="0.8" cy="0.8" r="1.0" fill="#e5b83b" />
-            <path d="M 0,2.4 Q -3,5 -2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
-            <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+          <!-- 3. Alternating Curved Rose Thorns along Golden Ratio sequence -->
+          <g fill="#142b12">
+            <path d="M 9,34 Q 4,26 1,24 Q 7,31 12,37 Z" />
+            <path d="M 39,28 Q 38,38 35,44 Q 41,36 43,29 Z" />
+            <path d="M 70,80 Q 72,70 75,64 Q 69,72 67,79 Z" />
+            <path d="M 97,54 Q 99,62 100,66 Q 96,60 94,53 Z" />
+            <path d="M 0,54 Q 2,62 3,66 Q -1,60 -3,53 Z" />
           </g>
-        </g>
-      `;
+
+          <!-- 4. Sinuous Botanical Leaves with Golden Angle Ribs -->
+          <g stroke-linejoin="round">
+            <path
+              d="M 20,22 C 10,12 8,-2 22,-8 C 30,2 26,16 20,22 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 20,22 Q 18,6 22,-8"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+
+            <path
+              d="M 50,50 C 38,60 28,62 26,46 C 36,40 46,44 50,50 Z"
+              fill="#356d2f"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 50,50 Q 38,52 26,46"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+
+            <path
+              d="M 80,78 C 90,88 92,102 78,108 C 70,98 74,84 80,78 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 80,78 Q 82,94 78,108"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+            <path
+              d="M 80,-22 C 90,-12 92,2 78,8 C 70,-2 74,-16 80,-22 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 80,-22 Q 82,-6 78,8"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+
+            <path
+              d="M 20,122 C 10,112 8,98 22,92 C 30,102 26,116 20,122 Z"
+              fill="#2d5e28"
+              stroke="#142b12"
+              stroke-width="0.7"
+            />
+            <path
+              d="M 20,122 Q 18,106 22,92"
+              stroke="#5cb352"
+              stroke-width="0.5"
+              fill="none"
+            />
+          </g>
+
+          <!-- 5. Golden Ratio Floral Rosettes & Blossoms -->
+          <g>
+            <!-- Flower 1 (u=0.28, Upper Arc Golden Peak) -->
+            <g transform="translate(30, 20)">
+              <circle cx="0" cy="-3.8" r="2.8" fill="#a83244" opacity="0.95" />
+              <circle
+                cx="3.6"
+                cy="-1.2"
+                r="2.8"
+                fill="#bd3a4e"
+                opacity="0.95"
+              />
+              <circle cx="2.3" cy="3.1" r="2.8" fill="#a83244" opacity="0.95" />
+              <circle
+                cx="-2.3"
+                cy="3.1"
+                r="2.8"
+                fill="#912838"
+                opacity="0.95"
+              />
+              <circle
+                cx="-3.6"
+                cy="-1.2"
+                r="2.8"
+                fill="#a83244"
+                opacity="0.95"
+              />
+              <circle cx="0" cy="0" r="1.6" fill="#e5b83b" />
+              <circle cx="0" cy="0" r="0.7" fill="#ffffff" />
+            </g>
+
+            <!-- Flower 2 (u=0.618, Major Golden Ratio Node - Full Radiant Blossom) -->
+            <g transform="translate(61, 72)">
+              <circle cx="0" cy="-4.2" r="3.2" fill="#912838" />
+              <circle cx="4.0" cy="-1.4" r="3.2" fill="#a83244" />
+              <circle cx="2.5" cy="3.4" r="3.2" fill="#bd3a4e" />
+              <circle cx="-2.5" cy="3.4" r="3.2" fill="#a83244" />
+              <circle cx="-4.0" cy="-1.4" r="3.2" fill="#912838" />
+              <circle cx="0" cy="-1.8" r="2.0" fill="#c94458" />
+              <circle cx="1.8" cy="0.6" r="2.0" fill="#c94458" />
+              <circle cx="-1.8" cy="0.6" r="2.0" fill="#c94458" />
+              <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
+              <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
+            </g>
+
+            <!-- Bud 3 (u=0.92, Delicate Sprouting Rose Bud) -->
+            <g transform="translate(91, 66)">
+              <circle cx="0" cy="0" r="2.4" fill="#a83244" />
+              <circle cx="-0.8" cy="-0.8" r="1.5" fill="#bd3a4e" />
+              <circle cx="0.8" cy="0.8" r="1.0" fill="#e5b83b" />
+              <path d="M 0,2.4 Q -3,5 -2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+              <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+            </g>
+          </g>
+        `
+      };
 
       class LSystemVine {
         constructor(rng) {
@@ -4660,10 +4324,7 @@
 
             const isPatternAdjective =
               adjective === "Clockwork" || adjective === "Overgrown";
-            const patternInnerSvg =
-              adjective === "Overgrown"
-                ? OVERGROWN_VINE_INNER_SVG
-                : CLOCKWORK_CIRCUIT_INNER_SVG;
+            const patternInnerSvg = PATTERN_INNER_SVG[adjective] || "";
             const patternPrefix =
               adjective === "Overgrown" ? "vine" : "circuit";
             const patternBlendMode =
