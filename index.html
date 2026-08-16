@@ -252,25 +252,36 @@
   <body>
     <!-- 
     ========================================================
-    DEVELOPER NOTES:
+    DEVELOPER NOTES: THE ENERGY & SECTOR ECONOMY
     *** DO NOT REMOVE THIS COMMENT BLOCK ***
     ========================================================
     1. ENGINE TIER = MAX ENERGY & TRAVEL COST
        - A larger engine increases the max Energy capacity of the train, 
          allowing for more explorations and actions per dimension.
        - However, a heavier engine increases the Fuel cost to initiate a Rift Jump.
+       - Anti-Trap Transparency: Human players exhibit bounded rationality and
+         calculate within a short forward horizon. Upgrade buttons must explicitly
+         disclose the increased jump cost and warn if current fuel cannot support it.
        - Energy resets completely upon entering a new dimension.
 
-    2. INFINITE PLAYABILITY BALANCE
-       - All numerical values and strings are stored in a central GAME_DATA object for easy tweaking.
-       - A mathematically infinite run (with good play) is guaranteed through careful balancing.
-       - Players can chain resource nodes to bank fuel, while Hubs provide critical 
-         Hull repairs and Fuel conversions.
+    2. INFINITE PLAYABILITY BALANCE & CADENCE
+       - All numerical values and strings are stored in a central GAME_DATA object.
+       - Onboarding Runway: An initial fixed sequence safely introduces mining,
+         harvesting, combat, and upgrading without opening RNG death spirals.
+       - Sector Cadence: Hubs are fixed at recurring waypoints to provide reliable
+         tension-relief harbors. Deep-void nodes between Hubs are drawn from a 
+         balanced bag shuffle to eliminate dry streaks.
+       - Tier-Scaled Station Economy: Hub refueling scales with engine tier so
+         that heavier industrial trains can replenish proportional jump fuel.
+       - Biofuel Coherence: Solitary voidbeasts yield Energy Crystals (fuel + flux)
+         so combat-oriented conductors do not face sudden fuel dead-ends.
+         Packs yield pelts and beast parts of purely economic market value.
          
-    3. ENGAGING GAMEPLAY
-       - Keep the player hooked. Gameplay should not feel repetitive.
-       - The math should be such that the player feels that they could have won
-         by just a bit when they loose. 
+    3. ENGAGING GAMEPLAY & BOUNDED RATIONALITY
+       - Designed for human decision horizons (immediate 1-3 step lookahead)
+         rather than predictive machine optimizers.
+       - Generous starting fuel cushions exploration while preserving tight,
+         earned near-miss survival moments across the deeper sectors.
          
     4. CODE QUALITY RULES
        - Preserve comments. Comments explain why, not what.
@@ -351,6 +362,9 @@
           <div class="stat-row">
             <span>Reputation:</span><span id="stat-rep"></span>
           </div>
+          <div class="stat-row">
+            <span>Sector Waypoint:</span><span id="stat-sector"></span>
+          </div>
         </div>
 
         <h2>Train Setup</h2>
@@ -386,7 +400,7 @@
       const GAME_DATA = {
         config: {
           MAX_HULL: 100,
-          START_FUEL: 40,
+          START_FUEL: 50,
           START_ENERGY: 2,
           MAX_TIER: 3,
           DEATH_HULL_THRESHOLD: 0,
@@ -410,12 +424,13 @@
 
           HUNT_SOLITARY_ENERGY: 1,
           HUNT_SOLITARY_WIN_RATE: 0.6,
-          HUNT_SOLITARY_FLUX: 35,
+          HUNT_SOLITARY_FLUX: 30,
+          HUNT_SOLITARY_FUEL: 15,
           HUNT_SOLITARY_HULL_DMG: 20,
 
           HUNT_PACK_ENERGY: 2,
           HUNT_PACK_WIN_RATE: 0.5,
-          HUNT_PACK_FLUX: 55,
+          HUNT_PACK_FLUX: 60,
 
           HUNT_DEEP_ENERGY: 3,
           HUNT_DEEP_WIN_RATE: 0.3,
@@ -442,15 +457,23 @@
 
           HUB_REST_FLUX_COST: 20,
           HUB_REST_HULL_YIELD: 30,
-          HUB_FUEL_FLUX_COST: 20,
-          HUB_FUEL_YIELD: 25,
+
+          HUB_FUEL_BASE_COST: 20,
+          HUB_FUEL_TIER_COST: 10,
+          HUB_FUEL_JUMPS_RESTORED: 2,
+
           HUB_EASY_FUEL_COST: 10,
           HUB_EASY_FLUX_YIELD: 35,
           HUB_EASY_REP_YIELD: 1,
           HUB_HARD_REP_REQ: 2,
           HUB_HARD_FUEL_COST: 25,
           HUB_HARD_FLUX_YIELD: 100,
+
+          WAYPOINT_HUB_INTERVAL: 10,
         },
+
+        runway: ["hub", "res", "res", "hunt", "hub"],
+        sectorPoolCounts: { res: 3, hunt: 3, maze: 3 },
 
         resources: {
           hull: "Hull",
@@ -530,6 +553,7 @@
             statEnergy: "stat-energy",
             statFlux: "stat-flux",
             statRep: "stat-rep",
+            statSector: "stat-sector",
             eqEngine: "equip-engine",
             eqWeapon: "equip-weapon",
             eqModule: "equip-module",
@@ -570,15 +594,23 @@
           formatStatPair: (val, max) => `${val} / ${max}`,
           formatDimName: (name) => `Dimension: The ${name}`,
           formatDimType: (type) => `Type: ${type}`,
+          formatSectorWaypoint: (jump) => `Jump ${jump}`,
           btnExploreClosed: (cost) => `Explore (-${cost} EN)`,
           btnExploreHub: (cost) => `Open Docking Bay (-${cost} EN)`,
           btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
           btnDesperate: (cost, yieldAmount) =>
             `Strip Hull for Fuel (-${cost} Hull, +${yieldAmount} Fuel)`,
-          btnForgeEngine: (cost) => `Mutate Engine (${cost} Flux)`,
-          btnForgeWeapon: (cost) => `Mutate Weapon (${cost} Flux)`,
-          btnApexEngine: "Apex Engine",
-          btnApexWeapon: "Apex Weapon",
+          btnForgeEngine: (cost, tierMult, nextJumpCost, curFuel) => {
+            let label = `Mutate Engine (${cost} Flux)\n[+1 Max EN, +${tierMult} Jump Cost]`;
+            if (curFuel < nextJumpCost) {
+              label += `\n[LOW FUEL WARNING: Jump will cost ${nextJumpCost}]`;
+            }
+            return label;
+          },
+          btnForgeWeapon: (cost) =>
+            `Mutate Weapon (${cost} Flux)\n[+20% Combat Win Odds]`,
+          btnApexEngine: "Apex Engine (Max Tier)",
+          btnApexWeapon: "Apex Weapon (Max Tier)",
 
           btnYardModules: "Browse Modules",
           btnYardCarriages: "Browse Carriages",
@@ -591,8 +623,8 @@
           yardOwned: `[ALREADY OWNED]`,
           logYardPurchase: (name) => `Procured and installed: ${name}.`,
 
-          logLocEnter: (name, label) =>
-            `Rift Jump complete. Arrived at The ${name}: ${label}`,
+          logLocEnter: (name, label, jump) =>
+            `Rift Jump #${jump} complete. Arrived at The ${name}: ${label}`,
           logEncounterTitle: (label, desc) => `<b>${label}:</b> ${desc}`,
           logGreenhouse: (yieldAmount) =>
             `Greenhouse passively generated +${yieldAmount} Fuel.`,
@@ -643,7 +675,6 @@
             label: "Mission Hub",
             desc: "A trading post on the edge of reality. Open the bay to negotiate.",
             exploreCost: 1,
-            prob: 20,
             isHub: true,
             actions: [
               "hub_yard",
@@ -655,10 +686,9 @@
           },
           hunt: {
             id: "hunt",
-            label: "Hunting Lodge",
-            desc: "Hints of life abound. Fertile hunting grounds. Who is the hunter?",
+            label: "Hunting Grounds",
+            desc: "Hints of life abound. Who is the hunter?",
             exploreCost: 1,
-            prob: 30,
             isHub: false,
             actions: ["hunt_solitary", "hunt_pack", "hunt_deep"],
           },
@@ -667,16 +697,14 @@
             label: "Resource Node",
             desc: "Unrefined elements detected in the atmosphere and crust.",
             exploreCost: 1,
-            prob: 40,
             isHub: false,
             actions: ["res_siphon", "res_harvest", "res_drill"],
           },
           maze: {
             id: "maze",
             label: "Maze / Escape Zone",
-            desc: "You spot derelict tech trapped in a spatial anomaly.",
+            desc: "Derelict anomalies and trapped dimensional salvage ahead.",
             exploreCost: 1,
-            prob: 10,
             isHub: false,
             actions: ["maze_blast", "maze_map_fuel", "maze_map_flux"],
           },
@@ -687,7 +715,7 @@
             name: "Astrolabe",
             type: "module",
             cost: 50,
-            desc: "Enables advanced dimensional route selection.",
+            desc: "Enables dimensional route selection.",
           },
           exo: {
             name: "Exoplating",
@@ -711,13 +739,13 @@
             name: "Orc Gunner",
             type: "crew",
             cost: 200,
-            desc: "Functions as a permanent +1 to your current Weapon Tier.",
+            desc: "Functions as a permanent +1 to your Weapon Tier.",
           },
           goblin: {
             name: "Goblin Engineer",
             type: "crew",
             cost: 220,
-            desc: "Passively repairs the Hull for a small amount after every Rift Jump.",
+            desc: "Passively repairs the Hull after every Rift Jump.",
           },
         },
       };
@@ -738,7 +766,7 @@
           requires: {},
           consumes: [{ res: "energy", amount: (s, c) => c.RES_SIPHON_ENERGY }],
           produces: [{ res: "fuel", amount: (s, c) => c.RES_SIPHON_FUEL }],
-          logSuccess: "Siphoned surface gases for Fuel.",
+          logSuccess: "Siphoned volatile surface gases into engine fuel.",
         },
         res_harvest: {
           label: "Safe Harvest",
@@ -746,7 +774,7 @@
           requires: {},
           consumes: [{ res: "energy", amount: (s, c) => c.RES_HARVEST_ENERGY }],
           produces: [{ res: "flux", amount: (s, c) => c.RES_HARVEST_FLUX }],
-          logSuccess: "Harvested local anomalies for Flux.",
+          logSuccess: "Harvested local rift anomalies for Dimensional Flux.",
         },
         res_drill: {
           label: "Deep Drill",
@@ -757,7 +785,8 @@
             { res: "hull", amount: (s, c) => c.RES_DRILL_HULL_DMG },
           ],
           produces: [{ res: "flux", amount: (s, c) => c.RES_DRILL_FLUX }],
-          logSuccess: "Drilling caused a cave-in, but yielded heavy Flux.",
+          logSuccess:
+            "Drilling caused tectonic tremors, but yielded rich Flux.",
         },
         maze_blast: {
           label: "Power Through",
@@ -776,7 +805,7 @@
             },
           ],
           produces: [{ res: "flux", amount: (s, c) => c.MAZE_BLAST_FLUX }],
-          logSuccess: "Forced passage through anomalies, taking hull damage.",
+          logSuccess: "Forced passage through anomalies, taking hull stress.",
         },
         maze_map_fuel: {
           label: "Extract Power Core",
@@ -784,7 +813,8 @@
           requires: { module: GAME_DATA.yard.map.name },
           consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
           produces: [{ res: "fuel", amount: (s, c) => c.MAZE_MAP_FUEL_YIELD }],
-          logSuccess: "Safely navigated anomalies to extract a Power Core.",
+          logSuccess:
+            "Safely mapped anomalies to extract an intact Power Core.",
         },
         maze_map_flux: {
           label: "Extract Artifact",
@@ -793,7 +823,7 @@
           consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
           produces: [{ res: "flux", amount: (s, c) => c.MAZE_MAP_FLUX_YIELD }],
           logSuccess:
-            "Safely navigated anomalies to extract an Eldritch Artifact.",
+            "Safely mapped anomalies to extract a glowing Eldritch Artifact.",
         },
         hunt_solitary: {
           label: "Hunt Solitary Beast",
@@ -807,11 +837,15 @@
           consumes: [
             { res: "energy", amount: (s, c) => c.HUNT_SOLITARY_ENERGY },
           ],
-          produces: [{ res: "flux", amount: (s, c) => c.HUNT_SOLITARY_FLUX }],
+          produces: [
+            { res: "flux", amount: (s, c) => c.HUNT_SOLITARY_FLUX },
+            { res: "fuel", amount: (s, c) => c.HUNT_SOLITARY_FUEL },
+          ],
           failConsumes: [
             { res: "hull", amount: (s, c) => c.HUNT_SOLITARY_HULL_DMG },
           ],
-          logSuccess: "The beast fell swiftly! Harvested organic Flux.",
+          logSuccess:
+            "The voidbeast fell! Harvested its radiant Energy Crystal for Fuel and Flux.",
           logFail: "The beast breached your defenses! Took Hull damage.",
         },
         hunt_pack: {
@@ -825,9 +859,10 @@
               c.HUNT_WPN_MULT,
           consumes: [{ res: "energy", amount: (s, c) => c.HUNT_PACK_ENERGY }],
           produces: [{ res: "flux", amount: (s, c) => c.HUNT_PACK_FLUX }],
-          logSuccess: "Scattered the pack and claimed their hoard of Flux.",
+          logSuccess:
+            "Scattered the pack and harvested valuable hides and pelts for Flux.",
           logFail:
-            "The pack overwhelmed your targeting, but you closed the doors in time. No damage taken.",
+            "The pack overwhelmed your targeting, but you sealed the doors in time. No damage taken.",
         },
         hunt_deep: {
           label: "Hunt Apex Predators",
@@ -847,23 +882,36 @@
             { res: "hull", amount: (s, c) => c.HUNT_DEEP_HULL_DMG },
           ],
           logSuccess:
-            "A titan falls! Harvested massive amounts of Flux and rich biofuel.",
+            "An apex titan falls! Harvested massive Flux and rich biofuel cores.",
           logFail:
-            "The apex predators breached the hull! Heavy damage sustained.",
+            "The apex predator breached the hull! Heavy structural damage sustained.",
         },
         hub_rest: {
           label: "Dock Repairs",
           requires: {},
           consumes: [{ res: "flux", amount: (s, c) => c.HUB_REST_FLUX_COST }],
           produces: [{ res: "hull", amount: (s, c) => c.HUB_REST_HULL_YIELD }],
-          logSuccess: "Dock crew repaired your Hull.",
+          logSuccess: "Dock engineer crews repaired your Hull.",
         },
         hub_fuel: {
-          label: "Buy Fuel",
+          label: "Refuel Canisters",
           requires: {},
-          consumes: [{ res: "flux", amount: (s, c) => c.HUB_FUEL_FLUX_COST }],
-          produces: [{ res: "fuel", amount: (s, c) => c.HUB_FUEL_YIELD }],
-          logSuccess: "Purchased raw Fuel.",
+          consumes: [
+            {
+              res: "flux",
+              amount: (s, c) =>
+                c.HUB_FUEL_BASE_COST + s.engineTier * c.HUB_FUEL_TIER_COST,
+            },
+          ],
+          produces: [
+            {
+              res: "fuel",
+              amount: (s, c) =>
+                (c.TRAVEL_BASE_FUEL_COST + s.engineTier * c.TRAVEL_TIER_MULT) *
+                c.HUB_FUEL_JUMPS_RESTORED,
+            },
+          ],
+          logSuccess: "Purchased engine-calibrated Fuel canisters.",
         },
         hub_quest_easy: {
           label: "Delivery Contract",
@@ -873,7 +921,8 @@
             { res: "flux", amount: (s, c) => c.HUB_EASY_FLUX_YIELD },
             { res: "rep", amount: (s, c) => c.HUB_EASY_REP_YIELD },
           ],
-          logSuccess: "Delivery complete. Gained Flux and Reputation.",
+          logSuccess:
+            "Cargo delivery complete. Gained Flux and Station Reputation.",
         },
         hub_quest_hard: {
           label: "VIP Contract",
@@ -881,12 +930,15 @@
           requires: { rep: GAME_DATA.config.HUB_HARD_REP_REQ },
           consumes: [{ res: "fuel", amount: (s, c) => c.HUB_HARD_FUEL_COST }],
           produces: [{ res: "flux", amount: (s, c) => c.HUB_HARD_FLUX_YIELD }],
-          logSuccess: "VIP successfully transported. Massive Flux payout.",
+          logSuccess:
+            "VIP successfully transported. Received massive Flux payout.",
         },
       };
 
       let state = {
         phase: GAME_DATA.phases.start,
+        jumpCount: 1,
+        sectorBag: [],
         hull: GAME_DATA.config.MAX_HULL,
         fuel: GAME_DATA.config.START_FUEL,
         flux: 0,
@@ -898,7 +950,7 @@
         carriage: GAME_DATA.text.noneState,
         crew: GAME_DATA.text.noneState,
         dimId: GAME_DATA.nodes.hub.id,
-        dimName: "Scrapyard",
+        dimName: "Scrapyard Outpost",
         navChoices: [],
         yardCat: null,
       };
@@ -944,6 +996,9 @@
         getTravelCost: () =>
           GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
           state.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT,
+        getNextTierTravelCost: () =>
+          GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
+          (state.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT,
         getForgeCost: (tier) =>
           (tier + 1) * GAME_DATA.config.FORGE_BASE_FLUX_COST,
 
@@ -1098,35 +1153,56 @@
           Engine.evaluateSurvival();
         },
 
-        generateDimension: (excludedIds = []) => {
-          let availableNodes = Object.values(GAME_DATA.nodes).filter(
-            (n) => !excludedIds.includes(n.id),
-          );
-          if (availableNodes.length === 0)
-            availableNodes = Object.values(GAME_DATA.nodes);
-
-          let totalProb = availableNodes.reduce((sum, n) => sum + n.prob, 0);
-          let roll = Math.random() * totalProb;
-          let cum = 0;
-          let chosenId = availableNodes[0].id;
-
-          for (const n of availableNodes) {
-            cum += n.prob;
-            if (roll < cum) {
-              chosenId = n.id;
-              break;
-            }
+        createShuffledSectorBag: () => {
+          const bag = [];
+          for (const [nodeType, count] of Object.entries(
+            GAME_DATA.sectorPoolCounts,
+          )) {
+            for (let i = 0; i < count; i++) bag.push(nodeType);
           }
+          for (let i = bag.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [bag[i], bag[j]] = [bag[j], bag[i]];
+          }
+          return bag;
+        },
 
+        peekNextNodeId: () => {
+          const nextJump = state.jumpCount + 1;
+          if (nextJump <= GAME_DATA.runway.length) {
+            return GAME_DATA.runway[nextJump - 1];
+          }
+          if (nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0) {
+            return "hub";
+          }
+          if (!state.sectorBag || state.sectorBag.length === 0) {
+            state.sectorBag = Engine.createShuffledSectorBag();
+          }
+          return state.sectorBag[state.sectorBag.length - 1];
+        },
+
+        popNextNodeId: () => {
+          const nextJump = state.jumpCount + 1;
+          if (nextJump <= GAME_DATA.runway.length) {
+            return GAME_DATA.runway[nextJump - 1];
+          }
+          if (nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0) {
+            return "hub";
+          }
+          if (!state.sectorBag || state.sectorBag.length === 0) {
+            state.sectorBag = Engine.createShuffledSectorBag();
+          }
+          return state.sectorBag.pop();
+        },
+
+        generateDimensionForId: (chosenId) => {
           const adj =
             GAME_DATA.procedural.adjectives[
               Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
             ];
           const nouns = GAME_DATA.procedural.nouns[chosenId];
           const noun = nouns[Math.floor(Math.random() * nouns.length)];
-          const genName = `${adj} ${noun}`;
-
-          return { id: chosenId, name: genName };
+          return { id: chosenId, name: `${adj} ${noun}` };
         },
 
         initiateTravel: () => {
@@ -1136,17 +1212,37 @@
           state.fuel -= cost;
 
           if (state.module === GAME_DATA.yard.astro.name) {
-            const dest1 = Engine.generateDimension([]);
-            const dest2 = Engine.generateDimension([dest1.id]);
-            state.navChoices = [dest1, dest2];
+            const nextJump = state.jumpCount + 1;
+            const isFixedPoint =
+              nextJump <= GAME_DATA.runway.length ||
+              nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0;
+
+            let id1, id2;
+            if (isFixedPoint) {
+              id1 = Engine.popNextNodeId();
+              id2 = id1;
+            } else {
+              id1 = Engine.popNextNodeId();
+              id2 = Engine.popNextNodeId();
+            }
+
+            const dest1 = Engine.generateDimensionForId(id1);
+            const dest2 = Engine.generateDimensionForId(id2);
+
+            state.navChoices = [
+              { ...dest1, returnId: isFixedPoint ? null : id2 },
+              { ...dest2, returnId: isFixedPoint ? null : id1 },
+            ];
             Engine.transitionTo(GAME_DATA.phases.navigating);
           } else {
-            const dest = Engine.generateDimension([]);
+            const chosenId = Engine.popNextNodeId();
+            const dest = Engine.generateDimensionForId(chosenId);
             Engine.finalizeJump(dest.id, dest.name);
           }
         },
 
         finalizeJump: (dimId, dimName) => {
+          state.jumpCount++;
           state.energy = Engine.getMaxEnergy();
 
           if (state.carriage === GAME_DATA.yard.green.name) {
@@ -1179,6 +1275,7 @@
             GAME_DATA.text.logLocEnter(
               dimName,
               GAME_DATA.nodes[state.dimId].label,
+              state.jumpCount,
             ),
             GAME_DATA.dom.classes.logSystem,
           );
@@ -1310,6 +1407,9 @@
           );
           DOM.statFlux.innerText = Math.floor(state.flux);
           DOM.statRep.innerText = state.rep;
+          DOM.statSector.innerText = GAME_DATA.text.formatSectorWaypoint(
+            state.jumpCount,
+          );
 
           DOM.eqEngine.innerText = GAME_DATA.text.formatTier(state.engineTier);
           DOM.eqWeapon.innerText = GAME_DATA.text.formatTier(state.weaponTier);
@@ -1363,11 +1463,17 @@
         renderForge: () => {
           const fEngCost = Engine.getForgeCost(state.engineTier);
           const perms = GAME_DATA.permissions[state.phase];
+          const nextJumpCost = Engine.getNextTierTravelCost();
 
           DOM.btnForgeEng.innerText =
             state.engineTier >= GAME_DATA.config.MAX_TIER
               ? GAME_DATA.text.btnApexEngine
-              : GAME_DATA.text.btnForgeEngine(fEngCost);
+              : GAME_DATA.text.btnForgeEngine(
+                  fEngCost,
+                  GAME_DATA.config.TRAVEL_TIER_MULT,
+                  nextJumpCost,
+                  state.fuel,
+                );
           DOM.btnForgeEng.disabled =
             !perms.forge ||
             state.flux < fEngCost ||
@@ -1421,8 +1527,9 @@
           );
 
           DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
-            if (state.flux >= Engine.getForgeCost(state.engineTier)) {
-              state.flux -= Engine.getForgeCost(state.engineTier);
+            const cost = Engine.getForgeCost(state.engineTier);
+            if (state.flux >= cost) {
+              state.flux -= cost;
               state.engineTier++;
               state.energy++;
               Engine.updateUI();
@@ -1431,8 +1538,9 @@
           });
 
           DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
-            if (state.flux >= Engine.getForgeCost(state.weaponTier)) {
-              state.flux -= Engine.getForgeCost(state.weaponTier);
+            const cost = Engine.getForgeCost(state.weaponTier);
+            if (state.flux >= cost) {
+              state.flux -= cost;
               state.weaponTier++;
               Engine.updateUI();
               Engine.evaluateSurvival();
@@ -1447,7 +1555,7 @@
         },
 
         init: () => {
-          Engine.verifyGraphIntegrity(); // Boot-time mathematical verification
+          Engine.verifyGraphIntegrity();
           Engine.cacheDOM();
           Engine.setupStaticText();
           Engine.bindEvents();
@@ -1538,9 +1646,13 @@
               );
               btn.appendChild(nameSpan);
               btn.appendChild(typeSpan);
-              btn.addEventListener(GAME_DATA.dom.events.click, () =>
-                Engine.finalizeJump(choice.id, choice.name),
-              );
+              btn.addEventListener(GAME_DATA.dom.events.click, () => {
+                if (choice.returnId && state.sectorBag) {
+                  state.sectorBag.push(choice.returnId);
+                  state.sectorBag.sort(() => Math.random() - 0.5);
+                }
+                Engine.finalizeJump(choice.id, choice.name);
+              });
               DOM.navChoices.appendChild(btn);
             });
           },
