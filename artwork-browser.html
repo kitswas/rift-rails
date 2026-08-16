@@ -1157,42 +1157,41 @@
         MAX_OFFSET: 5,
       };
 
-      const ADJECTIVES = Object.freeze({
-        FRACTURED: "Fractured",
-        SHATTERED: "Shattered",
-        OVERGROWN: "Overgrown",
-        CLOCKWORK: "Clockwork",
-        FROZEN: "Frozen",
-        CRIMSON: "Crimson",
-        RUSTING: "Rusting",
-        ELDRITCH: "Eldritch",
-        NEON: "Neon",
-        // Direct access aliases
-        Fractured: "Fractured",
-        Shattered: "Shattered",
-        Overgrown: "Overgrown",
-        Clockwork: "Clockwork",
-        Frozen: "Frozen",
-        Crimson: "Crimson",
-        Rusting: "Rusting",
-        Eldritch: "Eldritch",
-        Neon: "Neon",
-      });
+      function createEnumArray(items) {
+        const arr = [...items];
+        for (const item of items) {
+          arr[item] = item;
+          arr[item.toUpperCase()] = item;
+        }
+        return Object.freeze(arr);
+      }
+
+      const ADJECTIVES = createEnumArray([
+        "Fractured",
+        "Shattered",
+        "Overgrown",
+        "Clockwork",
+        "Frozen",
+        "Crimson",
+        "Rusting",
+        "Eldritch",
+        "Neon",
+      ]);
 
       const ADJECTIVE_EFFECTS = {
-        [ADJECTIVES.FRACTURED]: {
+        Fractured: {
           svgFilter: "filter-glitch",
           glitchPixel: true,
           cssClass: null,
           selectiveSurface: false,
         },
-        [ADJECTIVES.SHATTERED]: {
+        Shattered: {
           svgFilter: "filter-shatter",
           glitchPixel: true,
           cssClass: null,
           selectiveSurface: false,
         },
-        [ADJECTIVES.OVERGROWN]: {
+        Overgrown: {
           svgFilter: "filter-wobble",
           glitchPixel: false,
           cssClass: null,
@@ -1203,7 +1202,7 @@
           layerOpacities: { layer2: 0.48, layer3: 0.62, layer4: 0.72 },
           getFrameOverlay: (rng) => getOvergrownFrameVines(rng),
         },
-        [ADJECTIVES.CLOCKWORK]: {
+        Clockwork: {
           svgFilter: null,
           glitchPixel: false,
           cssClass: null,
@@ -1213,32 +1212,32 @@
           patternBlendMode: "color-dodge",
           layerOpacities: { layer2: 0.4, layer3: 0.55, layer4: 0.65 },
         },
-        [ADJECTIVES.FROZEN]: {
+        Frozen: {
           svgFilter: "filter-frost",
           glitchPixel: false,
           cssClass: null,
           selectiveSurface: true,
           getFrameOverlay: (rng) => getFrozenFrameSnowflakes(rng),
         },
-        [ADJECTIVES.CRIMSON]: {
+        Crimson: {
           svgFilter: "filter-heathaze",
           glitchPixel: false,
           cssClass: null,
           selectiveSurface: false,
         },
-        [ADJECTIVES.RUSTING]: {
+        Rusting: {
           svgFilter: "filter-corrosion",
           glitchPixel: false,
           cssClass: null,
           selectiveSurface: true,
         },
-        [ADJECTIVES.ELDRITCH]: {
+        Eldritch: {
           svgFilter: "filter-eldritch",
           glitchPixel: false,
           cssClass: "anim-eldritch",
           selectiveSurface: false,
         },
-        [ADJECTIVES.NEON]: {
+        Neon: {
           svgFilter: "filter-neon",
           glitchPixel: false,
           cssClass: "anim-neon",
@@ -1285,174 +1284,37 @@
         }
       }
 
-      const CATEGORY = Object.freeze({
-        HUB: "hub",
-        HUNT: "hunt",
-        RES: "res",
-        MAZE: "maze",
-        hub: "hub",
-        hunt: "hunt",
-        res: "res",
-        maze: "maze",
-      });
+      const CATEGORY = createEnumArray(["hub", "hunt", "res", "maze"]);
 
       const PALETTES = {
-        [ADJECTIVES.CRIMSON]: [
-          "#140205",
-          "#330811",
-          "#7a121e",
-          "#c42127",
-          "#ff5c5c",
-        ],
-        [ADJECTIVES.FRACTURED]: [
-          "#0a0a0a",
-          "#222222",
-          "#555555",
-          "#999999",
-          "#ffffff",
-        ],
-        [ADJECTIVES.CLOCKWORK]: [
-          "#140d02",
-          "#331f05",
-          "#7a4e0c",
-          "#c4881a",
-          "#ffcc4d",
-        ],
-        [ADJECTIVES.OVERGROWN]: [
-          "#02140a",
-          "#093318",
-          "#17662c",
-          "#33a647",
-          "#85e68b",
-        ],
-        [ADJECTIVES.FROZEN]: [
-          "#020b14",
-          "#0a2238",
-          "#1c4a73",
-          "#4fa1db",
-          "#d9f2ff",
-        ],
-        [ADJECTIVES.NEON]: [
-          "#05021a",
-          "#1b0a40",
-          "#3a127a",
-          "#ff007f",
-          "#00ffff",
-        ],
-        [ADJECTIVES.SHATTERED]: [
-          "#0c0517",
-          "#231138",
-          "#4e287a",
-          "#9b5de5",
-          "#f15bb5",
-        ],
-        [ADJECTIVES.ELDRITCH]: [
-          "#090214",
-          "#1c0733",
-          "#45127a",
-          "#7a22c4",
-          "#c770ff",
-        ],
-        [ADJECTIVES.RUSTING]: [
-          "#120804",
-          "#2e160a",
-          "#633016",
-          "#b05d2c",
-          "#f09858",
-        ],
+        Crimson: ["#140205", "#330811", "#7a121e", "#c42127", "#ff5c5c"],
+        Fractured: ["#0a0a0a", "#222222", "#555555", "#999999", "#ffffff"],
+        Clockwork: ["#140d02", "#331f05", "#7a4e0c", "#c4881a", "#ffcc4d"],
+        Overgrown: ["#02140a", "#093318", "#17662c", "#33a647", "#85e68b"],
+        Frozen: ["#020b14", "#0a2238", "#1c4a73", "#4fa1db", "#d9f2ff"],
+        Neon: ["#05021a", "#1b0a40", "#3a127a", "#ff007f", "#00ffff"],
+        Shattered: ["#0c0517", "#231138", "#4e287a", "#9b5de5", "#f15bb5"],
+        Eldritch: ["#090214", "#1c0733", "#45127a", "#7a22c4", "#c770ff"],
+        Rusting: ["#120804", "#2e160a", "#633016", "#b05d2c", "#f09858"],
       };
-
-      const NOUNS = Object.freeze({
-        // Hub
-        STATION: "Station",
-        BAZAAR: "Bazaar",
-        OUTPOST: "Outpost",
-        NEXUS: "Nexus",
-        SANCTUARY: "Sanctuary",
-        // Hunt
-        WILDS: "Wilds",
-        EXPANSE: "Expanse",
-        TUNDRA: "Tundra",
-        JUNGLE: "Jungle",
-        DOMINION: "Dominion",
-        // Res
-        WASTES: "Wastes",
-        QUARRY: "Quarry",
-        NEBULA: "Nebula",
-        CRAGS: "Crags",
-        FIELDS: "Fields",
-        VALE: "Vale",
-        CANYON: "Canyon",
-        DUNES: "Dunes",
-        // Maze
-        CATACOMBS: "Catacombs",
-        LABYRINTH: "Labyrinth",
-        SPIRE: "Spire",
-        RUINS: "Ruins",
-        ABYSS: "Abyss",
-        WOODS: "Woods",
-
-        // Direct access aliases
-        Station: "Station",
-        Bazaar: "Bazaar",
-        Outpost: "Outpost",
-        Nexus: "Nexus",
-        Sanctuary: "Sanctuary",
-        Wilds: "Wilds",
-        Expanse: "Expanse",
-        Tundra: "Tundra",
-        Jungle: "Jungle",
-        Dominion: "Dominion",
-        Wastes: "Wastes",
-        Quarry: "Quarry",
-        Nebula: "Nebula",
-        Crags: "Crags",
-        Fields: "Fields",
-        Vale: "Vale",
-        Canyon: "Canyon",
-        Dunes: "Dunes",
-        Catacombs: "Catacombs",
-        Labyrinth: "Labyrinth",
-        Spire: "Spire",
-        Ruins: "Ruins",
-        Abyss: "Abyss",
-        Woods: "Woods",
-      });
 
       const NOUN_DATA = {
-        [CATEGORY.HUB]: [
-          NOUNS.STATION,
-          NOUNS.BAZAAR,
-          NOUNS.OUTPOST,
-          NOUNS.NEXUS,
-          NOUNS.SANCTUARY,
+        hub: ["Station", "Bazaar", "Outpost", "Nexus", "Sanctuary"],
+        hunt: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
+        res: [
+          "Wastes",
+          "Quarry",
+          "Nebula",
+          "Crags",
+          "Fields",
+          "Vale",
+          "Canyon",
+          "Dunes",
         ],
-        [CATEGORY.HUNT]: [
-          NOUNS.WILDS,
-          NOUNS.EXPANSE,
-          NOUNS.TUNDRA,
-          NOUNS.JUNGLE,
-          NOUNS.DOMINION,
-        ],
-        [CATEGORY.RES]: [
-          NOUNS.WASTES,
-          NOUNS.QUARRY,
-          NOUNS.NEBULA,
-          NOUNS.CRAGS,
-          NOUNS.FIELDS,
-          NOUNS.VALE,
-          NOUNS.CANYON,
-          NOUNS.DUNES,
-        ],
-        [CATEGORY.MAZE]: [
-          NOUNS.CATACOMBS,
-          NOUNS.LABYRINTH,
-          NOUNS.SPIRE,
-          NOUNS.RUINS,
-          NOUNS.ABYSS,
-          NOUNS.WOODS,
-        ],
+        maze: ["Catacombs", "Labyrinth", "Spire", "Ruins", "Abyss", "Woods"],
       };
+
+      const NOUNS = createEnumArray(Object.values(NOUN_DATA).flat());
 
       /** =========================================================================
        *  ENGINE 1: PROCEDURAL PIXEL ART (CANVAS DITHER)
@@ -1513,6 +1375,19 @@
               this.palette[ratio > threshold ? toneB : toneA];
           }
         }
+        fill(tone = TONE.DEEP_DARK) {
+          this.buf.fill(
+            this.palette[Math.min(Math.max(tone, TONE.DEEP_DARK), TONE.GLOW)],
+          );
+        }
+        fillSkyDither(toneA = TONE.DEEP_DARK, toneB = TONE.SHADOW, mult = 1.0) {
+          for (let y = 0; y < this.h; y++) {
+            const ratio = (y / this.h) * mult;
+            for (let x = 0; x < this.w; x++) {
+              this.setPixelDither(x, y, toneA, toneB, ratio);
+            }
+          }
+        }
         applyGlitch(rng) {
           const slices = rng.range(
             GLITCH_CONFIG.MIN_SLICES,
@@ -1548,10 +1423,10 @@
       }
 
       const GenPixel = {
-        [NOUNS.STATION]: (r, rng) => {
+        Station: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.2);
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
-              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
               if (rng.chance(0.008)) r.setPixel(x, y, 4);
             }
           }
@@ -1573,10 +1448,8 @@
             for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
           }
         },
-        [NOUNS.BAZAAR]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Bazaar: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let b = 0; b < 5; b++) {
             const bx = 10 + b * 30,
               by = 42 + rng.range(0, 10);
@@ -1589,11 +1462,8 @@
             r.setPixel(bx + 14, by + 4, 4);
           }
         },
-        [NOUNS.OUTPOST]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++)
-              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.2);
-          }
+        Outpost: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.2);
           for (let x = 20; x < r.w - 20; x++) {
             for (let y = 50; y < r.h; y++) r.setPixel(x, y, 1);
           }
@@ -1606,7 +1476,7 @@
             r.setPixel(81, y, 4);
           }
         },
-        [NOUNS.NEXUS]: (r, rng) => {
+        Nexus: (r, rng) => {
           const cx = r.w / 2,
             cy = r.h / 2;
           for (let y = 0; y < r.h; y++) {
@@ -1622,10 +1492,8 @@
             }
           }
         },
-        [NOUNS.SANCTUARY]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Sanctuary: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           const cx = r.w / 2;
           for (let y = 10; y < r.h; y++) {
             const archW = Math.sin((y / r.h) * Math.PI) * 35;
@@ -1640,10 +1508,8 @@
           }
           r.setPixel(cx, 35, 4);
         },
-        [NOUNS.WILDS]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Wilds: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let i = 0; i < 35; i++) {
             const tx = rng.range(10, r.w - 10),
               ty = rng.range(45, r.h - 10),
@@ -1659,7 +1525,7 @@
             }
           }
         },
-        [NOUNS.EXPANSE]: (r, rng) => {
+        Expanse: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               r.setPixelDither(x, y, 0, 1, y < 45 ? y / 45 : (y - 45) / 45);
@@ -1674,10 +1540,8 @@
             r.setPixel(px, py + 1, 3);
           }
         },
-        [NOUNS.TUNDRA]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Tundra: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           const waterY = 52;
           for (let b = 0; b < 4; b++) {
             const bx = 15 + b * 36,
@@ -1700,10 +1564,8 @@
             }
           }
         },
-        [NOUNS.JUNGLE]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Jungle: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let i = 0; i < 25; i++) {
             const tx = rng.range(10, r.w - 10),
               ty = rng.range(35, r.h - 5),
@@ -1718,10 +1580,8 @@
             }
           }
         },
-        [NOUNS.DOMINION]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Dominion: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let x = 20; x < r.w - 20; x++) {
             const isMerlon = x % 8 < 4;
             const wallTop = isMerlon ? 48 : 54;
@@ -1743,10 +1603,8 @@
             for (let x = cx - w; x <= cx + w; x++) r.setPixel(x, y, 3);
           }
         },
-        [NOUNS.WASTES]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Wastes: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let l = 0; l < 4; l++) {
             const sy = 35 + l * 14;
             for (let x = 0; x < r.w; x++) {
@@ -1756,10 +1614,8 @@
             }
           }
         },
-        [NOUNS.QUARRY]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
-          }
+        Quarry: (r, rng) => {
+          r.fill(0);
           for (let s = 0; s < 5; s++) {
             const inset = s * 14,
               y = 30 + s * 11;
@@ -1778,7 +1634,7 @@
             }
           }
         },
-        [NOUNS.NEBULA]: (r, rng) => {
+        Nebula: (r, rng) => {
           const gw = 20,
             gh = 12,
             noise = new Array(gw * gh);
@@ -1806,11 +1662,8 @@
             }
           }
         },
-        [NOUNS.CRAGS]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++)
-              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.4);
-          }
+        Crags: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.4);
           for (let i = 0; i < 5; i++) {
             const peakX = 18 + i * 32 + rng.range(-6, 6),
               peakY = rng.range(12, 28);
@@ -1832,10 +1685,8 @@
             }
           }
         },
-        [NOUNS.FIELDS]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Fields: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let y = 45; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               const stripe = (x * 2 + y * 3) % 8 < 4;
@@ -1843,11 +1694,8 @@
             }
           }
         },
-        [NOUNS.VALE]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++)
-              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
-          }
+        Vale: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.5);
           for (let x = 0; x < r.w; x++) {
             const my = Math.floor(25 + Math.abs(Math.sin(x * 0.03)) * 25);
             for (let y = my; y < r.h; y++) r.setPixel(x, y, 2);
@@ -1872,10 +1720,8 @@
             }
           }
         },
-        [NOUNS.CANYON]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
-          }
+        Canyon: (r, rng) => {
+          r.fill(0);
           for (let l = 0; l < 4; l++) {
             const y = 30 + l * 15;
             for (let x = 0; x < r.w; x++) {
@@ -1885,10 +1731,8 @@
             }
           }
         },
-        [NOUNS.DUNES]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
-          }
+        Dunes: (r, rng) => {
+          r.fill(0);
           for (let l = 0; l < 3; l++) {
             const by = 42 + l * 18,
               f1 = rng.next() * 0.05 + 0.02,
@@ -1901,7 +1745,7 @@
             }
           }
         },
-        [NOUNS.CATACOMBS]: (r, rng) => {
+        Catacombs: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               const wall = Math.sin(x * 0.1) * 15 + 20;
@@ -1910,7 +1754,7 @@
             }
           }
         },
-        [NOUNS.LABYRINTH]: (r, rng) => {
+        Labyrinth: (r, rng) => {
           const cx = r.w / 2,
             cy = r.h / 2;
           for (let y = 0; y < r.h; y++) {
@@ -1929,11 +1773,8 @@
             }
           }
         },
-        [NOUNS.SPIRE]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++)
-              r.setPixelDither(x, y, 0, 1, (y / r.h) * 1.5);
-          }
+        Spire: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.5);
           const cx = r.w / 2;
           for (let y = 8; y < r.h; y++) {
             const w = Math.floor(((y - 8) / (r.h - 8)) ** 2 * 35 + 4);
@@ -1941,10 +1782,8 @@
               r.setPixel(x, y, x < cx ? 2 : 3);
           }
         },
-        [NOUNS.RUINS]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Ruins: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let c = 0; c < 5; c++) {
             const cx = 20 + c * 28,
               top = 25 + (c % 3) * 12;
@@ -1954,7 +1793,7 @@
             }
           }
         },
-        [NOUNS.ABYSS]: (r, rng) => {
+        Abyss: (r, rng) => {
           for (let y = 0; y < r.h; y++) {
             for (let x = 0; x < r.w; x++) {
               const riftW = (y / r.h) * 40 + 10;
@@ -1964,10 +1803,8 @@
             }
           }
         },
-        [NOUNS.WOODS]: (r, rng) => {
-          for (let y = 0; y < r.h; y++) {
-            for (let x = 0; x < r.w; x++) r.setPixelDither(x, y, 0, 1, y / r.h);
-          }
+        Woods: (r, rng) => {
+          r.fillSkyDither(0, 1, 1.0);
           for (let i = 0; i < 40; i++) {
             const tx = rng.range(0, r.w),
               ty = rng.range(20, 50);
@@ -2008,36 +1845,28 @@
         },
       };
 
+      const normalizeLayerContent = (content) =>
+        typeof content === "string"
+          ? content
+          : content
+            ? content.toString()
+            : "";
+
       class DioramaLayer {
         constructor(index, content = "") {
           this.index = index;
-          this.content =
-            typeof content === "string"
-              ? content
-              : content
-                ? content.toString()
-                : "";
+          this.content = normalizeLayerContent(content);
           this.effects = [];
           this.opacityVal = null;
         }
 
         set(content) {
-          this.content =
-            typeof content === "string"
-              ? content
-              : content
-                ? content.toString()
-                : "";
+          this.content = normalizeLayerContent(content);
           return this;
         }
 
         append(content) {
-          this.content +=
-            typeof content === "string"
-              ? content
-              : content
-                ? content.toString()
-                : "";
+          this.content += normalizeLayerContent(content);
           return this;
         }
 
@@ -2240,6 +2069,8 @@
           return pine.render(colLit, colDark);
         },
         layer: (index, content = "") => new DioramaLayer(index, content),
+        sky: (skyId, topColor, botColor) =>
+          `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${topColor}"/><stop offset="100%" stop-color="${botColor}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#${skyId})" />`,
         shadow: (markup, type = "paper") => {
           const val = EFFECT_PRESETS.shadows[type] || type;
           return `<g style="filter: ${val};">${markup}</g>`;
@@ -2254,12 +2085,11 @@
       };
 
       const GenVectorBG = {
-        [NOUNS.STATION]: (rng, p) => {
+        Station: (rng, p) => {
           const skyId = `stnSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[3]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            `${VectorHelpers.sky(skyId, p[1], p[3])}
             <circle cx="400" cy="160" r="140" fill="${p[4]}" opacity="0.3" style="filter: blur(25px);" />
             <circle cx="400" cy="160" r="70" fill="${p[4]}" />
             <circle cx="430" cy="150" r="60" fill="${p[1]}" />`,
@@ -2287,12 +2117,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.BAZAAR]: (rng, p) => {
+        Bazaar: (rng, p) => {
           const skyId = `bazSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+            VectorHelpers.sky(skyId, p[4], p[1]),
           );
 
           const layer1 = VectorHelpers.layer(
@@ -2357,12 +2186,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.OUTPOST]: (rng, p) => {
+        Outpost: (rng, p) => {
           const skyId = `outSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+            VectorHelpers.sky(skyId, p[4], p[1]),
           );
           const layer1 = VectorHelpers.layer(
             1,
@@ -2384,7 +2212,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.NEXUS]: (rng, p) => {
+        Nexus: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -2416,7 +2244,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.SANCTUARY]: (rng, p) => {
+        Sanctuary: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -2455,7 +2283,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.WILDS]: (rng, p) => {
+        Wilds: (rng, p) => {
           const skyId = `wildsSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2497,12 +2325,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.EXPANSE]: (rng, p) => {
+        Expanse: (rng, p) => {
           const skyId = `expSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            `${VectorHelpers.sky(skyId, p[4], p[1])}
             <circle cx="400" cy="180" r="90" fill="${p[3]}" opacity="0.35" style="filter: blur(20px);" />`,
           );
           const layer1 = VectorHelpers.layer(
@@ -2525,7 +2352,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.TUNDRA]: (rng, p) => {
+        Tundra: (rng, p) => {
           const skyId = `tunSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -2582,7 +2409,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.JUNGLE]: (rng, p) => {
+        Jungle: (rng, p) => {
           const isLeftDominant = rng.chance(0.5);
           const sunX = isLeftDominant
             ? rng.range(600, 680)
@@ -2944,12 +2771,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.DOMINION]: (rng, p) => {
+        Dominion: (rng, p) => {
           const skyId = `domSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[1]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            `${VectorHelpers.sky(skyId, p[1], p[4])}
             <circle cx="400" cy="130" r="95" fill="${p[4]}" opacity="0.45" style="filter: blur(20px);" />
             <circle cx="400" cy="130" r="50" fill="${p[4]}" />
             <circle cx="398.5" cy="128.5" r="48.5" fill="${p[0]}" />`,
@@ -3000,7 +2826,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.WASTES]: (rng, p) => {
+        Wastes: (rng, p) => {
           const skyId = `wasteSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -3042,12 +2868,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.QUARRY]: (rng, p) => {
+        Quarry: (rng, p) => {
           const skyId = `quarrySky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+            VectorHelpers.sky(skyId, p[4], p[1]),
           );
           const stepMarkup = [];
           for (let s = 0; s < 5; s++) {
@@ -3078,7 +2903,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.NEBULA]: (rng, p) => {
+        Nebula: (rng, p) => {
           let deepPolys = "";
           for (let i = 0; i < 16; i++) {
             const cx = rng.range(40, 760),
@@ -3134,12 +2959,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.CRAGS]: (rng, p) => {
+        Crags: (rng, p) => {
           const skyId = `cragSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+            VectorHelpers.sky(skyId, p[4], p[0]),
           );
 
           const distAcc = [];
@@ -3177,7 +3001,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.FIELDS]: (rng, p) => {
+        Fields: (rng, p) => {
           const skyId = `fldSky-${rng.seed}`;
           const sunX = rng.range(250, 650),
             sunY = rng.range(90, 150),
@@ -3185,8 +3009,7 @@
 
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[2]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />
+            `${VectorHelpers.sky(skyId, p[4], p[2])}
             <circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`,
           );
 
@@ -3248,7 +3071,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.VALE]: (rng, p) => {
+        Vale: (rng, p) => {
           const skyId = `vSky-${rng.seed}`;
           let layer0Markup = `<defs>
             <linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1">
@@ -3365,7 +3188,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.CANYON]: (rng, p) => {
+        Canyon: (rng, p) => {
           const skyId = `canyonSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
@@ -3409,7 +3232,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.DUNES]: (rng, p) => {
+        Dunes: (rng, p) => {
           const skyId = `duneSky-${rng.seed}`;
           const sunX = rng.range(260, 560),
             sunY = rng.range(80, 130),
@@ -3612,7 +3435,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.CATACOMBS]: (rng, p) => {
+        Catacombs: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -3640,7 +3463,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.LABYRINTH]: (rng, p) => {
+        Labyrinth: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<defs>
@@ -3731,7 +3554,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.SPIRE]: (rng, p) => {
+        Spire: (rng, p) => {
           const skyId = `spireSky-${rng.seed}`;
           let skyMarkup = `
             <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
@@ -3838,12 +3661,11 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.RUINS]: (rng, p) => {
+        Ruins: (rng, p) => {
           const skyId = `ruinSky-${rng.seed}`;
           const layer0 = VectorHelpers.layer(
             0,
-            `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
-            <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+            VectorHelpers.sky(skyId, p[4], p[1]),
           );
 
           const layer1 = VectorHelpers.layer(
@@ -3870,7 +3692,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.ABYSS]: (rng, p) => {
+        Abyss: (rng, p) => {
           const layer0 = VectorHelpers.layer(
             0,
             `<rect width="100%" height="100%" fill="${p[0]}" />
@@ -3890,7 +3712,7 @@
           return { layer0, layer1, layer2, layer3, layer4 };
         },
 
-        [NOUNS.WOODS]: (rng, p) => {
+        Woods: (rng, p) => {
           const skyId = `woodsSky-${rng.seed}`;
           const moonX = rng.range(200, 600),
             moonY = rng.range(90, 170),
@@ -3971,7 +3793,7 @@
         if (effectClass) container.classList.add(effectClass);
       }
       const PATTERN_INNER_SVG = {
-        [ADJECTIVES.CLOCKWORK]: `
+        Clockwork: `
           <!-- Ground-plane subtle hatched shield corners (perfectly tileable) -->
           <g fill="none" stroke="#e5a93c" stroke-width="0.5" opacity="0.35">
             <line x1="0" y1="0" x2="15" y2="15" />
@@ -4033,7 +3855,7 @@
             <line x1="88" y1="46" x2="88" y2="54" />
           </g>
         `,
-        [ADJECTIVES.OVERGROWN]: `
+        Overgrown: `
           <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
           <g fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path
@@ -4484,7 +4306,7 @@
         const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
         const clipId = `clip-${rng.seed}`;
 
-        const generator = GenVectorBG[noun] || GenVectorBG[NOUNS.VALE];
+        const generator = GenVectorBG[noun] || GenVectorBG[NOUNS.Vale];
         const bgContent = generator(rng, palette);
 
         let skyMarkup = "";
@@ -4613,7 +4435,7 @@
       function buildCard(adjective, noun, category, engineMode) {
         const fullName = `The ${adjective} ${noun}`;
         const rng = new SeededRNG(fullName);
-        const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.FRACTURED];
+        const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.Fractured];
 
         const card = document.createElement("div");
         card.className = "art-card";
@@ -4764,11 +4586,11 @@
       const modalDownloadSvg = document.getElementById("modal-download-svg");
 
       let currentInspectState = {
-        adjective: ADJECTIVES.CRIMSON,
-        noun: NOUNS.WILDS,
-        category: CATEGORY.HUNT,
+        adjective: ADJECTIVES.Crimson,
+        noun: NOUNS.Wilds,
+        category: CATEGORY.hunt,
         engine: ENGINE_MODE.VECTOR,
-        seedStr: `The ${ADJECTIVES.CRIMSON} ${NOUNS.WILDS}`,
+        seedStr: `The ${ADJECTIVES.Crimson} ${NOUNS.Wilds}`,
       };
 
       // Populate Palette Options
@@ -4849,7 +4671,7 @@
         const { adjective, noun, category, engine, seedStr } =
           currentInspectState;
         const rng = new SeededRNG(seedStr);
-        const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.FRACTURED];
+        const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.Fractured];
 
         modalTitle.innerText = `The ${adjective} ${noun}`;
         modalBadge.className = `art-badge cat-${category}`;
