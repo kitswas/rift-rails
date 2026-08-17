@@ -16,12 +16,20 @@
         --text-muted: #8494a7;
         --border: #1e293b;
         --border-bright: #334155;
-        --accent: #ff3366;
+
+        /* Uniform Semantic Status Colors */
+        --danger: #ef4444;
+        --warning: #f59e0b;
         --success: #10b981;
-        --action: #f59e0b;
         --energy: #a855f7;
+        --action: #f59e0b;
         --info: #38bdf8;
-        --theme-glow: rgba(56, 189, 248, 0.2);
+
+        /* Dynamic Procedural Dimension Theme Colors */
+        --theme-primary: #73acce;
+        --theme-secondary: #f0f3ff;
+        --theme-glow: rgba(115, 172, 206, 0.25);
+
         --overlay-bg: rgba(7, 9, 14, 0.96);
         --font-mono: "SF Mono", "Fira Code", monospace, "Courier New";
         --radius: 8px;
@@ -312,11 +320,25 @@
 
       #art-glyph {
         font-size: 3.2em;
-        color: var(--border-bright);
-        filter: drop-shadow(0 0 12px var(--theme-glow));
+        color: var(--theme-primary);
+        filter: drop-shadow(0 0 14px var(--theme-glow));
         transition:
           transform 0.4s ease,
           color 0.4s ease;
+      }
+
+      #art-label {
+        font-size: 0.8em;
+        color: var(--text-muted);
+        margin-top: 6px;
+      }
+
+      #location-type {
+        color: var(--info);
+        font-size: 0.85em;
+        margin-top: 4px;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
       }
 
       .telemetry-grid {
@@ -335,77 +357,97 @@
         background: var(--panel-sub-bg);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 10px;
-        line-height: 1.5;
+        padding: 10px 12px;
+        line-height: 1.55;
         font-size: 0.88em;
         margin-bottom: 10px;
+        font-family: var(--font-mono);
       }
 
       .log-entry {
         margin-bottom: 6px;
         border-left: 3px solid var(--border-bright);
-        padding-left: 8px;
+        padding: 2px 8px;
         word-break: break-word;
       }
 
       .log-event {
-        color: #cbd5e1;
+        color: var(--text);
+        border-left-color: var(--border-bright);
       }
-      .log-reward {
+      .log-reward,
+      .log-success {
         color: var(--success);
+        font-weight: bold;
+        border-left-color: var(--success);
+        background: rgba(16, 185, 129, 0.06);
+        border-radius: 0 4px 4px 0;
       }
       .log-damage {
-        color: var(--accent);
+        color: var(--danger);
+        font-weight: bold;
+        border-left-color: var(--danger);
+        background: rgba(239, 68, 68, 0.08);
+        border-radius: 0 4px 4px 0;
       }
       .log-system {
         color: var(--info);
         font-style: italic;
-      }
-      .log-success {
-        color: var(--success);
-        font-weight: bold;
+        border-left-color: var(--info);
       }
 
       /* ================= BUTTONS ================= */
       button {
-        background-color: #171e2c;
+        background-color: #131824;
         color: var(--text);
         border: 1px solid var(--border-bright);
         border-radius: var(--radius);
-        padding: 10px 8px;
+        padding: 10px 12px;
         width: 100%;
         cursor: pointer;
-        font-family: inherit;
+        font-family: var(--font-mono);
         font-size: 0.82em;
-        font-weight: bold;
+        font-weight: 700;
+        letter-spacing: 0.5px;
         margin-bottom: 6px;
         text-transform: uppercase;
-        transition: 0.15s ease-out;
+        transition: all 0.15s ease-out;
         white-space: pre-wrap;
         line-height: 1.3;
-        min-height: 44px;
+        min-height: 46px;
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+      }
+
+      button:hover:not(:disabled) {
+        border-color: var(--text-muted);
+        filter: brightness(1.15);
       }
 
       button:active:not(:disabled) {
-        transform: scale(0.98);
-        filter: brightness(1.2);
+        transform: translateY(1px) scale(0.99);
+        filter: brightness(1.25);
       }
 
       button:disabled {
-        opacity: 0.25;
+        opacity: 0.3;
         cursor: not-allowed;
         border-color: var(--border);
+        box-shadow: none;
+        filter: grayscale(60%);
       }
 
       .btn-start {
         background-color: var(--action);
         color: #000;
         font-size: 0.95em;
+        font-weight: 800;
         padding: 14px;
         margin-top: 12px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
       }
 
       .btn-travel {
@@ -421,9 +463,11 @@
       }
 
       .btn-desperate {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: rgba(255, 51, 102, 0.08);
+        border-color: var(--danger);
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.12);
+        font-weight: 800;
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
       }
 
       .btn-success {
@@ -653,15 +697,7 @@
             <h2>Sensors & Visuals</h2>
             <div id="art-display">
               <div id="art-glyph">✦</div>
-              <span
-                id="art-label"
-                style="
-                  font-size: 0.8em;
-                  color: var(--text-muted);
-                  margin-top: 6px;
-                "
-                >SCANNING FREQUENCY...</span
-              >
+              <span id="art-label">SCANNING FREQUENCY...</span>
             </div>
             <h2>Atmospheric Reading</h2>
             <div class="telemetry-grid">
@@ -681,10 +717,7 @@
         <div class="pane" id="pane-bridge">
           <div class="panel-card">
             <h2 id="location-name"></h2>
-            <h3
-              id="location-type"
-              style="color: var(--info); font-size: 0.85em"
-            ></h3>
+            <h3 id="location-type"></h3>
 
             <div id="story-log"></div>
 
@@ -970,14 +1003,18 @@
             displayBlock: "block",
             displayGrid: "grid",
             displayFlex: "flex",
-            colorAccent: "var(--accent)",
+            colorDanger: "var(--danger)",
+            colorWarning: "var(--warning)",
             colorSuccess: "var(--success)",
             colorAction: "var(--action)",
             colorEnergy: "var(--energy)",
+            colorInfo: "var(--info)",
+            colorThemePrimary: "var(--theme-primary)",
+            colorThemeSecondary: "var(--theme-secondary)",
           },
           cssVars: {
-            accent: "--accent",
-            info: "--info",
+            themePrimary: "--theme-primary",
+            themeSecondary: "--theme-secondary",
             themeGlow: "--theme-glow",
             bg: "--bg",
           },
@@ -1574,11 +1611,11 @@
             GAME_DATA.procedural.themes[adj] ||
             GAME_DATA.procedural.defaultTheme;
           document.documentElement.style.setProperty(
-            GAME_DATA.dom.cssVars.accent,
+            GAME_DATA.dom.cssVars.themePrimary,
             theme.primary,
           );
           document.documentElement.style.setProperty(
-            GAME_DATA.dom.cssVars.info,
+            GAME_DATA.dom.cssVars.themeSecondary,
             theme.secondary,
           );
           document.documentElement.style.setProperty(
@@ -2160,15 +2197,15 @@
 
           DOM.statHull.style.color =
             state.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
-              ? GAME_DATA.dom.styles.colorAccent
+              ? GAME_DATA.dom.styles.colorDanger
               : GAME_DATA.dom.styles.colorSuccess;
           DOM.statFuel.style.color =
             state.fuel < Engine.getTravelCost()
-              ? GAME_DATA.dom.styles.colorAccent
+              ? GAME_DATA.dom.styles.colorDanger
               : GAME_DATA.dom.styles.colorAction;
           DOM.statEnergy.style.color =
             state.energy === 0
-              ? GAME_DATA.dom.styles.colorAccent
+              ? GAME_DATA.dom.styles.colorWarning
               : GAME_DATA.dom.styles.colorEnergy;
         },
 
