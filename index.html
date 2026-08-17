@@ -119,7 +119,7 @@
       }
 
       .start-card {
-        max-width: 480px;
+        max-width: 520px;
         background: var(--panel-bg);
         border: 1px solid var(--border-bright);
         border-radius: var(--radius);
@@ -128,17 +128,33 @@
 
       .start-card h1 {
         color: var(--action);
-        font-size: 1.5em;
+        font-size: 1.35em;
         margin-top: 0;
         text-align: center;
         border-bottom: 1px dashed var(--border-bright);
         padding-bottom: 12px;
+        letter-spacing: 1px;
       }
 
       .start-card p {
-        line-height: 1.6;
+        line-height: 1.55;
         color: var(--text);
-        margin-bottom: 14px;
+        margin-bottom: 12px;
+        font-size: 0.9em;
+      }
+
+      .briefing-box {
+        background: var(--panel-sub-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        margin: 14px 0;
+        font-size: 0.85em;
+        line-height: 1.6;
+      }
+
+      .briefing-box b {
+        color: var(--info);
       }
 
       /* ================= TOP PERSISTENT HUD ================= */
@@ -161,10 +177,20 @@
         padding: 6px 8px;
         border-radius: 4px;
         border: 1px solid rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+        user-select: none;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .hud-cell:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border-bright);
       }
 
       .hud-cell span:first-child {
-        font-size: 0.78em;
+        font-size: 0.72em;
         font-weight: 700;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -173,11 +199,11 @@
       }
 
       .hud-cell span:last-child {
-        font-size: 1.1em;
+        font-size: 1.05em;
         font-weight: 800;
       }
 
-      /* ================= HORIZONTAL SNAP SLIDER ================= */
+      /* ================= HORIZONTAL SNAP SLIDER (5 PANELS) ================= */
       #game-container {
         display: none;
         flex: 1;
@@ -197,84 +223,69 @@
         scroll-behavior: smooth;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
+        gap: 12px;
+        padding: 10px 12px;
       }
 
       #snap-slider::-webkit-scrollbar {
         display: none;
       }
 
+      /* Mobile: 1 Full Panel per Viewport */
       .pane {
         flex: 0 0 100%;
         width: 100%;
         height: 100%;
         scroll-snap-align: center;
         overflow-y: auto;
-        padding: 12px;
         display: flex;
         flex-direction: column;
       }
 
-      /* ================= LARGE SCREEN ADAPTATIONS ================= */
+      /* Desktop: 3 Panels Visible Simultaneously */
       @media (min-width: 900px) {
         body {
-          font-size: 16px;
+          font-size: 15px;
         }
 
         #hud-bar {
-          max-width: 1200px;
-          margin: 12px auto 0;
+          max-width: 1400px;
+          margin: 10px auto 0;
           border: 1px solid var(--border);
           border-radius: var(--radius);
-          padding: 10px 16px;
-          gap: 10px;
-        }
-
-        .hud-cell {
-          padding: 8px 10px;
-        }
-
-        .hud-cell span:first-child {
-          font-size: 0.82em;
-        }
-
-        .hud-cell span:last-child {
-          font-size: 1.25em;
+          padding: 8px 14px;
+          gap: 8px;
         }
 
         #snap-slider {
-          display: grid;
-          grid-template-columns: 310px 1.5fr 330px;
-          gap: 14px;
-          max-width: 1200px;
+          max-width: 1400px;
           margin: 0 auto;
-          padding: 12px 0 16px;
-          height: calc(100% - 80px);
+          padding: 10px 0 14px;
+          height: calc(100% - 110px);
         }
 
         .pane {
-          flex: none;
-          width: auto;
-          scroll-snap-align: none;
-          padding: 0;
+          flex: 0 0 calc((100% - 24px) / 3);
+          width: calc((100% - 24px) / 3);
+          scroll-snap-align: center;
         }
 
         #story-log {
-          max-height: 380px !important;
-          font-size: 0.95em !important;
+          max-height: 300px !important;
+          font-size: 0.9em !important;
         }
 
         button {
-          font-size: 0.88em !important;
-          min-height: 48px !important;
-        }
-
-        .start-card {
-          max-width: 540px;
-          padding: 30px;
+          font-size: 0.84em !important;
+          min-height: 44px !important;
         }
 
         #bottom-nav {
-          display: none !important;
+          max-width: 1400px;
+          margin: 0 auto 8px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 6px 12px !important;
         }
       }
 
@@ -282,7 +293,7 @@
         background: var(--panel-bg);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 14px;
+        padding: 12px;
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -298,45 +309,46 @@
       }
 
       h2 {
-        font-size: 1.05em;
+        font-size: 0.95em;
         border-bottom: 1px solid var(--border);
-        padding-bottom: 6px;
+        padding-bottom: 5px;
       }
 
-      /* ================= PANE 1: SENSORS & ARTWORK ================= */
+      /* ================= PANE: SENSORS & ARTWORK ================= */
       #art-display {
         background: var(--panel-sub-bg);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        height: 160px;
+        height: 130px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         position: relative;
         overflow: hidden;
       }
 
       #art-glyph {
-        font-size: 3.2em;
+        font-size: 3em;
         color: var(--theme-primary);
-        filter: drop-shadow(0 0 14px var(--theme-glow));
+        filter: drop-shadow(0 0 10px var(--theme-glow));
         transition:
           transform 0.4s ease,
           color 0.4s ease;
       }
 
       #art-label {
-        font-size: 0.8em;
+        font-size: 0.72em;
         color: var(--text-muted);
-        margin-top: 6px;
+        margin-top: 8px;
+        letter-spacing: 1px;
       }
 
       #location-type {
         color: var(--info);
-        font-size: 0.85em;
-        margin-top: 4px;
+        font-size: 0.82em;
+        margin-top: 3px;
         margin-bottom: 8px;
         letter-spacing: 0.5px;
       }
@@ -347,27 +359,27 @@
         gap: 6px;
       }
 
-      /* ================= PANE 2: TACTICAL BRIDGE & LOG ================= */
+      /* ================= PANE: TACTICAL BRIDGE & LOG ================= */
       #story-log {
         flex: 1;
-        min-height: 170px;
-        max-height: 250px;
+        min-height: 160px;
+        max-height: 220px;
         overflow-y: auto;
         overscroll-behavior-y: contain;
         background: var(--panel-sub-bg);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 10px 12px;
-        line-height: 1.55;
-        font-size: 0.88em;
-        margin-bottom: 10px;
+        padding: 8px 10px;
+        line-height: 1.5;
+        font-size: 0.85em;
+        margin-bottom: 8px;
         font-family: var(--font-mono);
       }
 
       .log-entry {
-        margin-bottom: 6px;
+        margin-bottom: 5px;
         border-left: 3px solid var(--border-bright);
-        padding: 2px 8px;
+        padding: 2px 6px;
         word-break: break-word;
       }
 
@@ -402,19 +414,19 @@
         color: var(--text);
         border: 1px solid var(--border-bright);
         border-radius: var(--radius);
-        padding: 10px 12px;
+        padding: 9px 10px;
         width: 100%;
         cursor: pointer;
         font-family: var(--font-mono);
-        font-size: 0.82em;
+        font-size: 0.8em;
         font-weight: 700;
         letter-spacing: 0.5px;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
         text-transform: uppercase;
         transition: all 0.15s ease-out;
         white-space: pre-wrap;
         line-height: 1.3;
-        min-height: 46px;
+        min-height: 42px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -442,10 +454,10 @@
       .btn-start {
         background-color: var(--action);
         color: #000;
-        font-size: 0.95em;
+        font-size: 0.9em;
         font-weight: 800;
-        padding: 14px;
-        margin-top: 12px;
+        padding: 12px;
+        margin-top: 10px;
         border: none;
         box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
       }
@@ -467,7 +479,7 @@
         color: var(--danger);
         background: rgba(239, 68, 68, 0.12);
         font-weight: 800;
-        box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
       }
 
       .btn-success {
@@ -493,16 +505,52 @@
         flex-direction: column;
         gap: 4px;
         border-top: 1px dashed var(--border);
-        padding-top: 8px;
-        margin-top: 6px;
+        padding-top: 6px;
+        margin-top: 4px;
       }
 
-      /* ================= PANE 3: WORKSHOP & SETUP ================= */
+      /* ================= PANE: WORKSHOP & SETUP ================= */
       .train-setup-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 6px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+      }
+
+      /* ================= PANES: MANUAL & SETTINGS ================= */
+      .manual-content,
+      .settings-content {
+        overflow-y: auto;
+        font-size: 0.82em;
+        line-height: 1.55;
+        color: var(--text);
+      }
+
+      .manual-section,
+      .settings-section {
+        background: var(--panel-sub-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+
+      .manual-section h3,
+      .settings-section h3 {
+        font-size: 0.86em;
+        color: var(--action);
+        margin-bottom: 4px;
+      }
+
+      .manual-section p,
+      .settings-section p {
+        margin: 3px 0;
+        color: var(--text-muted);
+      }
+
+      .manual-section b,
+      .settings-section b {
+        color: var(--text);
       }
 
       /* ================= BOTTOM TAB NAVIGATION ================= */
@@ -511,25 +559,28 @@
         border-top: 1px solid var(--border);
         display: flex;
         justify-content: space-around;
-        padding: 6px 12px calc(var(--safe-bottom) + 4px);
+        padding: 5px 8px calc(var(--safe-bottom) + 2px);
         flex-shrink: 0;
+        gap: 4px;
       }
 
       .nav-tab {
         background: transparent;
-        border: none;
+        border: 1px solid transparent;
         color: var(--text-muted);
-        font-size: 0.75em;
+        font-size: 0.72em;
         letter-spacing: 0.5px;
-        min-height: 36px;
+        min-height: 34px;
         margin: 0;
-        padding: 6px 12px;
-        border-radius: 20px;
-        transition: all 0.2s ease;
+        padding: 4px 6px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        flex: 1;
       }
 
       .nav-tab.active {
         background: var(--border-bright);
+        border-color: var(--info);
         color: var(--text);
         font-weight: bold;
       }
@@ -550,34 +601,34 @@
 
       #nav-screen h1 {
         color: var(--action);
-        font-size: 1.3em;
-        margin-bottom: 20px;
+        font-size: 1.2em;
+        margin-bottom: 16px;
         text-align: center;
       }
 
       #nav-choices {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
         width: 100%;
         max-width: 440px;
       }
 
       .nav-btn {
-        padding: 14px;
+        padding: 12px;
         text-align: left;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 3px;
       }
 
       .nav-btn .dim-name {
-        font-size: 1.05em;
+        font-size: 1em;
         color: var(--text);
         font-weight: bold;
       }
       .nav-btn .dim-type {
-        font-size: 0.75em;
+        font-size: 0.72em;
         color: var(--info);
       }
       .locked-ui {
@@ -640,20 +691,29 @@
 
     <div id="start-screen">
       <div class="start-card">
-        <h1>Rift Rails:<br />The Infinite Express</h1>
+        <h1>RIFT RAILS // OPERATING DIRECTIVE</h1>
         <p>
-          You are the Conductor of the <b>Aethelgard Express</b>, a locomotive
-          capable of breaching the veil between dimensions.
+          You command the <strong>Aethelgard Express</strong>, a locomotive
+          capable of breaching the veil between dimensions. Maintain structural
+          integrity and resource stability while exploring as far as possible.
+        </p>
+        <div class="briefing-box">
+          <b>CORE OPERATING CYCLE:</b><br />
+          [1] <b>EXPLORE:</b> Spend Energy (EN) on the Bridge to survey
+          stations.<br />
+          [2] <b>RESOLVE:</b> Execute mining, hunting, or mission protocols to
+          gain Fuel & Flux.<br />
+          [3] <b>UPGRADE:</b> Access the Workshop to mutate Engine or Weapon
+          modules.<br />
+          [4] <b>RIFT JUMP:</b> Spend Fuel to breach the next sector waypoint.
+        </div>
+        <p style="font-size: 0.82em; color: var(--text-muted)">
+          * Tap any HUD telemetry cell at any time to output subsystem
+          diagnostic reports.
         </p>
         <p>
-          At the heart of your train beats the <b>Crucible Engine</b>. Upgrading
-          it increases the raw <b>Energy</b> capacity of your train—allowing you
-          to execute multiple explorations and actions per dimension—but
-          increases the Fuel required to initiate a jump.
-        </p>
-        <p>
-          <b>Mobile Navigation:</b> Swipe left and right across the dashboard to
-          monitor Sensors, command the Bridge, and manage the Forge.
+          <b>Navigation:</b> Swipe left or right across the dashboard to change
+          panels.
         </p>
         <button class="btn-start" id="btn-ignite"></button>
       </div>
@@ -667,45 +727,82 @@
     <div id="game-container">
       <!-- FIXED STICKY TOP TELEMETRY HUD -->
       <div id="hud-bar">
-        <div class="hud-cell">
-          <span>Hull</span>
+        <div class="hud-cell" onclick="Engine.inspect('hull')">
+          <span>Hull [HP]</span>
           <span id="stat-hull"></span>
         </div>
-        <div class="hud-cell">
-          <span>Fuel</span>
+        <div class="hud-cell" onclick="Engine.inspect('fuel')">
+          <span>Fuel [Jump]</span>
           <span id="stat-fuel"></span>
         </div>
-        <div class="hud-cell">
-          <span>Energy</span>
+        <div class="hud-cell" onclick="Engine.inspect('energy')">
+          <span>Energy [Turn]</span>
           <span id="stat-energy"></span>
         </div>
-        <div class="hud-cell">
-          <span>Flux</span>
+        <div class="hud-cell" onclick="Engine.inspect('flux')">
+          <span>Flux [Cred]</span>
           <span id="stat-flux"></span>
         </div>
-        <div class="hud-cell">
-          <span>Waypoint</span>
+        <div class="hud-cell" onclick="Engine.inspect('sector')">
+          <span>Sector</span>
           <span id="stat-sector"></span>
         </div>
       </div>
 
-      <!-- HORIZONTAL SWIPE CONTAINER (3 PANES) -->
+      <!-- HORIZONTAL SNAP SLIDER (5 PANELS: SETTINGS ON FAR LEFT) -->
       <div id="snap-slider">
-        <!-- PANE 1: SENSORS / CODEX (LEFT) -->
+        <!-- PANE 0: SETTINGS (FAR LEFT) -->
+        <div class="pane" id="pane-settings">
+          <div class="panel-card">
+            <h2>Conduit Settings</h2>
+            <div class="settings-content">
+              <div
+                class="settings-section"
+                style="text-align: center; padding: 26px 12px"
+              >
+                <h3 style="color: var(--warning); letter-spacing: 1px">
+                  [ SUBSYSTEM OFFLINE ]
+                </h3>
+                <p
+                  style="
+                    color: var(--text);
+                    font-weight: bold;
+                    margin-top: 10px;
+                  "
+                >
+                  Auxiliary configuration matrix is currently under maintenance.
+                </p>
+                <p
+                  style="
+                    color: var(--text-muted);
+                    font-size: 0.85em;
+                    margin-top: 10px;
+                  "
+                >
+                  Audio synthesizers, haptic triggers, local archival storage,
+                  and manual trajectory calibrations will deploy in upcoming
+                  conduit updates.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 1: SENSORS / CODEX -->
         <div class="pane" id="pane-sensors">
           <div class="panel-card">
-            <h2>Sensors & Visuals</h2>
+            <h2>Sensors & Telemetry</h2>
             <div id="art-display">
-              <div id="art-glyph">✦</div>
-              <span id="art-label">SCANNING FREQUENCY...</span>
+              <div id="art-glyph">:: SCANNING ::</div>
+              <span id="art-label">SIGNAL LOCKED</span>
             </div>
             <h2>Atmospheric Reading</h2>
             <div class="telemetry-grid">
-              <div class="hud-cell">
+              <div class="hud-cell" onclick="Engine.inspect('rep')">
                 <span>Reputation</span>
                 <span id="stat-rep"></span>
               </div>
-              <div class="hud-cell">
+              <div class="hud-cell" onclick="Engine.inspect('node')">
                 <span>Sector Node</span>
                 <span id="dim-type-codex"></span>
               </div>
@@ -713,7 +810,7 @@
           </div>
         </div>
 
-        <!-- PANE 2: TACTICAL BRIDGE & LOG (CENTER - DEFAULT) -->
+        <!-- PANE 2: TACTICAL BRIDGE & LOG (DEFAULT CENTER) -->
         <div class="pane" id="pane-bridge">
           <div class="panel-card">
             <h2 id="location-name"></h2>
@@ -734,10 +831,10 @@
           </div>
         </div>
 
-        <!-- PANE 3: WORKSHOP & FORGE (RIGHT) -->
+        <!-- PANE 3: WORKSHOP & FORGE -->
         <div class="pane" id="pane-forge">
           <div class="panel-card" id="right-panel">
-            <h2>Train Setup</h2>
+            <h2>Train Configuration</h2>
             <div class="train-setup-grid">
               <div class="hud-cell">
                 <span>Engine</span>
@@ -766,13 +863,85 @@
             <button id="btn-forge-weapon"></button>
           </div>
         </div>
+
+        <!-- PANE 4: OPERATIONS MANUAL (FAR RIGHT) -->
+        <div class="pane" id="pane-manual">
+          <div class="panel-card">
+            <h2>Operations Manual</h2>
+            <div class="manual-content">
+              <div class="manual-section">
+                <h3>[1] Operational Cycle</h3>
+                <p>
+                  1. <b>EXPLORE:</b> Spends 1 Energy (EN) on the Bridge to
+                  survey the local node and reveal operations.
+                </p>
+                <p>
+                  2. <b>RESOLVE:</b> Execute revealed actions (Siphon Fuel,
+                  Harvest Flux, Hunt Voidbeasts, or Dock at Hubs).
+                </p>
+                <p>
+                  3. <b>UPGRADE:</b> Switch to the <b>Workshop</b> tab and spend
+                  Dimensional Flux to mutate components.
+                </p>
+                <p>
+                  4. <b>RIFT JUMP:</b> When EN is exhausted, initiate a Jump to
+                  advance. EN replenishes completely upon breach.
+                </p>
+              </div>
+
+              <div class="manual-section">
+                <h3>[2] Telemetry Matrix</h3>
+                <p>
+                  • <b>Hull:</b> Armor integrity. Reaching 0% causes
+                  catastrophic destruction.
+                </p>
+                <p>
+                  • <b>Fuel:</b> Inter-dimensional propulsion reserves. Does not
+                  auto-recharge. Must be siphoned or bought.
+                </p>
+                <p>
+                  • <b>Energy:</b> Dimension-local operational capacity. Fully
+                  resets to engine maximum after every jump.
+                </p>
+                <p>
+                  • <b>Flux:</b> Universal catalytic currency for Workshop
+                  mutations and Hub bazaar items.
+                </p>
+              </div>
+
+              <div class="manual-section">
+                <h3>[3] Engine Mass Tradeoff</h3>
+                <p>
+                  • Mutating the <b>Crucible Engine</b> increases Max EN per
+                  sector by +1.
+                </p>
+                <p>
+                  • Increased engine mass raises the
+                  <b>Fuel cost per Rift Jump</b> (+10 Fuel per tier). Ensure you
+                  secure fuel before upgrading.
+                </p>
+              </div>
+
+              <div class="manual-section">
+                <h3>[4] Contingency Protocol</h3>
+                <p>
+                  • If Fuel drops below the jump threshold, use
+                  <b>Strip Plating</b> on the Bridge to convert 10% Hull into
+                  emergency Fuel.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- BOTTOM NAVIGATION PILLS -->
+      <!-- UNIVERSAL NAVIGATION TABS -->
       <div id="bottom-nav">
+        <button class="nav-tab" id="tab-settings">Settings</button>
         <button class="nav-tab" id="tab-sensors">Sensors</button>
         <button class="nav-tab active" id="tab-bridge">Bridge</button>
         <button class="nav-tab" id="tab-forge">Workshop</button>
+        <button class="nav-tab" id="tab-manual">Manual</button>
       </div>
     </div>
 
@@ -987,12 +1156,16 @@
             lblForge: "lbl-forge",
             rightPanel: "right-panel",
             snapSlider: "snap-slider",
+            paneSettings: "pane-settings",
             paneSensors: "pane-sensors",
             paneBridge: "pane-bridge",
             paneForge: "pane-forge",
+            paneManual: "pane-manual",
+            tabSettings: "tab-settings",
             tabSensors: "tab-sensors",
             tabBridge: "tab-bridge",
             tabForge: "tab-forge",
+            tabManual: "tab-manual",
             dimTypeCodex: "dim-type-codex",
             artLabel: "art-label",
             artGlyph: "art-glyph",
@@ -1025,7 +1198,7 @@
         text: {
           initLog:
             "The Crucible Engine hums to life. The tracks stretch into infinity.",
-          lblForge: "Crucible Forge (Anywhere)",
+          lblForge: "Crucible Mutations (Workshop)",
           lblNavTitle: "Select Dimensional Trajectory",
           btnIgnite: "Ignite the Crucible Engine",
           noneState: "None",
@@ -1034,12 +1207,12 @@
           formatStatPair: (val, max) => `${val} / ${max}`,
           formatDimName: (name) => `Dimension: The ${name}`,
           formatDimType: (type) => `Type: ${type}`,
-          formatSectorWaypoint: (jump) => `Jump ${jump}`,
-          btnExploreClosed: (cost) => `Explore (-${cost} EN)`,
+          formatSectorWaypoint: (jump) => `Waypoint ${jump}`,
+          btnExploreClosed: (cost) => `Survey Sector (-${cost} EN)`,
           btnExploreHub: (cost) => `Open Docking Bay (-${cost} EN)`,
           btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
           btnDesperate: (cost, yieldAmount) =>
-            `Strip Hull for Fuel (-${cost} Hull, +${yieldAmount} Fuel)`,
+            `Strip Plating for Fuel (-${cost}% Hull, +${yieldAmount} Fuel)`,
           btnForgeEngine: (cost, tierMult, nextJumpCost, curFuel) => {
             let label = `Mutate Engine (${cost} Flux)\n[+1 Max EN, +${tierMult} Jump Cost]`;
             if (curFuel < nextJumpCost) {
@@ -1060,22 +1233,22 @@
           yardItemLabelMenu: (name, desc, cost) =>
             `${name} - ${cost} Flux\n(${desc})`,
           yardReplaceWarning: (currentEq) => `[WARNING: Replaces ${currentEq}]`,
-          yardOwned: `[ALREADY OWNED]`,
-          logYardPurchase: (name) => `Procured and installed: ${name}.`,
+          yardOwned: `[ALREADY INSTALLED]`,
+          logYardPurchase: (name) => `Procured and mounted: ${name}.`,
 
           logLocEnter: (name, label, jump) =>
             `Rift Jump #${jump} complete. Arrived at The ${name}: ${label}`,
           logEncounterTitle: (label, desc) => `<b>${label}:</b> ${desc}`,
           logGreenhouse: (yieldAmount) =>
-            `Greenhouse passively generated +${yieldAmount} Fuel.`,
+            `Greenhouse hydroponics generated +${yieldAmount} Fuel.`,
           logGoblin: (yieldAmount) =>
-            `Goblin Engineer repaired +${yieldAmount}% Hull.`,
+            `Goblin Engineer repaired +${yieldAmount}% Hull structure.`,
           logDesperate:
-            "DESPERATE MEASURE: Ripped plating to feed the Crucible.",
+            "DESPERATE MEASURE: Sacrificed hull plates to feed the Crucible.",
           logDead:
             "CRITICAL BREACH. The train is destroyed. Refresh to restart.",
           logStranded:
-            "STRANDED IN THE VOID. No fuel, no salvageable hull, and the engine is dead. Refresh to restart.",
+            "STRANDED IN VOID. Zero fuel, depleted hull reserves, engine dead. Refresh to re-initialize.",
           logInsuffEnergy: "Insufficient Energy to perform this action.",
           formatActionBtn: (label, costStrs, prodStrs, reqStrs = []) => {
             const costs = costStrs.length ? `-${costStrs.join(", -")}` : "";
@@ -1086,7 +1259,28 @@
             return reqs ? `${mainText}${reqs}` : mainText;
           },
           formatResVal: (val, resName) => `${val} ${resName}`,
-          formatChance: (pct) => `${pct}% Win Chance`,
+          formatChance: (pct) => `${pct}% Win Odds`,
+        },
+
+        glossary: {
+          hull: "HULL: Structural armor. Drops from hazardous drilling or failed combat. Reaching 0% destroys the train.",
+          fuel: "FUEL: Inter-dimensional travel reserve. Required to initiate Rift Jumps. Does not auto-recharge.",
+          energy:
+            "ENERGY: Turn-based local action points. Used to Survey and perform actions. Resets to full on every jump.",
+          flux: "FLUX: Catalytic currency. Procured from resource nodes and hunts. Spends on Workshop train mutations.",
+          sector:
+            "SECTOR: Dimension Waypoint counter. Major Outposts arrive at every 10th jump.",
+          rep: "REPUTATION: Station standing. Gained via Hub courier deliveries to unlock lucrative VIP contracts.",
+          node: "SECTOR NODE: Classification dictates what resources, threats, or facilities are present.",
+          engine:
+            "ENGINE: Crucible core determining locomotive Max Energy and jump fuel expenditure.",
+          weapon:
+            "WEAPON: Train armaments increasing combat win odds against voidbeasts and apex titans.",
+          module:
+            "MODULE: Auxiliary installations providing specialized exploration and survival perks.",
+          carriage:
+            "CARRIAGE: Train cars providing passive inter-dimensional resource generation.",
+          crew: "CREW: Specialist personnel providing passive repairs or combat bonuses.",
         },
 
         procedural: {
@@ -1175,7 +1369,7 @@
           hub: {
             id: "hub",
             label: "Mission Hub",
-            desc: "A trading post on the edge of reality. Open the bay to negotiate.",
+            desc: "A fortified neutral trading depot. Open docking bay to trade or recruit.",
             exploreCost: 1,
             isHub: true,
             actions: [
@@ -1197,15 +1391,15 @@
           res: {
             id: "res",
             label: "Resource Node",
-            desc: "Unrefined elements detected in the atmosphere and crust.",
+            desc: "Raw energy gases and concentrated flux deposits detected in the atmosphere and crust.",
             exploreCost: 1,
             isHub: false,
             actions: ["res_siphon", "res_harvest", "res_drill"],
           },
           maze: {
             id: "maze",
-            label: "Maze / Escape Zone",
-            desc: "Derelict anomalies and trapped dimensional salvage ahead.",
+            label: "Derelict Anomaly",
+            desc: "Wreckage and spatial tears detected. High risk, high yield salvage ahead.",
             exploreCost: 1,
             isHub: false,
             actions: ["maze_blast", "maze_map_fuel", "maze_map_flux"],
@@ -1217,7 +1411,7 @@
             name: "Astrolabe",
             type: "module",
             cost: 50,
-            desc: "Enables dimensional route selection.",
+            desc: "Enables dimensional route selection during Rift Jumps.",
           },
           exo: {
             name: "Exoplating",
@@ -1229,7 +1423,7 @@
             name: "Dimensional Map",
             type: "module",
             cost: 150,
-            desc: "Grants safe passage alternatives during Maze encounters.",
+            desc: "Unlocks zero-damage extraction protocols in Derelict Anomalies.",
           },
           green: {
             name: "Greenhouse",
@@ -1247,7 +1441,7 @@
             name: "Goblin Engineer",
             type: "crew",
             cost: 220,
-            desc: "Passively repairs the Hull after every Rift Jump.",
+            desc: "Passively repairs the Hull slightly after every Rift Jump.",
           },
         },
       };
@@ -1287,11 +1481,10 @@
             { res: "hull", amount: (s, c) => c.RES_DRILL_HULL_DMG },
           ],
           produces: [{ res: "flux", amount: (s, c) => c.RES_DRILL_FLUX }],
-          logSuccess:
-            "Drilling caused tectonic tremors, but yielded rich Flux.",
+          logSuccess: "Drilling cracked hull armor, but yielded rich Flux.",
         },
         maze_blast: {
-          label: "Power Through",
+          label: "Forced Passage",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
           requires: {},
           consumes: [
@@ -1307,28 +1500,29 @@
             },
           ],
           produces: [{ res: "flux", amount: (s, c) => c.MAZE_BLAST_FLUX }],
-          logSuccess: "Forced passage through anomalies, taking hull stress.",
+          logSuccess:
+            "Blasted through spatial wreckage, incurring minor hull stress.",
         },
         maze_map_fuel: {
-          label: "Extract Power Core",
+          label: "Extract Core [Map]",
           uiClass: GAME_DATA.dom.classes.btnSuccess,
           requires: { module: GAME_DATA.yard.map.name },
           consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
           produces: [{ res: "fuel", amount: (s, c) => c.MAZE_MAP_FUEL_YIELD }],
           logSuccess:
-            "Safely mapped anomalies to extract an intact Power Core.",
+            "Dimensional Map bypassed hazards to salvage an intact Power Core.",
         },
         maze_map_flux: {
-          label: "Extract Artifact",
+          label: "Extract Artifact [Map]",
           uiClass: GAME_DATA.dom.classes.btnSuccess,
           requires: { module: GAME_DATA.yard.map.name },
           consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
           produces: [{ res: "flux", amount: (s, c) => c.MAZE_MAP_FLUX_YIELD }],
           logSuccess:
-            "Safely mapped anomalies to extract a glowing Eldritch Artifact.",
+            "Dimensional Map revealed a safe path to extract a glowing Eldritch Artifact",
         },
         hunt_solitary: {
-          label: "Hunt Solitary Beast",
+          label: "Engage Solitary Beast",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
           requires: {},
           probability: (s, c) =>
@@ -1364,10 +1558,10 @@
           logSuccess:
             "Scattered the pack and harvested valuable hides and pelts for Flux.",
           logFail:
-            "The pack overwhelmed your targeting, but you sealed the doors in time. No damage taken.",
+            "The pack overwhelmed your targeting, but you sealed the doors in time without taking hull damage.",
         },
         hunt_deep: {
-          label: "Hunt Apex Predators",
+          label: "Apex Titan Raid",
           uiClass: GAME_DATA.dom.classes.btnEnergy,
           requires: { weaponTier: GAME_DATA.config.HUNT_DEEP_WPN_REQ },
           probability: (s, c) =>
@@ -1384,16 +1578,16 @@
             { res: "hull", amount: (s, c) => c.HUNT_DEEP_HULL_DMG },
           ],
           logSuccess:
-            "An apex titan falls! Harvested massive Flux and rich biofuel cores.",
+            "An apex titan falls! Harvested massive Flux and rich biofuel core.",
           logFail:
-            "The apex predator breached the hull! Heavy structural damage sustained.",
+            "Apex entity crushed outer bulkheads! Heavy structural damage sustained.",
         },
         hub_rest: {
-          label: "Dock Repairs",
+          label: "Dockyard Repairs",
           requires: {},
           consumes: [{ res: "flux", amount: (s, c) => c.HUB_REST_FLUX_COST }],
           produces: [{ res: "hull", amount: (s, c) => c.HUB_REST_HULL_YIELD }],
-          logSuccess: "Dock engineer crews repaired your Hull.",
+          logSuccess: "Depot technicians patched armor and repaired your Hull.",
         },
         hub_fuel: {
           label: "Refuel Canisters",
@@ -1416,7 +1610,7 @@
           logSuccess: "Purchased engine-calibrated Fuel canisters.",
         },
         hub_quest_easy: {
-          label: "Delivery Contract",
+          label: "Supply Delivery",
           requires: {},
           consumes: [{ res: "fuel", amount: (s, c) => c.HUB_EASY_FUEL_COST }],
           produces: [
@@ -1424,20 +1618,20 @@
             { res: "rep", amount: (s, c) => c.HUB_EASY_REP_YIELD },
           ],
           logSuccess:
-            "Cargo delivery complete. Gained Flux and Station Reputation.",
+            "Delivered cargo supplies to depot. Earned Flux and Station Reputation.",
         },
         hub_quest_hard: {
-          label: "VIP Contract",
+          label: "VIP Escort Contract",
           uiClass: GAME_DATA.dom.classes.btnAction,
           requires: { rep: GAME_DATA.config.HUB_HARD_REP_REQ },
           consumes: [{ res: "fuel", amount: (s, c) => c.HUB_HARD_FUEL_COST }],
           produces: [{ res: "flux", amount: (s, c) => c.HUB_HARD_FLUX_YIELD }],
           logSuccess:
-            "VIP successfully transported. Received massive Flux payout.",
+            "High-value VIP transported safely. Received substantial Flux bounty.",
         },
       };
 
-      let state = {
+      const INITIAL_STATE = {
         phase: GAME_DATA.phases.start,
         jumpCount: 1,
         sectorBag: [],
@@ -1459,6 +1653,8 @@
         yardCat: null,
       };
 
+      let state = JSON.parse(JSON.stringify(INITIAL_STATE));
+
       /* ========================================================
          AUDIO SYNTHESIZER & SOUND FX (Web Audio API)
          ======================================================== */
@@ -1479,7 +1675,6 @@
           if (!SoundFX.ctx) return;
           const now = SoundFX.ctx.currentTime;
 
-          // Charge rumble (Sawtooth rising)
           const osc1 = SoundFX.ctx.createOscillator();
           const gain1 = SoundFX.ctx.createGain();
           osc1.type = "sawtooth";
@@ -1499,7 +1694,6 @@
             now + breachSec + 0.04,
           );
 
-          // Dynamic bandpass resonance sweep
           const filter = SoundFX.ctx.createBiquadFilter();
           filter.type = "bandpass";
           filter.frequency.setValueAtTime(
@@ -1516,7 +1710,6 @@
           filter.connect(gain1);
           gain1.connect(SoundFX.ctx.destination);
 
-          // Warp harmonic whistle
           const osc2 = SoundFX.ctx.createOscillator();
           const gain2 = SoundFX.ctx.createGain();
           osc2.type = "sine";
@@ -1552,11 +1745,11 @@
           const gain = SoundFX.ctx.createGain();
 
           osc.type = "triangle";
-          osc.frequency.setValueAtTime(GAME_DATA.audio.chimeNoteStart, now); // D5
+          osc.frequency.setValueAtTime(GAME_DATA.audio.chimeNoteStart, now);
           osc.frequency.exponentialRampToValueAtTime(
             GAME_DATA.audio.chimeNoteEnd,
             now + 0.08,
-          ); // A5
+          );
 
           gain.gain.setValueAtTime(0.16, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
@@ -1569,7 +1762,7 @@
       };
 
       /* ========================================================
-         TRIPPY JUMP TRANSITION & WARP CANVAS FX
+         WARP CANVAS & THEMATIC FX
          ======================================================== */
       const TransitionFX = {
         canvas: null,
@@ -1661,7 +1854,6 @@
             TransitionFX.ctx.fillRect(0, 0, w, h);
 
             if (elapsed < GAME_DATA.config.JUMP_CHARGE_MS) {
-              // Accelerate streaks toward breach
               const chargeRatio = elapsed / GAME_DATA.config.JUMP_CHARGE_MS;
               const speed = 10 + Math.pow(chargeRatio, 3) * 85;
               const warpRotation = elapsed * 0.003;
@@ -1696,7 +1888,6 @@
                 TransitionFX.ctx.stroke();
               }
 
-              // Radial Hyperspace Ring (only while charging)
               TransitionFX.ctx.save();
               TransitionFX.ctx.translate(cx, cy);
               TransitionFX.ctx.rotate(warpRotation);
@@ -1711,7 +1902,6 @@
               TransitionFX.ctx.stroke();
               TransitionFX.ctx.restore();
             } else {
-              // Post-breach: Rapid decay - no pulsing ring
               const postProgress =
                 (elapsed - GAME_DATA.config.JUMP_CHARGE_MS) /
                 (GAME_DATA.config.JUMP_TOTAL_MS -
@@ -1750,7 +1940,6 @@
 
           TransitionFX.animId = requestAnimationFrame(renderFrame);
 
-          // Synchronized Breach Apex
           setTimeout(() => {
             if (onBreach) onBreach();
             TransitionFX.applyThemeStyles(adjective);
@@ -1759,7 +1948,6 @@
             SoundFX.playArrivalChime();
           }, GAME_DATA.config.JUMP_CHARGE_MS);
 
-          // Clean Transition Exit
           setTimeout(() => {
             TransitionFX.running = false;
             cancelAnimationFrame(TransitionFX.animId);
@@ -1841,6 +2029,13 @@
           div.innerHTML = msg;
           DOM.storyLog.appendChild(div);
           DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+        },
+
+        inspect: (topic) => {
+          const info = GAME_DATA.glossary[topic];
+          if (info) {
+            Engine.log(`[INTEL] ${info}`, GAME_DATA.dom.classes.logSystem);
+          }
         },
 
         transitionTo: (newPhase) => {
@@ -1968,6 +2163,11 @@
           );
           Engine.transitionTo(GAME_DATA.phases.encounter);
           Engine.evaluateSurvival();
+
+          DOM.encounterChoices.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+          });
         },
 
         shuffleArray: (arr) => {
@@ -2297,6 +2497,20 @@
           Object.entries(GAME_DATA.dom.ids).forEach(([domKey, elementId]) => {
             DOM[domKey] = document.getElementById(elementId);
           });
+          DOM.panes = [
+            DOM.paneSettings,
+            DOM.paneSensors,
+            DOM.paneBridge,
+            DOM.paneForge,
+            DOM.paneManual,
+          ];
+          DOM.tabs = [
+            DOM.tabSettings,
+            DOM.tabSensors,
+            DOM.tabBridge,
+            DOM.tabForge,
+            DOM.tabManual,
+          ];
         },
 
         setupStaticText: () => {
@@ -2308,18 +2522,48 @@
         },
 
         syncTabsWithScroll: () => {
-          const width = DOM.snapSlider.clientWidth;
-          if (!width) return;
-          const index = Math.round(DOM.snapSlider.scrollLeft / width);
+          const container = DOM.snapSlider;
+          if (!container || !DOM.panes) return;
 
-          [DOM.tabSensors, DOM.tabBridge, DOM.tabForge].forEach((tab, i) => {
-            if (tab) tab.classList.toggle("active", i === index);
+          const containerCenter =
+            container.scrollLeft + container.clientWidth / 2;
+          let closestIdx = 0;
+          let minDiff = Infinity;
+
+          DOM.panes.forEach((pane, idx) => {
+            if (!pane) return;
+            const paneCenter =
+              pane.offsetLeft - container.offsetLeft + pane.offsetWidth / 2;
+            const diff = Math.abs(containerCenter - paneCenter);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestIdx = idx;
+            }
+          });
+
+          DOM.tabs.forEach((tab, i) => {
+            if (tab) tab.classList.toggle("active", i === closestIdx);
           });
         },
 
         scrollToPane: (index) => {
-          const width = DOM.snapSlider.clientWidth;
-          DOM.snapSlider.scrollTo({ left: width * index, behavior: "smooth" });
+          const container = DOM.snapSlider;
+          const target = DOM.panes?.[index];
+          if (!target || !container) return;
+
+          if (window.innerWidth >= 900) {
+            // True viewport center positioning
+            const targetLeft = target.offsetLeft - container.offsetLeft;
+            const targetCenter = targetLeft + target.offsetWidth / 2;
+            const scrollPos = targetCenter - container.clientWidth / 2;
+            container.scrollTo({ left: scrollPos, behavior: "smooth" });
+          } else {
+            target.scrollIntoView({
+              behavior: "smooth",
+              inline: "center",
+              block: "nearest",
+            });
+          }
         },
 
         bindEvents: () => {
@@ -2350,14 +2594,19 @@
             DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayFlex;
             Engine.transitionTo(GAME_DATA.phases.idle);
 
-            setTimeout(() => Engine.scrollToPane(1), 50);
+            // Default focus centered on Tactical Bridge (index 2)
+            setTimeout(() => {
+              Engine.scrollToPane(2);
+            }, 50);
           });
 
-          DOM.tabSensors.addEventListener("click", () =>
-            Engine.scrollToPane(0),
-          );
-          DOM.tabBridge.addEventListener("click", () => Engine.scrollToPane(1));
-          DOM.tabForge.addEventListener("click", () => Engine.scrollToPane(2));
+          DOM.tabs.forEach((tab, idx) => {
+            if (tab) {
+              tab.addEventListener(GAME_DATA.dom.events.click, () =>
+                Engine.scrollToPane(idx),
+              );
+            }
+          });
 
           DOM.snapSlider.addEventListener("scroll", Engine.syncTabsWithScroll, {
             passive: true,
@@ -2391,17 +2640,25 @@
         },
         YARD_ROOT: {
           onEnter: () => {
-            Engine.buildMenuButton(GAME_DATA.text.btnYardModules, () => {
-              state.yardCat = GAME_DATA.resources.module;
-              Engine.transitionTo(GAME_DATA.phases.yard_category);
-            });
-            Engine.buildMenuButton(GAME_DATA.text.btnYardCarriages, () => {
-              state.yardCat = GAME_DATA.resources.carriage;
-              Engine.transitionTo(GAME_DATA.phases.yard_category);
-            });
-            Engine.buildMenuButton(GAME_DATA.text.btnYardCrew, () => {
-              state.yardCat = GAME_DATA.resources.crew;
-              Engine.transitionTo(GAME_DATA.phases.yard_category);
+            const categories = [
+              {
+                label: GAME_DATA.text.btnYardModules,
+                cat: GAME_DATA.resources.module,
+              },
+              {
+                label: GAME_DATA.text.btnYardCarriages,
+                cat: GAME_DATA.resources.carriage,
+              },
+              {
+                label: GAME_DATA.text.btnYardCrew,
+                cat: GAME_DATA.resources.crew,
+              },
+            ];
+            categories.forEach(({ label, cat }) => {
+              Engine.buildMenuButton(label, () => {
+                state.yardCat = cat;
+                Engine.transitionTo(GAME_DATA.phases.yard_category);
+              });
             });
             Engine.buildMenuButton(
               GAME_DATA.text.btnYardLeave,
