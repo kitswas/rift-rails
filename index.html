@@ -653,6 +653,53 @@
     </style>
   </head>
   <body>
+    <!-- 
+    ========================================================
+    DEVELOPER NOTES: THE ENERGY & SECTOR ECONOMY
+    *** DO NOT REMOVE THIS COMMENT BLOCK ***
+    ========================================================
+    1. ENGINE TIER = MAX ENERGY & TRAVEL COST
+       - A larger engine increases the max Energy capacity of the train, 
+         allowing for more explorations and actions per dimension.
+       - However, a heavier engine increases the Fuel cost to initiate a Rift Jump.
+       - Anti-Trap Transparency: Human players exhibit bounded rationality and
+         calculate within a short forward horizon. Upgrade buttons must explicitly
+         disclose the increased jump cost and warn if current fuel cannot support it.
+       - Energy resets completely upon entering a new dimension.
+
+    2. INFINITE PLAYABILITY BALANCE & CADENCE
+       - All numerical values and strings are stored in a central GAME_DATA object.
+       - Onboarding Runway: An initial fixed sequence safely introduces mining,
+         harvesting, combat, and upgrading without opening RNG death spirals.
+       - Sector Cadence: Hubs are fixed at recurring waypoints to provide reliable
+         tension-relief harbors. Deep-void nodes between Hubs are drawn from a 
+         balanced bag shuffle to eliminate dry streaks.
+       - Tier-Scaled Station Economy: Hub refueling scales with engine tier so
+         that heavier industrial trains can replenish proportional jump fuel.
+       - Biofuel Coherence: Solitary voidbeasts yield Energy Crystals (fuel + flux)
+         so combat-oriented conductors do not face sudden fuel dead-ends.
+         Packs yield pelts and beast parts of purely economic market value.
+         
+    3. ENGAGING GAMEPLAY & BOUNDED RATIONALITY
+       - Designed for human decision horizons (immediate 1-3 step lookahead)
+         rather than predictive machine optimizers.
+       - Generous starting fuel cushions exploration while preserving tight,
+         earned near-miss survival moments across the deeper sectors.
+         
+    4. CODE QUALITY RULES
+       - Preserve comments. Comments explain why, not what.
+       - Single source of truth. DRY.
+       - No magic literals. Constant names explain purpose. 
+       
+    5. PROGRAM CORRECTNESS
+       - The game uses embedded Runtime Assertions to verify its own logic.
+       - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions 
+         has no deadlocks or orphaned states (crucial when AI hallucinates edits).
+       - assertInvariants(): Runs after every UI update. Verifies mathematically 
+         impossible states (e.g., negative energy) haven't occurred.
+       - State mutations strictly flow through Engine.transitionTo().
+    ========================================================
+    -->
     <canvas id="fx-canvas"></canvas>
 
     <div id="start-screen">
