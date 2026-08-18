@@ -204,7 +204,7 @@
         font-weight: 800;
       }
 
-      /* ================= HORIZONTAL SNAP SLIDER (5 PANELS) ================= */
+      /* ================= HORIZONTAL SNAP SLIDER ================= */
       #game-container {
         display: none;
         flex: 1;
@@ -232,7 +232,6 @@
         display: none;
       }
 
-      /* Mobile: 1 Full Panel per Viewport */
       .pane {
         flex: 0 0 100%;
         width: 100%;
@@ -243,7 +242,6 @@
         flex-direction: column;
       }
 
-      /* Desktop: 3 Panels Visible Simultaneously */
       @media (min-width: 900px) {
         body {
           font-size: 15px;
@@ -299,6 +297,7 @@
         display: flex;
         flex-direction: column;
         transition: border-color 0.5s ease;
+        position: relative;
       }
 
       h2,
@@ -315,7 +314,7 @@
         padding-bottom: 5px;
       }
 
-      /* ================= PANE: SENSORS & ARTWORK ================= */
+      /* ================= SENSORS DISPLAY ================= */
       #art-display {
         background: var(--panel-sub-bg);
         border: 1px solid var(--border);
@@ -361,7 +360,7 @@
         gap: 6px;
       }
 
-      /* ================= PANE: TACTICAL BRIDGE & LOG ================= */
+      /* ================= STORY LOG ================= */
       #story-log {
         flex: 1;
         min-height: 160px;
@@ -409,6 +408,107 @@
         color: var(--info);
         font-style: italic;
         border-left-color: var(--info);
+      }
+      .log-lore {
+        color: #fde68a;
+        font-style: italic;
+        border-left-color: #f59e0b;
+        background: rgba(245, 158, 11, 0.08);
+        border-radius: 0 4px 4px 0;
+      }
+
+      /* ================= CUTSCENE OVERLAY SYSTEM ================= */
+      #cutscene-overlay {
+        position: absolute;
+        inset: 12px;
+        background: rgba(11, 15, 23, 0.98);
+        border: 1px solid var(--action);
+        border-radius: var(--radius);
+        z-index: 100;
+        display: none;
+        flex-direction: column;
+        padding: 14px;
+        box-shadow:
+          inset 0 0 24px rgba(245, 158, 11, 0.12),
+          0 4px 20px rgba(0, 0, 0, 0.8);
+        animation: cutsceneFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      @keyframes cutsceneFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .cutscene-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+      }
+
+      .cutscene-speaker {
+        font-weight: 800;
+        font-size: 0.82em;
+        color: var(--action);
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .cutscene-pips {
+        font-size: 0.78em;
+        color: var(--text-muted);
+        letter-spacing: 2px;
+      }
+
+      .cutscene-text {
+        flex: 1;
+        overflow-y: auto;
+        color: #f1f5f9;
+        font-size: 0.9em;
+        line-height: 1.6;
+        padding: 4px 2px;
+        font-style: normal;
+        border-left: 2px solid rgba(245, 158, 11, 0.4);
+        padding-left: 10px;
+        margin-bottom: 12px;
+      }
+
+      .cutscene-options {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: auto;
+      }
+
+      .btn-cutscene-choice {
+        background: rgba(245, 158, 11, 0.06);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: var(--text);
+        text-align: left;
+        padding: 9px 12px;
+        font-size: 0.82em !important;
+        font-weight: 600;
+        border-radius: 4px;
+        justify-content: flex-start;
+        transition: all 0.15s ease;
+        line-height: 1.35;
+      }
+
+      .btn-cutscene-choice:hover {
+        background: rgba(245, 158, 11, 0.16);
+        border-color: var(--action);
+        color: #fff;
+        transform: translateX(2px);
       }
 
       /* ================= BUTTONS ================= */
@@ -521,7 +621,6 @@
         margin-top: 4px;
       }
 
-      /* ================= PANE: WORKSHOP & SETUP ================= */
       .train-setup-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -529,7 +628,6 @@
         margin-bottom: 8px;
       }
 
-      /* ================= PANES: MANUAL & SETTINGS ================= */
       .manual-content,
       .settings-content {
         overflow-y: auto;
@@ -572,7 +670,6 @@
         color: var(--text);
       }
 
-      /* ================= BOTTOM TAB NAVIGATION ================= */
       #bottom-nav {
         background: var(--panel-sub-bg);
         border-top: 1px solid var(--border);
@@ -604,7 +701,6 @@
         font-weight: bold;
       }
 
-      /* ================= NAV OVERLAY ================= */
       #nav-screen {
         position: fixed;
         inset: 0;
@@ -715,27 +811,25 @@
       <div class="start-card">
         <h1>RIFT RAILS // OPERATING DIRECTIVE</h1>
         <p>
-          You command the <strong>Aethelgard Express</strong>, a locomotive
-          capable of breaching the veil between dimensions. Maintain structural
-          integrity and resource stability while exploring as far as possible.
+          You command the <strong>Aethelgard Express</strong>, an armored
+          locomotive capable of piercing the veil between shattered realms.
+          Maintain structural integrity and furnace stability across the
+          infinite Ley-Rails.
         </p>
         <div class="briefing-box">
-          <b>CORE OPERATING CYCLE:</b><br />
-          [1] <b>EXPLORE:</b> Spend Energy (EN) on the Bridge to survey
-          stations.<br />
-          [2] <b>RESOLVE:</b> Execute mining, hunting, or mission protocols to
-          gain Fuel & Flux.<br />
-          [3] <b>UPGRADE:</b> Access the Workshop to mutate Engine or Weapon
-          modules.<br />
-          [4] <b>RIFT JUMP:</b> Spend Fuel to breach the next sector waypoint.
+          <b>ARCANE OPERATING CYCLE:</b><br />
+          [1] <b>SURVEY:</b> Spend locomotive Energy (EN) on the Bridge to
+          unlatch local realm gates.<br />
+          [2] <b>RESOLVE:</b> Execute mining, hunting, or trading rites to
+          secure Fuel & Flux.<br />
+          [3] <b>MUTATE:</b> Access the Workshop to forge heavier boilers or
+          reinforced ballistas.<br />
+          [4] <b>RIFT JUMP:</b> Burn refined fuel to breach the next realm
+          waypoint.
         </div>
         <p style="font-size: 0.82em; color: var(--text-muted)">
-          * Tap any HUD telemetry cell at any time to output subsystem
-          diagnostic reports. Progress auto-saves after each jump.
-        </p>
-        <p>
-          <b>Navigation:</b> Swipe left or right across the dashboard to change
-          panels.
+          * Inspect any HUD telemetry cell for subsystem diagnostic reports.
+          Progress auto-saves after each rift jump.
         </p>
         <button class="btn-start" id="btn-ignite"></button>
         <button
@@ -752,7 +846,6 @@
     </div>
 
     <div id="game-container">
-      <!-- FIXED STICKY TOP TELEMETRY HUD -->
       <div id="hud-bar">
         <div class="hud-cell" onclick="Engine.inspect('hull')">
           <span>Hull [HP]</span>
@@ -776,9 +869,8 @@
         </div>
       </div>
 
-      <!-- HORIZONTAL SNAP SLIDER (5 PANELS: SETTINGS ON FAR LEFT) -->
       <div id="snap-slider">
-        <!-- PANE 0: SETTINGS (FAR LEFT) -->
+        <!-- PANE 0: SETTINGS -->
         <div class="pane" id="pane-settings">
           <div class="panel-card">
             <h2>Conduit Settings</h2>
@@ -789,8 +881,7 @@
                 </h3>
                 <p>
                   <b>Auto-Save Status:</b> Active. Voyage telemetry is
-                  automatically stored to your local conduit after every Rift
-                  Jump.
+                  automatically stored to your conduit after every Rift Jump.
                 </p>
                 <p
                   style="
@@ -812,7 +903,7 @@
           </div>
         </div>
 
-        <!-- PANE 1: SENSORS / CODEX -->
+        <!-- PANE 1: SENSORS -->
         <div class="pane" id="pane-sensors">
           <div class="panel-card">
             <h2>Sensors & Telemetry</h2>
@@ -834,11 +925,33 @@
           </div>
         </div>
 
-        <!-- PANE 2: TACTICAL BRIDGE & LOG (DEFAULT CENTER) -->
+        <!-- PANE 2: TACTICAL BRIDGE & CUTSCENE LOG -->
         <div class="pane" id="pane-bridge">
           <div class="panel-card">
             <h2 id="location-name"></h2>
             <h3 id="location-type"></h3>
+
+            <!-- CUTSCENE OVERLAY CONTAINER -->
+            <div id="cutscene-overlay">
+              <div class="cutscene-header">
+                <span class="cutscene-speaker">
+                  <span style="color: var(--action)">⚜</span> MASTER CORVUS //
+                  VEILED SCHOLAR
+                </span>
+                <span id="cutscene-progress" class="cutscene-pips">✦ ✧ ✧</span>
+              </div>
+              <div id="cutscene-body" class="cutscene-text"></div>
+              <div id="cutscene-choices" class="cutscene-options">
+                <button
+                  class="btn-cutscene-choice"
+                  id="cutscene-btn-a"
+                ></button>
+                <button
+                  class="btn-cutscene-choice"
+                  id="cutscene-btn-b"
+                ></button>
+              </div>
+            </div>
 
             <div id="story-log"></div>
 
@@ -892,7 +1005,7 @@
           </div>
         </div>
 
-        <!-- PANE 4: OPERATIONS MANUAL (FAR RIGHT) -->
+        <!-- PANE 4: MANUAL -->
         <div class="pane" id="pane-manual">
           <div class="panel-card">
             <h2>Operations Manual</h2>
@@ -900,30 +1013,31 @@
               <div class="manual-section">
                 <h3>[1] Operational Cycle</h3>
                 <p>
-                  1. <b>EXPLORE:</b> Spends 1 Energy (EN) on the Bridge to
-                  survey the local node and reveal operations.
+                  1. <b>EXPLORE:</b> Spends Energy (EN) on the Bridge to survey
+                  the local realm and open station gates.
                 </p>
                 <p>
-                  2. <b>RESOLVE:</b> Execute revealed actions (Siphon Fuel,
-                  Harvest Flux, Hunt Voidbeasts, or Dock at Hubs).
+                  2. <b>RESOLVE:</b> Execute revealed rites (Siphon Fuel,
+                  Harvest Flux, Hunt Voidbeasts, or Trade at Hubs).
                 </p>
                 <p>
-                  3. <b>UPGRADE:</b> Access the Workshop to mutate components.
+                  3. <b>UPGRADE:</b> Access the Workshop to mutate train
+                  components.
                 </p>
                 <p>
                   4. <b>RIFT JUMP:</b> When EN is exhausted, initiate a Jump to
-                  advance. EN replenishes completely upon breach.
+                  advance. EN replenishes completely upon realm breach.
                 </p>
               </div>
 
               <div class="manual-section">
                 <h3>[2] Telemetry Matrix</h3>
                 <p>
-                  • <b>Hull:</b> Armor integrity. Reaching 0% causes
+                  • <b>Hull:</b> Warded iron plating. Reaching 0% causes
                   catastrophic destruction.
                 </p>
                 <p>
-                  • <b>Fuel:</b> Inter-dimensional propulsion reserves. Does not
+                  • <b>Fuel:</b> Inter-realm propulsion reserves. Does not
                   auto-recharge. Must be siphoned or bought.
                 </p>
                 <p>
@@ -931,7 +1045,7 @@
                   resets to engine maximum after every jump.
                 </p>
                 <p>
-                  • <b>Flux:</b> Universal catalytic currency for Workshop
+                  • <b>Flux:</b> Catalytic alchemical currency for Workshop
                   mutations and Hub bazaar items.
                 </p>
               </div>
@@ -940,12 +1054,12 @@
                 <h3>[3] Engine Mass Tradeoff</h3>
                 <p>
                   • Mutating the <b>Crucible Engine</b> increases Max EN per
-                  sector by +1.
+                  sector.
                 </p>
                 <p>
                   • Increased engine mass raises the
-                  <b>Fuel cost per Rift Jump</b> (+10 Fuel per tier). Ensure you
-                  secure fuel before upgrading.
+                  <b>Fuel cost per Rift Jump</b>. Ensure you secure fuel before
+                  upgrading.
                 </p>
               </div>
 
@@ -953,7 +1067,7 @@
                 <h3>[4] Contingency Protocol</h3>
                 <p>
                   • If Fuel drops below the jump threshold, use
-                  <b>Strip Plating</b> on the Bridge to convert 10% Hull into
+                  <b>Strip Plating</b> on the Bridge to convert Hull into
                   emergency Fuel.
                 </p>
               </div>
@@ -962,7 +1076,6 @@
         </div>
       </div>
 
-      <!-- UNIVERSAL NAVIGATION TABS -->
       <div id="bottom-nav">
         <button class="nav-tab" id="tab-settings">Settings</button>
         <button class="nav-tab" id="tab-sensors">Sensors</button>
@@ -1065,6 +1178,7 @@
           chargeWhistleEndFreq: 1300,
           chimeNoteStart: 587.33,
           chimeNoteEnd: 880,
+          dialogueChimeFreq: 523.25,
         },
 
         runway: ["hub", "res", "res", "hunt", "hub"],
@@ -1086,6 +1200,7 @@
         phases: {
           start: "START",
           idle: "IDLE",
+          dialogue: "DIALOGUE",
           encounter: "ENCOUNTER",
           navigating: "NAVIGATING",
           jumping: "JUMPING",
@@ -1096,8 +1211,9 @@
         },
 
         transitions: {
-          START: ["IDLE"],
+          START: ["IDLE", "DIALOGUE"],
           IDLE: [
+            "DIALOGUE",
             "ENCOUNTER",
             "NAVIGATING",
             "JUMPING",
@@ -1105,8 +1221,10 @@
             "STRANDED",
             "IDLE",
           ],
+          DIALOGUE: ["IDLE", "DEAD", "STRANDED"],
           ENCOUNTER: [
             "IDLE",
+            "DIALOGUE",
             "YARD_ROOT",
             "DEAD",
             "STRANDED",
@@ -1116,7 +1234,7 @@
           YARD_ROOT: ["YARD_CATEGORY", "ENCOUNTER"],
           YARD_CATEGORY: ["YARD_ROOT"],
           NAVIGATING: ["JUMPING", "IDLE", "DEAD", "STRANDED"],
-          JUMPING: ["IDLE", "DEAD", "STRANDED"],
+          JUMPING: ["IDLE", "DIALOGUE", "DEAD", "STRANDED"],
           DEAD: [],
           STRANDED: [],
         },
@@ -1124,6 +1242,7 @@
         permissions: {
           START: { explore: false, travel: false, forge: false },
           IDLE: { explore: true, travel: true, forge: true },
+          DIALOGUE: { explore: false, travel: false, forge: false },
           ENCOUNTER: { explore: false, travel: true, forge: true },
           YARD_ROOT: { explore: false, travel: false, forge: false },
           YARD_CATEGORY: { explore: false, travel: false, forge: false },
@@ -1140,6 +1259,7 @@
             logEvent: "log-event",
             logSuccess: "log-success",
             logDamage: "log-damage",
+            logLore: "log-lore",
             lockedUI: "locked-ui",
             btnEnergy: "btn-energy",
             btnSuccess: "btn-success",
@@ -1161,6 +1281,12 @@
             lblNavTitle: "lbl-nav-title",
             gameContainer: "game-container",
             storyLog: "story-log",
+            cutsceneOverlay: "cutscene-overlay",
+            cutsceneProgress: "cutscene-progress",
+            cutsceneBody: "cutscene-body",
+            cutsceneChoices: "cutscene-choices",
+            cutsceneBtnA: "cutscene-btn-a",
+            cutsceneBtnB: "cutscene-btn-b",
             locationName: "location-name",
             locationType: "location-type",
             encounterChoices: "encounter-choices",
@@ -1225,9 +1351,105 @@
           tags: { div: "div", span: "span", button: "button" },
         },
 
+        /* ========================================================
+           STORYLINE: MASTER CORVUS (NO NUMBERS IN CONVERSATIONS)
+           ======================================================== */
+        cutscenes: {
+          wp1: {
+            id: "wp1",
+            beats: [
+              {
+                text: "The Crucible fire drinks refined fuel, Conductor. Mind the draft gauges, or the cold between realms will breach the iron ribs before nightfall.",
+                choiceA: "I know how to tend a mystic furnace, Scholar.",
+                choiceB: "The wards will hold against the cold.",
+              },
+              {
+                text: "Hardly inspiring. Expend a spark of your locomotive's Energy to unlatch the station gates and survey the merchant yard. We need provisions before we breach the veil again.",
+                choiceA: "I will see what the scavengers are selling.",
+                choiceB: "Unlatching the gates now.",
+              },
+              {
+                text: "Do make haste. And remember: when the locomotive's local Energy runs dry, only a Rift Jump into the void will rekindle your reserves.",
+                choiceA: "Understood. The engine is primed.",
+                choiceB: "I'll keep the boiler fed.",
+              },
+            ],
+            logSummary:
+              "Corvus adjusted his veil and demanded the gates be unlatched.",
+          },
+          wp2: {
+            id: "wp2",
+            beats: [
+              {
+                text: "Smell that sulfurous stench? The air is thick with raw ether and condensed Flux. A novice burns out their boiler trying to harvest everything at once.",
+                choiceA: "We need fuel for the next jump more than shiny dust.",
+                choiceB: "Flux is worth a fortune to the blacksmiths.",
+              },
+              {
+                text: "Ignorance is rampant in this cab. Siphon the volatile gases to fill our propulsion tanks, or harvest the rift crystals to line your pockets with Flux for the forge. Never leave a node without replenishing our stores.",
+                choiceA: "Starting the siphoning pumps.",
+                choiceB: "Securing the mineral harvesters.",
+              },
+            ],
+            logSummary:
+              "Corvus warned against greed while gathering unrefined rift-matter.",
+          },
+          wp3: {
+            id: "wp3",
+            beats: [
+              {
+                text: "Listen to that rattling rod. If you expect this locomotive to carry us through deeper realms, you would do well to visit the Workshop.",
+                choiceA: "The Aethelgard has held together this far.",
+                choiceB: "I can hammer extra plating onto the hull.",
+              },
+              {
+                text: "Primitive thinking. Transmuting the Crucible engine grants you greater Energy capacity per realm, but the added bulk demands a heavier toll of fuel for every rift breach. Mutate your ballistas if you wish to survive the hunting expanses.",
+                choiceA: "I'll balance the boiler and weapons carefully.",
+                choiceB: "We will forge what we can afford.",
+              },
+            ],
+            logSummary:
+              "Corvus grumbled about boiler stress and the Workshop anvil.",
+          },
+          wp4: {
+            id: "wp4",
+            beats: [
+              {
+                text: "Shadows stirring beyond the glass. Voidbeasts have nested along the iron tracks. They thirst for the furnace glow.",
+                choiceA: "Man the harpoons. We fight.",
+                choiceB: "Can we douse the furnace and drift past?",
+              },
+              {
+                text: "Do not speak of stealth to a predator of the deep void. If you strike them down, their glowing heart-crystals will feed both your fuel tanks and your coin pouch. Hesitate, and their talons will shred the outer hull.",
+                choiceA: "Rally the stokers. Ready weapons.",
+                choiceB: "Targeting the alphas.",
+              },
+            ],
+            logSummary:
+              "Corvus prepared his talismans as voidbeasts surrounded the train.",
+          },
+          wp5: {
+            id: "wp5",
+            beats: [
+              {
+                text: "The spires of the Sanctuary. My ticket is stamped, and my business with this soot-stained cab is concluded.",
+                choiceA: "Safe travels into the Sanctuary, Corvus.",
+                choiceB: "Good riddance to an unhelpful passenger.",
+              },
+              {
+                text: "Take this final counsel, Conductor, for the void beyond this hub has no mercy for the blind: visit the Yard Master and buy an Astrolabe before you depart. Without it, you cannot steer when the Ley-Rails fork, and you will drift helpless into whatever nightmare lies ahead. May the wards endure.",
+                choiceA: "I will find the Yard Master immediately.",
+                choiceB: "The Astrolabe will be mounted.",
+              },
+            ],
+            logSummary:
+              "Master Corvus disembarked at the Sanctuary, leaving final counsel to procure an Astrolabe.",
+          },
+        },
+
         text: {
           initLog:
-            "The Crucible Engine hums to life. The tracks stretch into infinity.",
+            "The Crucible Engine hums to life. The Ley-Rails stretch into infinity.",
           lblForge: "Crucible Mutations (Workshop)",
           lblNavTitle: "Select Dimensional Trajectory",
           btnIgnite: "Ignite the Crucible Engine",
@@ -1236,10 +1458,10 @@
           formatTier: (val) => `Tier ${val}`,
           formatPct: (val) => `${val}%`,
           formatStatPair: (val, max) => `${val} / ${max}`,
-          formatDimName: (name) => `Dimension: The ${name}`,
+          formatDimName: (name) => `Realm: The ${name}`,
           formatDimType: (type) => `Type: ${type}`,
           formatSectorWaypoint: (jump) => `Waypoint ${jump}`,
-          btnExploreClosed: (cost) => `Survey Sector (-${cost} EN)`,
+          btnExploreClosed: (cost) => `Survey Realm (-${cost} EN)`,
           btnExploreHub: (cost) => `Open Docking Bay (-${cost} EN)`,
           btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
           btnDesperate: (cost, yieldAmount) =>
@@ -1271,7 +1493,7 @@
             `Rift Jump #${jump} complete. Arrived at The ${name}: ${label}`,
           logEncounterTitle: (label, desc) => `<b>${label}:</b> ${desc}`,
           logGreenhouse: (yieldAmount) =>
-            `Greenhouse hydroponics generated +${yieldAmount} Fuel.`,
+            `Greenhouse alchemical beds generated +${yieldAmount} Fuel.`,
           logGoblin: (yieldAmount) =>
             `Goblin Engineer repaired +${yieldAmount}% Hull structure.`,
           logDesperate:
@@ -1295,12 +1517,12 @@
 
         glossary: {
           hull: "HULL: Structural armor. Drops from hazardous drilling or failed combat. Reaching 0% destroys the train.",
-          fuel: "FUEL: Inter-dimensional travel reserve. Required to initiate Rift Jumps. Does not auto-recharge.",
+          fuel: "FUEL: Inter-realm travel reserve. Required to initiate Rift Jumps. Does not auto-recharge.",
           energy:
             "ENERGY: Turn-based local action points. Used to Survey and perform actions. Resets to full on every jump.",
           flux: "FLUX: Catalytic currency. Procured from resource nodes and hunts. Spends on Workshop train mutations.",
           sector:
-            "SECTOR: Dimension Waypoint counter. Major Outposts arrive at every 10th jump.",
+            "SECTOR: Realm Waypoint counter. Major Outposts arrive at every 10th jump.",
           rep: "REPUTATION: Station standing. Gained via Hub courier deliveries to unlock lucrative VIP contracts.",
           node: "SECTOR NODE: Classification dictates what resources, threats, or facilities are present.",
           engine:
@@ -1414,7 +1636,7 @@
           hunt: {
             id: "hunt",
             label: "Hunting Grounds",
-            desc: "Hints of life abound. Who is the hunter?",
+            desc: "Spotted movement in the mist. Voidbeasts have nested near the rails.",
             exploreCost: 1,
             isHub: false,
             actions: ["hunt_solitary", "hunt_pack", "hunt_deep"],
@@ -1422,7 +1644,7 @@
           res: {
             id: "res",
             label: "Resource Node",
-            desc: "Raw energy gases and concentrated flux deposits detected in the atmosphere and crust.",
+            desc: "Volatile vapors and concentrated flux seams detected in the rock crust.",
             exploreCost: 1,
             isHub: false,
             actions: ["res_siphon", "res_harvest", "res_drill"],
@@ -1430,7 +1652,7 @@
           maze: {
             id: "maze",
             label: "Derelict Anomaly",
-            desc: "Wreckage and spatial tears detected. High risk, high yield salvage ahead.",
+            desc: "Ancient carriages and spatial tears detected. High risk, rich salvage.",
             exploreCost: 1,
             isHub: false,
             actions: ["maze_blast", "maze_map_fuel", "maze_map_flux"],
@@ -1442,7 +1664,7 @@
             name: "Astrolabe",
             type: "module",
             cost: 50,
-            desc: "Enables dimensional route selection during Rift Jumps.",
+            desc: "Enables dimensional route selection when the Ley-Rails fork during Rift Jumps.",
           },
           exo: {
             name: "Exoplating",
@@ -1497,7 +1719,7 @@
           requires: {},
           consumes: [{ res: "energy", amount: (s, c) => c.RES_SIPHON_ENERGY }],
           produces: [{ res: "fuel", amount: (s, c) => c.RES_SIPHON_FUEL }],
-          logSuccess: "Siphoned volatile surface gases into engine fuel.",
+          logSuccess: "Siphoned volatile surface vapors into Crucible fuel.",
         },
         res_harvest: {
           label: "Safe Harvest",
@@ -1516,7 +1738,8 @@
             { res: "hull", amount: (s, c) => c.RES_DRILL_HULL_DMG },
           ],
           produces: [{ res: "flux", amount: (s, c) => c.RES_DRILL_FLUX }],
-          logSuccess: "Drilling cracked hull armor, but yielded rich Flux.",
+          logSuccess:
+            "Drilling cracked hull armor, but yielded rich Flux seams.",
         },
         maze_blast: {
           label: "Forced Passage",
@@ -1554,7 +1777,7 @@
           consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
           produces: [{ res: "flux", amount: (s, c) => c.MAZE_MAP_FLUX_YIELD }],
           logSuccess:
-            "Dimensional Map revealed a safe path to extract a glowing Eldritch Artifact",
+            "Dimensional Map revealed a safe path to extract an Eldritch Artifact.",
         },
         hunt_solitary: {
           label: "Engage Solitary Beast",
@@ -1616,7 +1839,7 @@
           requires: {},
           consumes: [{ res: "flux", amount: (s, c) => c.HUB_REST_FLUX_COST }],
           produces: [{ res: "hull", amount: (s, c) => c.HUB_REST_HULL_YIELD }],
-          logSuccess: "Depot technicians patched armor and repaired your Hull.",
+          logSuccess: "Depot blacksmiths patched armor and repaired your Hull.",
         },
         hub_fuel: {
           label: "Refuel Canisters",
@@ -1680,13 +1903,14 @@
         targetDimName: null,
         navChoices: [],
         yardCat: null,
+        seenCutscenes: [],
       };
 
       let state = JSON.parse(JSON.stringify(INITIAL_STATE));
 
       /* ========================================================
-          LOCAL STORAGE SAVE SYSTEM (AUTO-SAVE ON JUMP)
-          ======================================================== */
+         LOCAL STORAGE SAVE SYSTEM (AUTO-SAVE ON JUMP)
+         ======================================================== */
       const SaveSystem = {
         STORAGE_KEY: "rift_rails_auto_save",
 
@@ -1707,6 +1931,7 @@
               crew: state.crew,
               dimId: state.dimId,
               dimName: state.dimName,
+              seenCutscenes: state.seenCutscenes || [],
             };
             localStorage.setItem(
               SaveSystem.STORAGE_KEY,
@@ -1750,8 +1975,8 @@
       };
 
       /* ========================================================
-          AUDIO SYNTHESIZER & SOUND FX (Web Audio API)
-          ======================================================== */
+         AUDIO SYNTHESIZER & SOUND FX
+         ======================================================== */
       const SoundFX = {
         ctx: null,
         init: () => {
@@ -1853,11 +2078,28 @@
           osc.start(now);
           osc.stop(now + 0.55);
         },
+
+        playDialogueChime: () => {
+          if (!SoundFX.ctx) return;
+          const now = SoundFX.ctx.currentTime;
+          const osc = SoundFX.ctx.createOscillator();
+          const gain = SoundFX.ctx.createGain();
+
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(GAME_DATA.audio.dialogueChimeFreq, now);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+          osc.connect(gain);
+          gain.connect(SoundFX.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        },
       };
 
       /* ========================================================
-          WARP CANVAS & THEMATIC FX
-          ======================================================== */
+         WARP CANVAS & THEMATIC FX
+         ======================================================== */
       const TransitionFX = {
         canvas: null,
         ctx: null,
@@ -2054,6 +2296,76 @@
         },
       };
 
+      /* ========================================================
+         CUTSCENE LOG CONTROLLER (OVERLAY + INTERACTION)
+         ======================================================== */
+      const CutsceneEngine = {
+        activeCutscene: null,
+        beatIndex: 0,
+
+        play: (cutsceneId) => {
+          const cutscene = GAME_DATA.cutscenes[cutsceneId];
+          if (!cutscene) return;
+
+          CutsceneEngine.activeCutscene = cutscene;
+          CutsceneEngine.beatIndex = 0;
+
+          if (!state.seenCutscenes) state.seenCutscenes = [];
+          if (!state.seenCutscenes.includes(cutsceneId)) {
+            state.seenCutscenes.push(cutsceneId);
+          }
+
+          Engine.transitionTo(GAME_DATA.phases.dialogue);
+          DOM.cutsceneOverlay.style.display = GAME_DATA.dom.styles.displayFlex;
+          CutsceneEngine.renderCurrentBeat();
+        },
+
+        renderCurrentBeat: () => {
+          const cutscene = CutsceneEngine.activeCutscene;
+          const beat = cutscene.beats[CutsceneEngine.beatIndex];
+          if (!beat) return;
+
+          SoundFX.playDialogueChime();
+
+          const total = cutscene.beats.length;
+          let pips = "";
+          for (let i = 0; i < total; i++) {
+            pips += i <= CutsceneEngine.beatIndex ? "✦ " : "✧ ";
+          }
+          DOM.cutsceneProgress.innerText = pips.trim();
+          DOM.cutsceneBody.innerHTML = beat.text;
+
+          DOM.cutsceneBtnA.innerText = `[A] "${beat.choiceA}"`;
+          DOM.cutsceneBtnB.innerText = `[B] "${beat.choiceB}"`;
+        },
+
+        advance: () => {
+          const cutscene = CutsceneEngine.activeCutscene;
+          CutsceneEngine.beatIndex++;
+
+          if (CutsceneEngine.beatIndex < cutscene.beats.length) {
+            CutsceneEngine.renderCurrentBeat();
+          } else {
+            CutsceneEngine.close();
+          }
+        },
+
+        close: () => {
+          const cutscene = CutsceneEngine.activeCutscene;
+          DOM.cutsceneOverlay.style.display = GAME_DATA.dom.styles.displayNone;
+
+          if (cutscene?.logSummary) {
+            Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore);
+          }
+
+          CutsceneEngine.activeCutscene = null;
+          CutsceneEngine.beatIndex = 0;
+
+          Engine.transitionTo(GAME_DATA.phases.idle);
+          Engine.evaluateSurvival();
+        },
+      };
+
       const Engine = {
         verifyGraphIntegrity: () => {
           const phases = Object.values(GAME_DATA.phases);
@@ -2172,6 +2484,7 @@
         },
 
         evaluateSurvival: () => {
+          if (state.phase === GAME_DATA.phases.dialogue) return;
           if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
             Engine.transitionTo(GAME_DATA.phases.dead);
           } else if (!Engine.canSurvive()) {
@@ -2718,6 +3031,13 @@
             Engine.resetGame(true),
           );
 
+          DOM.cutsceneBtnA.addEventListener(GAME_DATA.dom.events.click, () =>
+            CutsceneEngine.advance(),
+          );
+          DOM.cutsceneBtnB.addEventListener(GAME_DATA.dom.events.click, () =>
+            CutsceneEngine.advance(),
+          );
+
           DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
             SoundFX.init();
             DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
@@ -2739,6 +3059,15 @@
             setTimeout(() => {
               Engine.scrollToPane(2);
             }, 50);
+
+            if (
+              state.jumpCount === 1 &&
+              !state.seenCutscenes?.includes("wp1")
+            ) {
+              setTimeout(() => {
+                CutsceneEngine.play("wp1");
+              }, 120);
+            }
           });
 
           DOM.tabs.forEach((tab, idx) => {
@@ -2925,6 +3254,22 @@
                 Engine.transitionTo(GAME_DATA.phases.idle);
                 Engine.evaluateSurvival();
                 SaveSystem.save();
+
+                const wpCutsceneMap = {
+                  2: "wp2",
+                  3: "wp3",
+                  4: "wp4",
+                  5: "wp5",
+                };
+                const nextCutscene = wpCutsceneMap[state.jumpCount];
+                if (
+                  nextCutscene &&
+                  !state.seenCutscenes?.includes(nextCutscene)
+                ) {
+                  setTimeout(() => {
+                    CutsceneEngine.play(nextCutscene);
+                  }, 150);
+                }
               },
             );
           },
