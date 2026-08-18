@@ -177,7 +177,7 @@
         padding: 6px 8px;
         border-radius: 4px;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        cursor: pointer;
+        cursor: help;
         user-select: none;
         transition:
           background-color 0.15s ease,
@@ -1627,8 +1627,8 @@
       let state = JSON.parse(JSON.stringify(INITIAL_STATE));
 
       /* ========================================================
-         LOCAL STORAGE SAVE SYSTEM (AUTO-SAVE ON JUMP)
-         ======================================================== */
+          LOCAL STORAGE SAVE SYSTEM (AUTO-SAVE ON JUMP)
+          ======================================================== */
       const SaveSystem = {
         STORAGE_KEY: "rift_rails_auto_save",
 
@@ -1692,8 +1692,8 @@
       };
 
       /* ========================================================
-         AUDIO SYNTHESIZER & SOUND FX (Web Audio API)
-         ======================================================== */
+          AUDIO SYNTHESIZER & SOUND FX (Web Audio API)
+          ======================================================== */
       const SoundFX = {
         ctx: null,
         init: () => {
@@ -1798,8 +1798,8 @@
       };
 
       /* ========================================================
-         WARP CANVAS & THEMATIC FX
-         ======================================================== */
+          WARP CANVAS & THEMATIC FX
+          ======================================================== */
       const TransitionFX = {
         canvas: null,
         ctx: null,
