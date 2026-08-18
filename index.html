@@ -548,6 +548,11 @@
         color: var(--text);
       }
 
+      .manual-content button,
+      .settings-content button {
+        font-size: 1.02em !important;
+      }
+
       .manual-section,
       .settings-section {
         background: var(--panel-sub-bg);
@@ -690,9 +695,11 @@
           panels.
         </p>
         <button class="btn-start" id="btn-ignite"></button>
-        <button id="btn-start-fresh" class="btn-new-game" style="display: none">
-          New Game
-        </button>
+        <button
+          id="btn-start-fresh"
+          class="btn-new-game"
+          style="display: none"
+        ></button>
       </div>
     </div>
 
@@ -756,9 +763,7 @@
                   id="btn-reset-save"
                   class="btn-new-game"
                   style="margin-top: 14px"
-                >
-                  New Game
-                </button>
+                ></button>
               </div>
             </div>
           </div>
@@ -2584,6 +2589,9 @@
               DOM.btnStartFresh.style.display =
                 GAME_DATA.dom.styles.displayNone;
             }
+          }
+          if (DOM.btnResetSave) {
+            DOM.btnResetSave.innerText = GAME_DATA.text.btnNewGame;
           }
           DOM.lblForge.innerText = GAME_DATA.text.lblForge;
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
