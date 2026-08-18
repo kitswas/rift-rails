@@ -1477,6 +1477,10 @@
         },
       };
 
+      const calcEffectiveWeaponTier = (s, c) =>
+        s.weaponTier +
+        (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0);
+
       GAME_DATA.actions = {
         hub_yard: {
           label: "Visit Train Yard",
@@ -1558,9 +1562,7 @@
           requires: {},
           probability: (s, c) =>
             c.HUNT_SOLITARY_WIN_RATE +
-            (s.weaponTier +
-              (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
-              c.HUNT_WPN_MULT,
+            calcEffectiveWeaponTier(s, c) * c.HUNT_WPN_MULT,
           consumes: [
             { res: "energy", amount: (s, c) => c.HUNT_SOLITARY_ENERGY },
           ],
@@ -1581,9 +1583,7 @@
           requires: {},
           probability: (s, c) =>
             c.HUNT_PACK_WIN_RATE +
-            (s.weaponTier +
-              (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
-              c.HUNT_WPN_MULT,
+            calcEffectiveWeaponTier(s, c) * c.HUNT_WPN_MULT,
           consumes: [{ res: "energy", amount: (s, c) => c.HUNT_PACK_ENERGY }],
           produces: [{ res: "flux", amount: (s, c) => c.HUNT_PACK_FLUX }],
           logSuccess:
@@ -1597,9 +1597,7 @@
           requires: { weaponTier: GAME_DATA.config.HUNT_DEEP_WPN_REQ },
           probability: (s, c) =>
             c.HUNT_DEEP_WIN_RATE +
-            (s.weaponTier +
-              (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0)) *
-              c.HUNT_WPN_MULT,
+            calcEffectiveWeaponTier(s, c) * c.HUNT_WPN_MULT,
           consumes: [{ res: "energy", amount: (s, c) => c.HUNT_DEEP_ENERGY }],
           produces: [
             { res: "flux", amount: (s, c) => c.HUNT_DEEP_FLUX },
@@ -2765,6 +2763,8 @@
         },
       };
 
+      const clearEncounterChoices = () => (DOM.encounterChoices.innerHTML = "");
+
       const StateHooks = {
         ENCOUNTER: {
           onEnter: () => {
@@ -2779,7 +2779,7 @@
               if (act.isMenu) btn.innerText = act.label;
             });
           },
-          onExit: () => (DOM.encounterChoices.innerHTML = ""),
+          onExit: clearEncounterChoices,
         },
         YARD_ROOT: {
           onEnter: () => {
@@ -2812,7 +2812,7 @@
               GAME_DATA.dom.classes.btnDesperate,
             );
           },
-          onExit: () => (DOM.encounterChoices.innerHTML = ""),
+          onExit: clearEncounterChoices,
         },
         YARD_CATEGORY: {
           onEnter: () => {
@@ -2838,7 +2838,7 @@
               GAME_DATA.dom.classes.btnTravel,
             );
           },
-          onExit: () => (DOM.encounterChoices.innerHTML = ""),
+          onExit: clearEncounterChoices,
         },
         NAVIGATING: {
           onEnter: () => {
