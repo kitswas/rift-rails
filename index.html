@@ -430,6 +430,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        text-align: center;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
       }
 
@@ -460,6 +461,27 @@
         margin-top: 10px;
         border: none;
         box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      }
+
+      .btn-new-game {
+        background-color: transparent;
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        font-size: 0.82em;
+        font-weight: 700;
+        padding: 11px;
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .btn-new-game:hover:not(:disabled) {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.08);
       }
 
       .btn-travel {
@@ -639,54 +661,6 @@
     </style>
   </head>
   <body>
-    <!-- 
-    ========================================================
-    DEVELOPER NOTES: THE ENERGY & SECTOR ECONOMY
-    *** DO NOT REMOVE THIS COMMENT BLOCK ***
-    ========================================================
-    1. ENGINE TIER = MAX ENERGY & TRAVEL COST
-       - A larger engine increases the max Energy capacity of the train, 
-         allowing for more explorations and actions per dimension.
-       - However, a heavier engine increases the Fuel cost to initiate a Rift Jump.
-       - Anti-Trap Transparency: Human players exhibit bounded rationality and
-         calculate within a short forward horizon. Upgrade buttons must explicitly
-         disclose the increased jump cost and warn if current fuel cannot support it.
-       - Energy resets completely upon entering a new dimension.
-
-    2. INFINITE PLAYABILITY BALANCE & CADENCE
-       - All numerical values and strings are stored in a central GAME_DATA object.
-       - Onboarding Runway: An initial fixed sequence safely introduces mining,
-         harvesting, combat, and upgrading without opening RNG death spirals.
-       - Sector Cadence: Hubs are fixed at recurring waypoints to provide reliable
-         tension-relief harbors. Deep-void nodes between Hubs are drawn from a 
-         balanced bag shuffle to eliminate dry streaks.
-       - Tier-Scaled Station Economy: Hub refueling scales with engine tier so
-         that heavier industrial trains can replenish proportional jump fuel.
-       - Biofuel Coherence: Solitary voidbeasts yield Energy Crystals (fuel + flux)
-         so combat-oriented conductors do not face sudden fuel dead-ends.
-         Packs yield pelts and beast parts of purely economic market value.
-         
-    3. ENGAGING GAMEPLAY & BOUNDED RATIONALITY
-       - Designed for human decision horizons (immediate 1-3 step lookahead)
-         rather than predictive machine optimizers.
-       - Generous starting fuel cushions exploration while preserving tight,
-         earned near-miss survival moments across the deeper sectors.
-         
-    4. CODE QUALITY RULES
-       - Preserve comments. Comments explain why, not what.
-       - Single source of truth. DRY.
-       - No magic literals. Constant names explain purpose. 
-       
-    5. PROGRAM CORRECTNESS
-       - The game uses embedded Runtime Assertions to verify its own logic.
-       - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions 
-         has no deadlocks or orphaned states (crucial when AI hallucinates edits).
-       - assertInvariants(): Runs after every UI update. Verifies mathematically 
-         impossible states (e.g., negative energy) haven't occurred.
-       - State mutations strictly flow through Engine.transitionTo().
-    ========================================================
-    -->
-
     <canvas id="fx-canvas"></canvas>
 
     <div id="start-screen">
@@ -709,13 +683,16 @@
         </div>
         <p style="font-size: 0.82em; color: var(--text-muted)">
           * Tap any HUD telemetry cell at any time to output subsystem
-          diagnostic reports.
+          diagnostic reports. Progress auto-saves after each jump.
         </p>
         <p>
           <b>Navigation:</b> Swipe left or right across the dashboard to change
           panels.
         </p>
         <button class="btn-start" id="btn-ignite"></button>
+        <button id="btn-start-fresh" class="btn-new-game" style="display: none">
+          New Game
+        </button>
       </div>
     </div>
 
@@ -756,33 +733,32 @@
           <div class="panel-card">
             <h2>Conduit Settings</h2>
             <div class="settings-content">
-              <div
-                class="settings-section"
-                style="text-align: center; padding: 26px 12px"
-              >
-                <h3 style="color: var(--warning); letter-spacing: 1px">
-                  [ SUBSYSTEM OFFLINE ]
+              <div class="settings-section">
+                <h3 style="color: var(--success); letter-spacing: 1px">
+                  [ LOCAL ARCHIVE // ONLINE ]
                 </h3>
-                <p
-                  style="
-                    color: var(--text);
-                    font-weight: bold;
-                    margin-top: 10px;
-                  "
-                >
-                  Auxiliary configuration matrix is currently under maintenance.
+                <p>
+                  <b>Auto-Save Status:</b> Active. Voyage telemetry is
+                  automatically stored to your local conduit after every Rift
+                  Jump.
                 </p>
                 <p
                   style="
-                    color: var(--text-muted);
                     font-size: 0.85em;
-                    margin-top: 10px;
+                    color: var(--text-muted);
+                    margin-top: 6px;
                   "
                 >
-                  Audio synthesizers, haptic triggers, local archival storage,
-                  and manual trajectory calibrations will deploy in upcoming
-                  conduit updates.
+                  Catastrophic breaches or void-stranding automatically clear
+                  the archive for subsequent journeys.
                 </p>
+                <button
+                  id="btn-reset-save"
+                  class="btn-new-game"
+                  style="margin-top: 14px"
+                >
+                  New Game
+                </button>
               </div>
             </div>
           </div>
@@ -880,8 +856,7 @@
                   Harvest Flux, Hunt Voidbeasts, or Dock at Hubs).
                 </p>
                 <p>
-                  3. <b>UPGRADE:</b> Switch to the <b>Workshop</b> tab and spend
-                  Dimensional Flux to mutate components.
+                  3. <b>UPGRADE:</b> Access the Workshop to mutate components.
                 </p>
                 <p>
                   4. <b>RIFT JUMP:</b> When EN is exhausted, initiate a Jump to
@@ -1119,6 +1094,7 @@
             btnAction: "btn-action",
             btnTravel: "btn-travel",
             btnDesperate: "btn-desperate",
+            btnNewGame: "btn-new-game",
             navBtn: "nav-btn",
             dimName: "dim-name",
             dimType: "dim-type",
@@ -1151,6 +1127,8 @@
             btnTravel: "btn-travel",
             btnDesperate: "btn-desperate",
             btnIgnite: "btn-ignite",
+            btnStartFresh: "btn-start-fresh",
+            btnResetSave: "btn-reset-save",
             btnForgeEng: "btn-forge-engine",
             btnForgeWpn: "btn-forge-weapon",
             lblForge: "lbl-forge",
@@ -1201,6 +1179,7 @@
           lblForge: "Crucible Mutations (Workshop)",
           lblNavTitle: "Select Dimensional Trajectory",
           btnIgnite: "Ignite the Crucible Engine",
+          btnNewGame: "New Game",
           noneState: "None",
           formatTier: (val) => `Tier ${val}`,
           formatPct: (val) => `${val}%`,
@@ -1654,6 +1633,71 @@
       };
 
       let state = JSON.parse(JSON.stringify(INITIAL_STATE));
+
+      /* ========================================================
+         LOCAL STORAGE SAVE SYSTEM (AUTO-SAVE ON JUMP)
+         ======================================================== */
+      const SaveSystem = {
+        STORAGE_KEY: "rift_rails_auto_save",
+
+        save: () => {
+          try {
+            const payload = {
+              jumpCount: state.jumpCount,
+              sectorBag: state.sectorBag,
+              hull: state.hull,
+              fuel: state.fuel,
+              flux: state.flux,
+              rep: state.rep,
+              energy: state.energy,
+              engineTier: state.engineTier,
+              weaponTier: state.weaponTier,
+              module: state.module,
+              carriage: state.carriage,
+              crew: state.crew,
+              dimId: state.dimId,
+              dimName: state.dimName,
+            };
+            localStorage.setItem(
+              SaveSystem.STORAGE_KEY,
+              JSON.stringify(payload),
+            );
+            Engine.log(
+              "[CONDUIT] Voyage telemetry archived automatically.",
+              GAME_DATA.dom.classes.logSystem,
+            );
+          } catch (e) {
+            console.warn("Auto-save failed to write to localStorage:", e);
+          }
+        },
+
+        load: () => {
+          try {
+            const raw = localStorage.getItem(SaveSystem.STORAGE_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+          } catch (e) {
+            console.warn("Failed to parse auto-save:", e);
+            return null;
+          }
+        },
+
+        clear: () => {
+          try {
+            localStorage.removeItem(SaveSystem.STORAGE_KEY);
+          } catch (e) {
+            console.warn("Failed to clear auto-save:", e);
+          }
+        },
+
+        hasSave: () => {
+          try {
+            return !!localStorage.getItem(SaveSystem.STORAGE_KEY);
+          } catch (e) {
+            return false;
+          }
+        },
+      };
 
       /* ========================================================
          AUDIO SYNTHESIZER & SOUND FX (Web Audio API)
@@ -2476,7 +2520,19 @@
           }
         },
 
+        resetGame: (confirmPrompt = true) => {
+          if (
+            confirmPrompt &&
+            !confirm("Purge all voyage telemetry and restart from Waypoint 1?")
+          ) {
+            return;
+          }
+          SaveSystem.clear();
+          location.reload();
+        },
+
         lockdownGameOver: (logMessage) => {
+          SaveSystem.clear();
           document
             .querySelectorAll(GAME_DATA.dom.tags.button)
             .forEach((b) => (b.disabled = true));
@@ -2514,7 +2570,21 @@
         },
 
         setupStaticText: () => {
-          DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
+          if (SaveSystem.hasSave()) {
+            const saved = SaveSystem.load();
+            DOM.btnIgnite.innerText = `Resume Journey (Waypoint ${saved ? saved.jumpCount : 1})`;
+            if (DOM.btnStartFresh) {
+              DOM.btnStartFresh.innerText = GAME_DATA.text.btnNewGame;
+              DOM.btnStartFresh.style.display =
+                GAME_DATA.dom.styles.displayFlex;
+            }
+          } else {
+            DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
+            if (DOM.btnStartFresh) {
+              DOM.btnStartFresh.style.display =
+                GAME_DATA.dom.styles.displayNone;
+            }
+          }
           DOM.lblForge.innerText = GAME_DATA.text.lblForge;
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
           TransitionFX.applyThemeStyles(state.dimName.split(" ")[0]);
@@ -2552,7 +2622,6 @@
           if (!target || !container) return;
 
           if (window.innerWidth >= 900) {
-            // True viewport center positioning
             const targetLeft = target.offsetLeft - container.offsetLeft;
             const targetCenter = targetLeft + target.offsetWidth / 2;
             const scrollPos = targetCenter - container.clientWidth / 2;
@@ -2588,13 +2657,32 @@
             Engine.forgeUpgrade("weaponTier");
           });
 
+          DOM.btnResetSave.addEventListener(GAME_DATA.dom.events.click, () =>
+            Engine.resetGame(true),
+          );
+
+          DOM.btnStartFresh.addEventListener(GAME_DATA.dom.events.click, () =>
+            Engine.resetGame(true),
+          );
+
           DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
             SoundFX.init();
             DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
             DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayFlex;
+
+            const saved = SaveSystem.load();
+            if (saved) {
+              Object.assign(state, saved);
+              state.phase = GAME_DATA.phases.start;
+              TransitionFX.applyThemeStyles(state.dimName.split(" ")[0]);
+              Engine.log(
+                `[CONDUIT] Resumed trajectory at ${state.dimName} (Waypoint ${state.jumpCount}).`,
+                GAME_DATA.dom.classes.logSystem,
+              );
+            }
+
             Engine.transitionTo(GAME_DATA.phases.idle);
 
-            // Default focus centered on Tactical Bridge (index 2)
             setTimeout(() => {
               Engine.scrollToPane(2);
             }, 50);
@@ -2781,6 +2869,7 @@
                 state.targetDimName = null;
                 Engine.transitionTo(GAME_DATA.phases.idle);
                 Engine.evaluateSurvival();
+                SaveSystem.save();
               },
             );
           },
