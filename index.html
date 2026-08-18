@@ -73,6 +73,7 @@
       #fx-canvas.active {
         opacity: 1;
         pointer-events: auto;
+        cursor: wait;
       }
 
       .screen-shake {
@@ -327,6 +328,7 @@
         margin-bottom: 10px;
         position: relative;
         overflow: hidden;
+        cursor: crosshair;
       }
 
       #art-glyph {
@@ -374,6 +376,7 @@
         font-size: 0.85em;
         margin-bottom: 8px;
         font-family: var(--font-mono);
+        cursor: text;
       }
 
       .log-entry {
@@ -533,11 +536,13 @@
         font-size: 0.82em;
         line-height: 1.55;
         color: var(--text);
+        cursor: default;
       }
 
       .manual-content button,
       .settings-content button {
         font-size: 1.02em !important;
+        cursor: pointer;
       }
 
       .manual-section,
@@ -645,10 +650,13 @@
         font-size: 0.72em;
         color: var(--info);
       }
-      .locked-ui {
+
+      .locked-ui,
+      .locked-ui * {
         pointer-events: none;
         opacity: 0.4;
         filter: grayscale(100%);
+        cursor: not-allowed !important;
       }
     </style>
   </head>
