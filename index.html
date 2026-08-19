@@ -380,51 +380,58 @@
         cursor: text;
       }
 
+      /* Base layout for all log items */
       .log-entry {
         margin-bottom: 5px;
+        font-weight: 600;
         border-left: 3px solid var(--border-bright);
-        padding: 2px 6px;
+        border-radius: 0 4px 4px 0;
+        padding: 3px 8px;
         word-break: break-word;
+        font-style: normal;
+        line-height: 1.45;
+      }
+
+      .log-entry b {
+        letter-spacing: 0.25px;
       }
 
       .log-event {
         color: var(--text);
         border-left-color: var(--border-bright);
       }
+
       .log-reward,
       .log-success {
         color: var(--success);
-        font-weight: bold;
+        font-weight: 700;
         border-left-color: var(--success);
-        background: rgba(16, 185, 129, 0.06);
-        border-radius: 0 4px 4px 0;
+        background: rgba(16, 185, 129, 0.08);
       }
+
       .log-damage {
         color: var(--danger);
-        font-weight: bold;
+        font-weight: 700;
         border-left-color: var(--danger);
-        background: rgba(239, 68, 68, 0.08);
-        border-radius: 0 4px 4px 0;
+        background: rgba(239, 68, 68, 0.1);
       }
+
       .log-system {
         color: var(--info);
-        font-style: italic;
         border-left-color: var(--info);
+        background: rgba(56, 189, 248, 0.08);
       }
+
       .log-help {
         color: var(--help);
-        font-style: normal;
-        font-weight: 600;
         border-left-color: #94a3b8;
-        background: rgba(148, 163, 184, 0.1);
-        border-radius: 0 4px 4px 0;
+        background: rgba(148, 163, 184, 0.12);
       }
+
       .log-lore {
-        color: #fde68a;
-        font-style: italic;
-        border-left-color: #f59e0b;
-        background: rgba(245, 158, 11, 0.08);
-        border-radius: 0 4px 4px 0;
+        color: #fef08a;
+        border-left-color: var(--action);
+        background: rgba(245, 158, 11, 0.1);
       }
 
       /* ================= CUTSCENE OVERLAY SYSTEM ================= */
