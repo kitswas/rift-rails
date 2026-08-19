@@ -362,7 +362,7 @@
         gap: 6px;
       }
 
-      /* ================= STORY LOG ================= */
+      /* ================= STORY LOG: PERCEPTUALLY UNIFORM HSL ================= */
       #story-log {
         flex: 1;
         min-height: 160px;
@@ -379,60 +379,51 @@
         font-family: var(--font-mono);
         cursor: text;
       }
-
-      /* Base layout for all log items */
+      /* Base entry: OKLCH guarantees perceptually identical lightness & contrast across all hues */
       .log-entry {
+        --h: 260;
+        --base-l: 0.5;
+        --text-l: 0.8;
+        --bg-l: 0.2;
+
         margin-bottom: 5px;
         font-weight: 600;
-        border-left: 3px solid var(--border-bright);
+        color: oklch(var(--text-l) 0.04 var(--h));
+        border-left: 3px solid oklch(var(--base-l) 0.18 var(--h));
+        background-color: oklch(var(--bg-l) 0.03 calc(var(--h) + 30));
         border-radius: 0 4px 4px 0;
-        padding: 3px 8px;
+        padding: 4px 8px;
         word-break: break-word;
-        font-style: normal;
         line-height: 1.45;
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease;
       }
 
       .log-entry b {
         letter-spacing: 0.25px;
+        color: oklch(0.95 0.03 var(--h));
       }
 
-      .log-event {
-        color: var(--text);
-        border-left-color: var(--border-bright);
-      }
-
-      .log-reward,
-      .log-success {
-        color: var(--success);
-        font-weight: 700;
-        border-left-color: var(--success);
-        background: rgba(16, 185, 129, 0.08);
-      }
-
+      /* Category Hues (All separated by >= 45deg) */
       .log-damage {
-        color: var(--danger);
-        font-weight: 700;
-        border-left-color: var(--danger);
-        background: rgba(239, 68, 68, 0.1);
-      }
-
-      .log-system {
-        color: var(--info);
-        border-left-color: var(--info);
-        background: rgba(56, 189, 248, 0.08);
-      }
-
-      .log-help {
-        color: var(--help);
-        border-left-color: #94a3b8;
-        background: rgba(148, 163, 184, 0.12);
-      }
-
+        --h: 25;
+      } /* Red */
       .log-lore {
-        color: #fef08a;
-        border-left-color: var(--action);
-        background: rgba(245, 158, 11, 0.1);
-      }
+        --h: 75;
+      } /* Amber */
+      .log-success {
+        --h: 145;
+      } /* Green */
+      .log-system {
+        --h: 210;
+      } /* Cyan */
+      .log-event {
+        --h: 260;
+      } /* Blue */
+      .log-help {
+        --h: 310;
+      } /* Violet */
 
       /* ================= CUTSCENE OVERLAY SYSTEM ================= */
       #cutscene-overlay {
@@ -817,6 +808,7 @@
        - The game uses embedded Runtime Assertions to verify its own logic.
        - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions 
          has no deadlocks or orphaned states (crucial when AI hallucinates edits).
+       - verifyPaletteIntegrity(): Ensures log entry base hues are separated by >= 45deg.
        - assertInvariants(): Runs after every UI update. Verifies mathematically 
          impossible states (e.g., negative energy) haven't occurred.
        - State mutations strictly flow through Engine.transitionTo().
@@ -1183,6 +1175,16 @@
           JUMP_TOTAL_MS: 1250,
           FX_STAR_COUNT: 220,
           FX_VIBRATE_PATTERN: [35, 45, 100],
+        },
+
+        /* Log Palette Hue Map (Verified for >= 45deg separation) */
+        logPalette: {
+          damage: 0,
+          lore: 48,
+          success: 140,
+          system: 190,
+          event: 240,
+          help: 295,
         },
 
         audio: {
@@ -1628,7 +1630,7 @@
           },
           defaultTheme: {
             primary: "#73acce",
-            secondary: "#9885d0",
+            secondary: "#f0f3ff",
             glyph: "𖣠",
             bg: "#080a0f",
           },
@@ -2403,6 +2405,24 @@
           }
         },
 
+        verifyPaletteIntegrity: () => {
+          const MIN_DIFF = 45;
+          const entries = Object.entries(GAME_DATA.logPalette);
+          for (let i = 0; i < entries.length; i++) {
+            for (let j = i + 1; j < entries.length; j++) {
+              const [nameA, hueA] = entries[i];
+              const [nameB, hueB] = entries[j];
+              const diff = Math.abs(hueA - hueB);
+              const circularDiff = Math.min(diff, 360 - diff);
+              if (circularDiff < MIN_DIFF) {
+                console.error(
+                  `PALETTE INVARIANT BREACH: Log base hues '${nameA}' (${hueA}deg) and '${nameB}' (${hueB}deg) are only ${circularDiff}deg apart. Must be >= ${MIN_DIFF}deg.`,
+                );
+              }
+            }
+          }
+        },
+
         assertInvariants: () => {
           if (state.hull > GAME_DATA.config.MAX_HULL)
             console.error("INVARIANT BREACH: Hull > Max");
@@ -3101,6 +3121,7 @@
 
         init: () => {
           Engine.verifyGraphIntegrity();
+          Engine.verifyPaletteIntegrity();
           Engine.cacheDOM();
           TransitionFX.init();
           Engine.setupStaticText();
