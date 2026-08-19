@@ -379,22 +379,29 @@
         font-family: var(--font-mono);
         cursor: text;
       }
-      /* Base entry: OKLCH guarantees perceptually identical lightness & contrast across all hues */
+      /* Base entry: Lightness tiers are locked to ensure identical perceptual contrast */
       .log-entry {
-        --h: 260;
-        --base-l: 0.5;
-        --text-l: 0.8;
-        --bg-l: 0.2;
+        --base-l: 0.48;
+        --text-l: 0.92;
+        --bg-l: 0.16;
 
         margin-bottom: 5px;
         font-weight: 600;
-        color: oklch(var(--text-l) 0.04 var(--h));
-        border-left: 3px solid oklch(var(--base-l) 0.18 var(--h));
-        background-color: oklch(var(--bg-l) 0.03 calc(var(--h) + 30));
         border-radius: 0 4px 4px 0;
         padding: 4px 8px;
         word-break: break-word;
         line-height: 1.45;
+
+        /* Left Border: Base color */
+        border-left: 3px solid oklch(var(--base-l) var(--c) var(--h));
+
+        /* Text: Lighter variant with muted chroma for crisp legibility */
+        color: oklch(var(--text-l) calc(var(--c) * 0.5) var(--h));
+
+        /* Background: Darker variant with +30deg hue shift */
+        background-color: oklch(
+          var(--bg-l) calc(var(--c) * 0.4) calc(var(--h) + 30)
+        );
         transition:
           background-color 0.2s ease,
           border-color 0.2s ease;
@@ -402,28 +409,34 @@
 
       .log-entry b {
         letter-spacing: 0.25px;
-        color: oklch(0.95 0.03 var(--h));
+        color: oklch(0.96 calc(var(--c) * 0.25) var(--h));
       }
 
-      /* Category Hues (All separated by >= 45deg) */
+      /* Category Base Hues & Chromas (All chromatic hues >= 45° apart) */
       .log-damage {
         --h: 25;
-      } /* Red */
+        --c: 0.19;
+      } /* Crimson */
       .log-lore {
         --h: 75;
+        --c: 0.16;
       } /* Amber */
       .log-success {
         --h: 145;
-      } /* Green */
+        --c: 0.16;
+      } /* Emerald */
       .log-system {
-        --h: 210;
+        --h: 205;
+        --c: 0.15;
       } /* Cyan */
       .log-event {
         --h: 260;
-      } /* Blue */
+        --c: 0.14;
+      } /* Cobalt */
       .log-help {
-        --h: 310;
-      } /* Violet */
+        --h: 250;
+        --c: 0.03;
+      } /* Mercurial Slate */
 
       /* ================= CUTSCENE OVERLAY SYSTEM ================= */
       #cutscene-overlay {
