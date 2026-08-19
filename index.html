@@ -24,6 +24,7 @@
         --energy: #a855f7;
         --action: #f59e0b;
         --info: #38bdf8;
+        --help: #f1f5f9;
 
         /* Dynamic Procedural Dimension Theme Colors */
         --theme-primary: #73acce;
@@ -409,6 +410,14 @@
         color: var(--info);
         font-style: italic;
         border-left-color: var(--info);
+      }
+      .log-help {
+        color: var(--help);
+        font-style: normal;
+        font-weight: 600;
+        border-left-color: #94a3b8;
+        background: rgba(148, 163, 184, 0.1);
+        border-radius: 0 4px 4px 0;
       }
       .log-lore {
         color: #fde68a;
@@ -1257,6 +1266,7 @@
           classes: {
             logEntry: "log-entry",
             logSystem: "log-system",
+            logHelp: "log-help",
             logEvent: "log-event",
             logSuccess: "log-success",
             logDamage: "log-damage",
@@ -1339,6 +1349,7 @@
             colorAction: "var(--action)",
             colorEnergy: "var(--energy)",
             colorInfo: "var(--info)",
+            colorHelp: "var(--help)",
             colorThemePrimary: "var(--theme-primary)",
             colorThemeSecondary: "var(--theme-secondary)",
           },
@@ -1352,9 +1363,6 @@
           tags: { div: "div", span: "span", button: "button" },
         },
 
-        /* ========================================================
-           STORYLINE: MASTER CORVUS (NO NUMBERS IN CONVERSATIONS)
-           ======================================================== */
         cutscenes: {
           wp1: {
             id: "wp1",
@@ -2441,7 +2449,7 @@
         inspect: (topic) => {
           const info = GAME_DATA.glossary[topic];
           if (info) {
-            Engine.log(`[INTEL] ${info}`, GAME_DATA.dom.classes.logSystem);
+            Engine.log(`[INTEL] ${info}`, GAME_DATA.dom.classes.logHelp);
           }
         },
 
