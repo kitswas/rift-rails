@@ -362,7 +362,7 @@
         gap: 6px;
       }
 
-      /* ================= STORY LOG ================= */
+      /* ================= JOURNEY LOG ================= */
       #story-log {
         flex: 1;
         min-height: 160px;
@@ -853,7 +853,7 @@
        - The game uses embedded Runtime Assertions to verify its own logic.
        - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions 
          has no deadlocks or orphaned states (crucial when AI hallucinates edits).
-       - verifyPaletteIntegrity(): Ensures log entry base hues are separated by >= 45deg.
+       - verifyPaletteIntegrity(): Ensure log colour types remain visually distinct.
        - assertInvariants(): Runs after every UI update. Verifies mathematically 
          impossible states (e.g., negative energy) haven't occurred.
        - State mutations strictly flow through Engine.transitionTo().
@@ -1267,15 +1267,6 @@
           JUMP_TOTAL_MS: 1250,
           FX_STAR_COUNT: 220,
           FX_VIBRATE_PATTERN: [35, 45, 100],
-        },
-
-        logPalette: {
-          damage: 0,
-          lore: 48,
-          success: 140,
-          system: 190,
-          event: 240,
-          help: 295,
         },
 
         audio: {
@@ -2126,7 +2117,7 @@
         sfxSliderVal: 100,
         ambientVolume: 1.0,
         sfxVolume: 1.0,
-        ambientMode: "rails", // Default: 'rails' (Ley-Rail Rhythm)
+        ambientMode: "rails",
         currentThemeKey: "Fractured",
 
         // Rails State
@@ -2260,11 +2251,10 @@
         /* ---- [MODE 1] KINETIC LEY-RAIL RHYTHM ---- */
         startRailsEngine: () => {
           SoundFX.railsStep = 0;
-          const interval = 195; // ~77 BPM cadence
+          const interval = 195;
 
           SoundFX.railsTimer = setInterval(() => {
             if (!SoundFX.ctx) return;
-            // 4-step cadence: [Tick - tock - Tick - rest]
             if (SoundFX.railsStep === 0) SoundFX.playRailClick(true);
             else if (SoundFX.railsStep === 1) SoundFX.playRailClick(false);
             else if (SoundFX.railsStep === 2) SoundFX.playRailClick(true);
@@ -2314,7 +2304,7 @@
         playTelemetryBlip: () => {
           if (!SoundFX.ctx || !SoundFX.ambientGain) return;
           const now = SoundFX.ctx.currentTime;
-          const isPing = Math.random() < 0.22; // 22% sensor ping, 78% Geiger tick
+          const isPing = Math.random() < 0.22;
 
           const osc = SoundFX.ctx.createOscillator();
           const gain = SoundFX.ctx.createGain();
@@ -2768,18 +2758,81 @@
           }
         },
 
+        getPaletteFromCSS: () => {
+          const palette = {};
+          const dummy = document.createElement("div");
+          dummy.style.display = "none";
+          document.body.appendChild(dummy);
+
+          const types = [
+            "damage",
+            "lore",
+            "success",
+            "system",
+            "event",
+            "help",
+          ];
+          types.forEach((type) => {
+            dummy.className = `log-${type}`;
+            const style = getComputedStyle(dummy);
+            const hVal = parseFloat(style.getPropertyValue("--h").trim());
+            if (!isNaN(hVal)) {
+              palette[type] = hVal;
+            }
+          });
+
+          document.body.removeChild(dummy);
+          return palette;
+        },
+
         verifyPaletteIntegrity: () => {
-          const MIN_DIFF = 45;
-          const entries = Object.entries(GAME_DATA.logPalette);
-          for (let i = 0; i < entries.length; i++) {
-            for (let j = i + 1; j < entries.length; j++) {
-              const [nameA, hueA] = entries[i];
-              const [nameB, hueB] = entries[j];
-              const diff = Math.abs(hueA - hueB);
-              const circularDiff = Math.min(diff, 360 - diff);
-              if (circularDiff < MIN_DIFF) {
+          const MIN_DELTA_E = 0.08; // Minimum perceptual difference threshold in Oklab
+          const dummy = document.createElement("div");
+          dummy.style.display = "none";
+          document.body.appendChild(dummy);
+
+          const types = [
+            "damage",
+            "lore",
+            "success",
+            "system",
+            "event",
+            "help",
+          ];
+          const colorNodes = [];
+
+          types.forEach((type) => {
+            // Apply both base class and modifier so --base-l is inherited properly
+            dummy.className = `log-entry log-${type}`;
+            const style = getComputedStyle(dummy);
+
+            const l =
+              parseFloat(style.getPropertyValue("--base-l").trim()) || 0.48;
+            const c = parseFloat(style.getPropertyValue("--c").trim());
+            const h = parseFloat(style.getPropertyValue("--h").trim());
+
+            if (!isNaN(c) && !isNaN(h)) {
+              const rad = (h * Math.PI) / 180;
+              colorNodes.push({
+                name: type,
+                L: l,
+                a: c * Math.cos(rad),
+                b: c * Math.sin(rad),
+              });
+            }
+          });
+
+          document.body.removeChild(dummy);
+
+          for (let i = 0; i < colorNodes.length; i++) {
+            for (let j = i + 1; j < colorNodes.length; j++) {
+              const c1 = colorNodes[i];
+              const c2 = colorNodes[j];
+              const deltaE = Math.hypot(c1.L - c2.L, c1.a - c2.a, c1.b - c2.b);
+
+              if (deltaE < MIN_DELTA_E) {
                 console.error(
-                  `PALETTE INVARIANT BREACH: Log base hues '${nameA}' (${hueA}deg) and '${nameB}' (${hueB}deg) are only ${circularDiff}deg apart. Must be >= ${MIN_DIFF}deg.`,
+                  `PALETTE INVARIANT BREACH: Log types '${c1.name}' and '${c2.name}' are visually indistinguishable (ΔE_ok = ${deltaE.toFixed(4)} < ${MIN_DELTA_E}).`,
                 );
               }
             }
