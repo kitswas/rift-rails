@@ -362,7 +362,7 @@
         gap: 6px;
       }
 
-      /* ================= STORY LOG: PERCEPTUALLY UNIFORM HSL ================= */
+      /* ================= STORY LOG ================= */
       #story-log {
         flex: 1;
         min-height: 160px;
@@ -379,7 +379,7 @@
         font-family: var(--font-mono);
         cursor: text;
       }
-      /* Base entry: Lightness tiers are locked to ensure identical perceptual contrast */
+
       .log-entry {
         --base-l: 0.48;
         --text-l: 0.92;
@@ -391,14 +391,8 @@
         padding: 4px 8px;
         word-break: break-word;
         line-height: 1.45;
-
-        /* Left Border: Base color */
         border-left: 3px solid oklch(var(--base-l) var(--c) var(--h));
-
-        /* Text: Lighter variant with muted chroma for crisp legibility */
         color: oklch(var(--text-l) calc(var(--c) * 0.5) var(--h));
-
-        /* Background: Darker variant with +30deg hue shift */
         background-color: oklch(
           var(--bg-l) calc(var(--c) * 0.4) calc(var(--h) + 30)
         );
@@ -412,31 +406,30 @@
         color: oklch(0.96 calc(var(--c) * 0.25) var(--h));
       }
 
-      /* Category Base Hues & Chromas (All chromatic hues >= 45° apart) */
       .log-damage {
         --h: 25;
         --c: 0.19;
-      } /* Crimson */
+      }
       .log-lore {
         --h: 75;
         --c: 0.16;
-      } /* Amber */
+      }
       .log-success {
         --h: 145;
         --c: 0.16;
-      } /* Emerald */
+      }
       .log-system {
         --h: 205;
         --c: 0.15;
-      } /* Cyan */
+      }
       .log-event {
         --h: 260;
         --c: 0.14;
-      } /* Cobalt */
+      }
       .log-help {
         --h: 250;
         --c: 0.03;
-      } /* Mercurial Slate */
+      }
 
       /* ================= CUTSCENE OVERLAY SYSTEM ================= */
       #cutscene-overlay {
@@ -532,7 +525,7 @@
         transform: translateX(2px);
       }
 
-      /* ================= BUTTONS ================= */
+      /* ================= BUTTONS & CONTROLS ================= */
       button {
         background-color: #131824;
         color: var(--text);
@@ -689,6 +682,45 @@
       .manual-section b,
       .settings-section b {
         color: var(--text);
+      }
+
+      /* Audio Controls in Settings */
+      .audio-control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 8px 0;
+        gap: 10px;
+      }
+
+      .audio-control-row label {
+        font-size: 0.85em;
+        font-weight: 700;
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .audio-slider {
+        flex: 1;
+        accent-color: var(--action);
+        cursor: pointer;
+      }
+
+      .audio-select {
+        background: #131824;
+        color: var(--text);
+        border: 1px solid var(--border-bright);
+        border-radius: 4px;
+        padding: 6px 8px;
+        font-family: var(--font-mono);
+        font-size: 0.82em;
+        outline: none;
+        cursor: pointer;
+        width: 60%;
+      }
+
+      .audio-select:focus {
+        border-color: var(--action);
       }
 
       #bottom-nav {
@@ -897,6 +929,53 @@
           <div class="panel-card">
             <h2>Conduit Settings</h2>
             <div class="settings-content">
+              <div class="settings-section">
+                <h3 style="color: var(--action); letter-spacing: 1px">
+                  [ ACOUSTIC LEY SOUNDSCAPES ]
+                </h3>
+                <div class="audio-control-row">
+                  <label for="select-ambient-mode">Soundscape</label>
+                  <select id="select-ambient-mode" class="audio-select">
+                    <option value="rails" selected>
+                      Ley-Rail Rhythm (Kinetic)
+                    </option>
+                    <option value="telemetry">Bridge Telemetry (Lo-Fi)</option>
+                    <option value="none">Mute Ambient (Off)</option>
+                  </select>
+                </div>
+                <div class="audio-control-row">
+                  <label for="slider-ambient-vol">Ambient Vol</label>
+                  <input
+                    type="range"
+                    id="slider-ambient-vol"
+                    class="audio-slider"
+                    min="0"
+                    max="100"
+                    value="100"
+                  />
+                  <span id="lbl-ambient-vol">100%</span>
+                </div>
+                <div class="audio-control-row">
+                  <label for="slider-sfx-vol">Subsystem SFX</label>
+                  <input
+                    type="range"
+                    id="slider-sfx-vol"
+                    class="audio-slider"
+                    min="0"
+                    max="100"
+                    value="100"
+                  />
+                  <span id="lbl-sfx-vol">100%</span>
+                </div>
+                <button
+                  id="btn-toggle-mute"
+                  class="btn-action"
+                  style="margin-top: 8px"
+                >
+                  Mute Audio: OFF
+                </button>
+              </div>
+
               <div class="settings-section">
                 <h3 style="color: var(--success); letter-spacing: 1px">
                   [ LOCAL ARCHIVE // ONLINE ]
@@ -1190,7 +1269,6 @@
           FX_VIBRATE_PATTERN: [35, 45, 100],
         },
 
-        /* Log Palette Hue Map (Verified for >= 45deg separation) */
         logPalette: {
           damage: 0,
           lore: 48,
@@ -1211,6 +1289,7 @@
           chimeNoteStart: 587.33,
           chimeNoteEnd: 880,
           dialogueChimeFreq: 523.25,
+          LOG_AUDIO_EXPONENT: 2.0,
         },
 
         runway: ["hub", "res", "res", "hunt", "hub"],
@@ -1359,6 +1438,12 @@
             artLabel: "art-label",
             artGlyph: "art-glyph",
             fxCanvas: "fx-canvas",
+            selectAmbientMode: "select-ambient-mode",
+            sliderAmbientVol: "slider-ambient-vol",
+            sliderSfxVol: "slider-sfx-vol",
+            lblAmbientVol: "lbl-ambient-vol",
+            lblSfxVol: "lbl-sfx-vol",
+            btnToggleMute: "btn-toggle-mute",
           },
           styles: {
             displayNone: "none",
@@ -1940,10 +2025,11 @@
       let state = JSON.parse(JSON.stringify(INITIAL_STATE));
 
       /* ========================================================
-         LOCAL STORAGE SAVE SYSTEM (AUTO-SAVE ON JUMP)
+         LOCAL STORAGE SAVE SYSTEM
          ======================================================== */
       const SaveSystem = {
         STORAGE_KEY: "rift_rails_auto_save",
+        AUDIO_KEY: "rift_rails_audio_prefs",
 
         save: () => {
           try {
@@ -1988,6 +2074,28 @@
           }
         },
 
+        saveAudioPrefs: () => {
+          try {
+            const prefs = {
+              mode: SoundFX.ambientMode,
+              ambientSlider: SoundFX.ambientSliderVal,
+              sfxSlider: SoundFX.sfxSliderVal,
+              muted: SoundFX.isMuted,
+            };
+            localStorage.setItem(SaveSystem.AUDIO_KEY, JSON.stringify(prefs));
+          } catch (e) {}
+        },
+
+        loadAudioPrefs: () => {
+          try {
+            const raw = localStorage.getItem(SaveSystem.AUDIO_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+          } catch (e) {
+            return null;
+          }
+        },
+
         clear: () => {
           try {
             localStorage.removeItem(SaveSystem.STORAGE_KEY);
@@ -2006,23 +2114,263 @@
       };
 
       /* ========================================================
-         AUDIO SYNTHESIZER & SOUND FX
+         HEADACHE-FREE PROCEDURAL ACOUSTIC ENGINE (2 MODES)
          ======================================================== */
       const SoundFX = {
         ctx: null,
+        masterGain: null,
+        ambientGain: null,
+        sfxGain: null,
+        isMuted: false,
+        ambientSliderVal: 100,
+        sfxSliderVal: 100,
+        ambientVolume: 1.0,
+        sfxVolume: 1.0,
+        ambientMode: "rails", // Default: 'rails' (Ley-Rail Rhythm)
+        currentThemeKey: "Fractured",
+
+        // Rails State
+        railsTimer: null,
+        railsStep: 0,
+
+        // Telemetry State
+        telemetryTimer: null,
+
+        sliderToGain: (sliderVal) => {
+          const clamped = Math.max(0, Math.min(100, sliderVal));
+          if (clamped <= 0) return 0;
+          return Math.pow(clamped / 100, GAME_DATA.audio.LOG_AUDIO_EXPONENT);
+        },
+
+        gainToSlider: (gain) => {
+          const clamped = Math.max(0, Math.min(1, gain));
+          return Math.round(
+            Math.pow(clamped, 1 / GAME_DATA.audio.LOG_AUDIO_EXPONENT) * 100,
+          );
+        },
+
         init: () => {
           if (!SoundFX.ctx) {
             const AudioContext =
               window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) SoundFX.ctx = new AudioContext();
+            if (AudioContext) {
+              SoundFX.ctx = new AudioContext();
+
+              SoundFX.masterGain = SoundFX.ctx.createGain();
+              SoundFX.masterGain.gain.setValueAtTime(
+                SoundFX.isMuted ? 0 : 1.0,
+                SoundFX.ctx.currentTime,
+              );
+              SoundFX.masterGain.connect(SoundFX.ctx.destination);
+
+              SoundFX.sfxGain = SoundFX.ctx.createGain();
+              SoundFX.sfxGain.gain.setValueAtTime(
+                SoundFX.sfxVolume,
+                SoundFX.ctx.currentTime,
+              );
+              SoundFX.sfxGain.connect(SoundFX.masterGain);
+
+              SoundFX.ambientGain = SoundFX.ctx.createGain();
+              SoundFX.ambientGain.gain.setValueAtTime(
+                SoundFX.ambientVolume,
+                SoundFX.ctx.currentTime,
+              );
+              SoundFX.ambientGain.connect(SoundFX.masterGain);
+
+              SoundFX.startActiveSoundscape();
+            }
           }
           if (SoundFX.ctx && SoundFX.ctx.state === "suspended") {
             SoundFX.ctx.resume();
           }
         },
 
+        stopAllAmbient: () => {
+          if (SoundFX.railsTimer) clearInterval(SoundFX.railsTimer);
+          if (SoundFX.telemetryTimer) clearTimeout(SoundFX.telemetryTimer);
+        },
+
+        startActiveSoundscape: () => {
+          if (!SoundFX.ctx || !SoundFX.ambientGain) return;
+          SoundFX.stopAllAmbient();
+
+          if (
+            state.phase === GAME_DATA.phases.dead ||
+            state.phase === GAME_DATA.phases.stranded ||
+            SoundFX.ambientMode === "none"
+          ) {
+            return;
+          }
+
+          switch (SoundFX.ambientMode) {
+            case "rails":
+              SoundFX.startRailsEngine();
+              break;
+            case "telemetry":
+              SoundFX.startTelemetryEngine();
+              break;
+          }
+        },
+
+        setAmbientMode: (mode) => {
+          SoundFX.ambientMode = mode;
+          SaveSystem.saveAudioPrefs();
+          if (SoundFX.ctx) SoundFX.startActiveSoundscape();
+        },
+
+        setAmbientVolume: (sliderVal) => {
+          SoundFX.ambientSliderVal = sliderVal;
+          SoundFX.ambientVolume = SoundFX.sliderToGain(sliderVal);
+          SaveSystem.saveAudioPrefs();
+          if (SoundFX.ambientGain && SoundFX.ctx) {
+            SoundFX.ambientGain.gain.setTargetAtTime(
+              SoundFX.ambientVolume,
+              SoundFX.ctx.currentTime,
+              0.05,
+            );
+          }
+        },
+
+        setSfxVolume: (sliderVal) => {
+          SoundFX.sfxSliderVal = sliderVal;
+          SoundFX.sfxVolume = SoundFX.sliderToGain(sliderVal);
+          SaveSystem.saveAudioPrefs();
+          if (SoundFX.sfxGain && SoundFX.ctx) {
+            SoundFX.sfxGain.gain.setTargetAtTime(
+              SoundFX.sfxVolume,
+              SoundFX.ctx.currentTime,
+              0.05,
+            );
+          }
+        },
+
+        toggleMute: () => {
+          SoundFX.isMuted = !SoundFX.isMuted;
+          SaveSystem.saveAudioPrefs();
+          if (SoundFX.masterGain && SoundFX.ctx) {
+            SoundFX.masterGain.gain.setTargetAtTime(
+              SoundFX.isMuted ? 0 : 1,
+              SoundFX.ctx.currentTime,
+              0.05,
+            );
+          }
+          return SoundFX.isMuted;
+        },
+
+        /* ---- [MODE 1] KINETIC LEY-RAIL RHYTHM ---- */
+        startRailsEngine: () => {
+          SoundFX.railsStep = 0;
+          const interval = 195; // ~77 BPM cadence
+
+          SoundFX.railsTimer = setInterval(() => {
+            if (!SoundFX.ctx) return;
+            // 4-step cadence: [Tick - tock - Tick - rest]
+            if (SoundFX.railsStep === 0) SoundFX.playRailClick(true);
+            else if (SoundFX.railsStep === 1) SoundFX.playRailClick(false);
+            else if (SoundFX.railsStep === 2) SoundFX.playRailClick(true);
+
+            SoundFX.railsStep = (SoundFX.railsStep + 1) % 4;
+          }, interval);
+        },
+
+        playRailClick: (isAccent) => {
+          if (!SoundFX.ctx || !SoundFX.ambientGain) return;
+          const now = SoundFX.ctx.currentTime;
+
+          const osc = SoundFX.ctx.createOscillator();
+          const filter = SoundFX.ctx.createBiquadFilter();
+          const gain = SoundFX.ctx.createGain();
+
+          osc.type = isAccent ? "triangle" : "sine";
+          osc.frequency.setValueAtTime(isAccent ? 140 : 95, now);
+          osc.frequency.exponentialRampToValueAtTime(20, now + 0.025);
+
+          filter.type = "lowpass";
+          filter.frequency.setValueAtTime(isAccent ? 850 : 420, now);
+
+          gain.gain.setValueAtTime(isAccent ? 0.055 : 0.03, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(SoundFX.ambientGain);
+
+          osc.start(now);
+          osc.stop(now + 0.04);
+        },
+
+        /* ---- [MODE 2] BRIDGE TELEMETRY RADIO ---- */
+        startTelemetryEngine: () => {
+          const scheduleNext = () => {
+            const delay = 140 + Math.random() * 680;
+            SoundFX.telemetryTimer = setTimeout(() => {
+              SoundFX.playTelemetryBlip();
+              scheduleNext();
+            }, delay);
+          };
+          scheduleNext();
+        },
+
+        playTelemetryBlip: () => {
+          if (!SoundFX.ctx || !SoundFX.ambientGain) return;
+          const now = SoundFX.ctx.currentTime;
+          const isPing = Math.random() < 0.22; // 22% sensor ping, 78% Geiger tick
+
+          const osc = SoundFX.ctx.createOscillator();
+          const gain = SoundFX.ctx.createGain();
+
+          if (isPing) {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(1750 + Math.random() * 950, now);
+            gain.gain.setValueAtTime(0.016, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+            osc.start(now);
+            osc.stop(now + 0.04);
+          } else {
+            osc.type = "square";
+            osc.frequency.setValueAtTime(45, now);
+            gain.gain.setValueAtTime(0.014, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.004);
+            osc.start(now);
+            osc.stop(now + 0.006);
+          }
+
+          osc.connect(gain);
+          gain.connect(SoundFX.ambientGain);
+        },
+
+        updateAmbientTheme: (adjective) => {
+          SoundFX.currentThemeKey = adjective;
+        },
+
+        duckAmbientForJump: (durationSec) => {
+          if (!SoundFX.ctx || !SoundFX.ambientGain) return;
+          const now = SoundFX.ctx.currentTime;
+          SoundFX.ambientGain.gain.setValueAtTime(
+            SoundFX.ambientGain.gain.value,
+            now,
+          );
+          SoundFX.ambientGain.gain.linearRampToValueAtTime(
+            0.02,
+            now + durationSec * 0.4,
+          );
+          SoundFX.ambientGain.gain.linearRampToValueAtTime(
+            SoundFX.ambientVolume,
+            now + durationSec,
+          );
+        },
+
+        silenceOnDeath: () => {
+          SoundFX.stopAllAmbient();
+          if (!SoundFX.ctx || !SoundFX.ambientGain) return;
+          const now = SoundFX.ctx.currentTime;
+          SoundFX.ambientGain.gain.linearRampToValueAtTime(0.0001, now + 1.5);
+        },
+
+        /* SFX Methods */
         playJumpCharge: (breachSec) => {
           if (!SoundFX.ctx) return;
+          SoundFX.duckAmbientForJump(breachSec + 0.6);
           const now = SoundFX.ctx.currentTime;
 
           const osc1 = SoundFX.ctx.createOscillator();
@@ -2058,7 +2406,7 @@
 
           osc1.connect(filter);
           filter.connect(gain1);
-          gain1.connect(SoundFX.ctx.destination);
+          gain1.connect(SoundFX.sfxGain);
 
           const osc2 = SoundFX.ctx.createOscillator();
           const gain2 = SoundFX.ctx.createGain();
@@ -2080,7 +2428,7 @@
           );
 
           osc2.connect(gain2);
-          gain2.connect(SoundFX.ctx.destination);
+          gain2.connect(SoundFX.sfxGain);
 
           osc1.start(now);
           osc2.start(now);
@@ -2105,7 +2453,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
           osc.connect(gain);
-          gain.connect(SoundFX.ctx.destination);
+          gain.connect(SoundFX.sfxGain);
           osc.start(now);
           osc.stop(now + 0.55);
         },
@@ -2122,7 +2470,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
 
           osc.connect(gain);
-          gain.connect(SoundFX.ctx.destination);
+          gain.connect(SoundFX.sfxGain);
           osc.start(now);
           osc.stop(now + 0.22);
         },
@@ -2188,6 +2536,8 @@
           );
           DOM.artGlyph.innerText = theme.glyph;
           DOM.artGlyph.style.color = theme.primary;
+
+          SoundFX.updateAmbientTheme(adj);
         },
 
         playJumpEffect: (targetDimId, targetDimName, onBreach, onComplete) => {
@@ -2328,7 +2678,7 @@
       };
 
       /* ========================================================
-         CUTSCENE LOG CONTROLLER (OVERLAY + INTERACTION)
+         CUTSCENE LOG CONTROLLER
          ======================================================== */
       const CutsceneEngine = {
         activeCutscene: null,
@@ -2945,6 +3295,7 @@
 
         lockdownGameOver: (logMessage) => {
           SaveSystem.clear();
+          SoundFX.silenceOnDeath();
           document
             .querySelectorAll(GAME_DATA.dom.tags.button)
             .forEach((b) => (b.disabled = true));
@@ -2982,6 +3333,31 @@
         },
 
         setupStaticText: () => {
+          const audioPrefs = SaveSystem.loadAudioPrefs();
+          if (audioPrefs) {
+            SoundFX.ambientMode = audioPrefs.mode || "rails";
+            SoundFX.ambientSliderVal = audioPrefs.ambientSlider ?? 100;
+            SoundFX.sfxSliderVal = audioPrefs.sfxSlider ?? 100;
+            SoundFX.ambientVolume = SoundFX.sliderToGain(
+              SoundFX.ambientSliderVal,
+            );
+            SoundFX.sfxVolume = SoundFX.sliderToGain(SoundFX.sfxSliderVal);
+            SoundFX.isMuted = !!audioPrefs.muted;
+
+            if (DOM.selectAmbientMode)
+              DOM.selectAmbientMode.value = SoundFX.ambientMode;
+            if (DOM.sliderAmbientVol)
+              DOM.sliderAmbientVol.value = SoundFX.ambientSliderVal;
+            if (DOM.lblAmbientVol)
+              DOM.lblAmbientVol.innerText = `${SoundFX.ambientSliderVal}%`;
+            if (DOM.sliderSfxVol) DOM.sliderSfxVol.value = SoundFX.sfxSliderVal;
+            if (DOM.lblSfxVol)
+              DOM.lblSfxVol.innerText = `${SoundFX.sfxSliderVal}%`;
+            if (DOM.btnToggleMute) {
+              DOM.btnToggleMute.innerText = `Mute Audio: ${SoundFX.isMuted ? "ON" : "OFF"}`;
+            }
+          }
+
           if (SaveSystem.hasSave()) {
             const saved = SaveSystem.load();
             DOM.btnIgnite.innerText = `Resume Journey (Waypoint ${saved ? saved.jumpCount : 1})`;
@@ -3086,6 +3462,38 @@
           DOM.cutsceneBtnB.addEventListener(GAME_DATA.dom.events.click, () =>
             CutsceneEngine.advance(),
           );
+
+          /* Acoustic Settings Handlers */
+          DOM.selectAmbientMode.addEventListener("change", (e) => {
+            SoundFX.setAmbientMode(e.target.value);
+            Engine.log(
+              `[ACOUSTICS] Soundscape shifted to: ${e.target.options[e.target.selectedIndex].text}`,
+              GAME_DATA.dom.classes.logSystem,
+            );
+          });
+
+          DOM.sliderAmbientVol.addEventListener("input", (e) => {
+            const val = parseInt(e.target.value, 10);
+            DOM.lblAmbientVol.innerText = `${val}%`;
+            SoundFX.setAmbientVolume(val);
+          });
+
+          DOM.sliderSfxVol.addEventListener("input", (e) => {
+            const val = parseInt(e.target.value, 10);
+            DOM.lblSfxVol.innerText = `${val}%`;
+            SoundFX.setSfxVolume(val);
+          });
+
+          DOM.btnToggleMute.addEventListener("click", () => {
+            const isMuted = SoundFX.toggleMute();
+            DOM.btnToggleMute.innerText = `Mute Audio: ${isMuted ? "ON" : "OFF"}`;
+            DOM.btnToggleMute.style.borderColor = isMuted
+              ? "var(--danger)"
+              : "var(--border-bright)";
+            DOM.btnToggleMute.style.color = isMuted
+              ? "var(--danger)"
+              : "var(--text)";
+          });
 
           DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
             SoundFX.init();
