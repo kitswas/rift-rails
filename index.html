@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -316,6 +316,13 @@
       }
 
       /* ================= SENSORS DISPLAY ================= */
+      #art-display svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: calc(var(--radius) - 2px);
+      }
+
       #art-display {
         background: var(--panel-sub-bg);
         border: 1px solid var(--border);
@@ -1426,6 +1433,7 @@
             tabForge: "tab-forge",
             tabManual: "tab-manual",
             dimTypeCodex: "dim-type-codex",
+            artDisplay: "art-display",
             artLabel: "art-label",
             artGlyph: "art-glyph",
             fxCanvas: "fx-canvas",
@@ -1989,121 +1997,179 @@
             "High-value VIP transported safely. Received substantial Flux bounty.",
         },
       };
-
-      const INITIAL_STATE = {
-        phase: GAME_DATA.phases.start,
-        jumpCount: 1,
-        sectorBag: [],
-        hull: GAME_DATA.config.MAX_HULL,
-        fuel: GAME_DATA.config.START_FUEL,
-        flux: 0,
-        rep: 0,
-        energy: GAME_DATA.config.START_ENERGY,
-        engineTier: 0,
-        weaponTier: 0,
-        module: GAME_DATA.text.noneState,
-        carriage: GAME_DATA.text.noneState,
-        crew: GAME_DATA.text.noneState,
-        dimId: GAME_DATA.nodes.hub.id,
-        dimName: "Scrapyard Outpost",
-        targetDimId: null,
-        targetDimName: null,
-        navChoices: [],
-        yardCat: null,
-        seenCutscenes: [],
-      };
-
-      let state = JSON.parse(JSON.stringify(INITIAL_STATE));
-
       /* ========================================================
-         LOCAL STORAGE SAVE SYSTEM
+         DIORAMA PIPELINE (BRIDGE ADAPTER TO ARTWORK-BROWSER.HTML)
          ======================================================== */
-      const SaveSystem = {
-        STORAGE_KEY: "rift_rails_auto_save",
-        AUDIO_KEY: "rift_rails_audio_prefs",
+      const DioramaPipeline = {
+        bridgeIframe: null,
+        isReady: false,
+        pendingRequests: new Map(),
+        cache: new Map(),
 
-        save: () => {
-          try {
-            const payload = {
-              jumpCount: state.jumpCount,
-              sectorBag: state.sectorBag,
-              hull: state.hull,
-              fuel: state.fuel,
-              flux: state.flux,
-              rep: state.rep,
-              energy: state.energy,
-              engineTier: state.engineTier,
-              weaponTier: state.weaponTier,
-              module: state.module,
-              carriage: state.carriage,
-              crew: state.crew,
-              dimId: state.dimId,
-              dimName: state.dimName,
-              seenCutscenes: state.seenCutscenes || [],
-            };
-            localStorage.setItem(
-              SaveSystem.STORAGE_KEY,
-              JSON.stringify(payload),
-            );
-            Engine.log(
-              "[CONDUIT] Voyage telemetry archived automatically.",
-              GAME_DATA.dom.classes.logSystem,
-            );
-          } catch (e) {
-            console.warn("Auto-save failed to write to localStorage:", e);
-          }
+        init: () => {
+          if (DioramaPipeline.bridgeIframe) return;
+
+          window.addEventListener("message", (event) => {
+            if (event.data && event.data.type === "DIORAMA_RESULT") {
+              const { reqId, dimName, svg } = event.data;
+              if (svg) DioramaPipeline.cache.set(dimName, svg);
+              const callback = DioramaPipeline.pendingRequests.get(reqId);
+              if (callback) {
+                DioramaPipeline.pendingRequests.delete(reqId);
+                callback(svg);
+              }
+            }
+          });
+
+          const iframe = document.createElement("iframe");
+          iframe.id = "art-bridge";
+          iframe.src = "artwork-browser.html";
+          iframe.style.display = "none";
+          iframe.onload = () => {
+            DioramaPipeline.isReady = true;
+          };
+          document.body.appendChild(iframe);
+          DioramaPipeline.bridgeIframe = iframe;
         },
 
-        load: () => {
-          try {
-            const raw = localStorage.getItem(SaveSystem.STORAGE_KEY);
-            if (!raw) return null;
-            return JSON.parse(raw);
-          } catch (e) {
-            console.warn("Failed to parse auto-save:", e);
-            return null;
+        render: (dimName, callback) => {
+          if (!dimName) return "";
+          if (DioramaPipeline.cache.has(dimName)) {
+            const cachedSvg = DioramaPipeline.cache.get(dimName);
+            if (callback) callback(cachedSvg);
+            return cachedSvg;
           }
-        },
 
-        saveAudioPrefs: () => {
+          // Try synchronous direct invocation if accessible
           try {
-            const prefs = {
-              mode: SoundFX.ambientMode,
-              ambientSlider: SoundFX.ambientSliderVal,
-              sfxSlider: SoundFX.sfxSliderVal,
-              muted: SoundFX.isMuted,
-            };
-            localStorage.setItem(SaveSystem.AUDIO_KEY, JSON.stringify(prefs));
+            if (
+              DioramaPipeline.bridgeIframe?.contentWindow?.renderVectorDiorama
+            ) {
+              const svg =
+                DioramaPipeline.bridgeIframe.contentWindow.renderVectorDiorama(
+                  dimName,
+                );
+              if (svg) {
+                DioramaPipeline.cache.set(dimName, svg);
+                if (callback) callback(svg);
+                return svg;
+              }
+            }
           } catch (e) {}
-        },
 
-        loadAudioPrefs: () => {
-          try {
-            const raw = localStorage.getItem(SaveSystem.AUDIO_KEY);
-            if (!raw) return null;
-            return JSON.parse(raw);
-          } catch (e) {
-            return null;
+          // Fallback: asynchronous postMessage
+          if (DioramaPipeline.bridgeIframe?.contentWindow) {
+            const reqId = "req_" + Math.random().toString(36).substr(2, 9);
+            if (callback) {
+              DioramaPipeline.pendingRequests.set(reqId, callback);
+            }
+            DioramaPipeline.bridgeIframe.contentWindow.postMessage(
+              { type: "RENDER_DIORAMA", dimName, reqId },
+              "*",
+            );
           }
-        },
 
-        clear: () => {
-          try {
-            localStorage.removeItem(SaveSystem.STORAGE_KEY);
-          } catch (e) {
-            console.warn("Failed to clear auto-save:", e);
-          }
-        },
-
-        hasSave: () => {
-          try {
-            return !!localStorage.getItem(SaveSystem.STORAGE_KEY);
-          } catch (e) {
-            return false;
-          }
+          return "";
         },
       };
+      /* ========================================================
+         CONDUIT DECK (PROCEDURAL RUNWAY & SECTOR PACING)
+         ======================================================== */
+      const ConduitDeck = {
+        sectorBag: [],
 
+        init: (savedBag = null) => {
+          if (savedBag && Array.isArray(savedBag) && savedBag.length > 0) {
+            ConduitDeck.sectorBag = [...savedBag];
+          } else {
+            ConduitDeck.sectorBag = ConduitDeck.createShuffledSectorBag();
+          }
+        },
+
+        shuffleArray: (arr) => {
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+          return arr;
+        },
+
+        createShuffledSectorBag: () => {
+          const bag = [];
+          for (const [nodeType, count] of Object.entries(
+            GAME_DATA.sectorPoolCounts,
+          )) {
+            for (let i = 0; i < count; i++) bag.push(nodeType);
+          }
+          return ConduitDeck.shuffleArray(bag);
+        },
+
+        resolveNextNodeId: (jumpCount, pop = false) => {
+          const nextJump = jumpCount + 1;
+          if (nextJump <= GAME_DATA.runway.length) {
+            return GAME_DATA.runway[nextJump - 1];
+          }
+          if (nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0) {
+            return "hub";
+          }
+          if (!ConduitDeck.sectorBag || ConduitDeck.sectorBag.length === 0) {
+            ConduitDeck.sectorBag = ConduitDeck.createShuffledSectorBag();
+          }
+          return pop
+            ? ConduitDeck.sectorBag.pop()
+            : ConduitDeck.sectorBag[ConduitDeck.sectorBag.length - 1];
+        },
+
+        generateDimensionForId: (chosenId) => {
+          const adj =
+            GAME_DATA.procedural.adjectives[
+              Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
+            ];
+          const nouns = GAME_DATA.procedural.nouns[chosenId];
+          const noun = nouns[Math.floor(Math.random() * nouns.length)];
+          return { id: chosenId, name: `${adj} ${noun}` };
+        },
+
+        getTrajectories: (jumpCount, hasAstrolabe) => {
+          const nextJump = jumpCount + 1;
+          const isFixedPoint =
+            nextJump <= GAME_DATA.runway.length ||
+            nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0;
+
+          if (!hasAstrolabe) {
+            const chosenId = ConduitDeck.resolveNextNodeId(jumpCount, true);
+            const dest = ConduitDeck.generateDimensionForId(chosenId);
+            return [{ ...dest, returnId: null }];
+          }
+
+          let id1, id2;
+          if (isFixedPoint) {
+            id1 = ConduitDeck.resolveNextNodeId(jumpCount, true);
+            id2 = id1;
+          } else {
+            id1 = ConduitDeck.resolveNextNodeId(jumpCount, true);
+            id2 = ConduitDeck.resolveNextNodeId(jumpCount, true);
+          }
+
+          const dest1 = ConduitDeck.generateDimensionForId(id1);
+          const dest2 = ConduitDeck.generateDimensionForId(id2);
+
+          return [
+            { ...dest1, returnId: isFixedPoint ? null : id2 },
+            { ...dest2, returnId: isFixedPoint ? null : id1 },
+          ];
+        },
+
+        commitTrajectory: (choice) => {
+          if (choice.returnId && ConduitDeck.sectorBag) {
+            ConduitDeck.sectorBag.push(choice.returnId);
+            ConduitDeck.shuffleArray(ConduitDeck.sectorBag);
+          }
+          return { dimId: choice.id, dimName: choice.name };
+        },
+
+        serialize: () => ConduitDeck.sectorBag || [],
+      };
       /* ========================================================
          HEADACHE-FREE PROCEDURAL ACOUSTIC ENGINE (2 MODES)
          ======================================================== */
@@ -2185,9 +2251,10 @@
           if (!SoundFX.ctx || !SoundFX.ambientGain) return;
           SoundFX.stopAllAmbient();
 
+          const phase = VoyageSession.getPhase();
           if (
-            state.phase === GAME_DATA.phases.dead ||
-            state.phase === GAME_DATA.phases.stranded ||
+            phase === GAME_DATA.phases.dead ||
+            phase === GAME_DATA.phases.stranded ||
             SoundFX.ambientMode === "none"
           ) {
             return;
@@ -2466,6 +2533,430 @@
         },
       };
 
+      const AcousticSoundscape = SoundFX;
+      /* ========================================================
+         INITIAL LOCOMOTIVE STATE
+         ======================================================== */
+      const INITIAL_STATE = {
+        phase: GAME_DATA.phases.start,
+        jumpCount: 1,
+        sectorBag: [],
+        hull: GAME_DATA.config.MAX_HULL,
+        fuel: GAME_DATA.config.START_FUEL,
+        flux: 0,
+        rep: 0,
+        energy: GAME_DATA.config.START_ENERGY,
+        engineTier: 0,
+        weaponTier: 0,
+        module: GAME_DATA.text.noneState,
+        carriage: GAME_DATA.text.noneState,
+        crew: GAME_DATA.text.noneState,
+        dimId: GAME_DATA.nodes.hub.id,
+        dimName: "Scrapyard Outpost",
+        targetDimId: null,
+        targetDimName: null,
+        navChoices: [],
+        yardCat: null,
+        seenCutscenes: [],
+        isSurveyed: false,
+      };
+
+      /* ========================================================
+         VOYAGE SESSION (DEEP LOCOMOTIVE STATE & LIFECYCLE SEAM)
+         ======================================================== */
+      const VoyageSession = (() => {
+        let _state = JSON.parse(JSON.stringify(INITIAL_STATE));
+
+        return {
+          getSnapshot: () => ({ ..._state }),
+
+          getPhase: () => _state.phase,
+
+          setPhase: (phase) => {
+            _state.phase = phase;
+          },
+
+          getMaxEnergy: () => GAME_DATA.config.START_ENERGY + _state.engineTier,
+
+          getTravelCost: () =>
+            GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
+            _state.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT,
+
+          getNextTierTravelCost: () =>
+            GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
+            (_state.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT,
+
+          getForgeCost: (tier) =>
+            (tier + 1) * GAME_DATA.config.FORGE_BASE_FLUX_COST,
+
+          applyMitigation: (resourceKey, rawAmount) => {
+            if (
+              resourceKey === "hull" &&
+              _state.module === GAME_DATA.yard.exo.name
+            ) {
+              return Math.round(rawAmount * GAME_DATA.config.EXO_DMG_MULT);
+            }
+            return rawAmount;
+          },
+
+          getActualCost: (rule) =>
+            VoyageSession.applyMitigation(
+              rule.res,
+              rule.amount(_state, GAME_DATA.config),
+            ),
+
+          canAffordAction: (act) => {
+            for (const [rKey, rVal] of Object.entries(act.requires || {})) {
+              if (
+                _state[rKey] < rVal ||
+                (typeof rVal === "string" && _state[rKey] !== rVal)
+              )
+                return false;
+            }
+            for (const rule of act.consumes) {
+              if (_state[rule.res] < VoyageSession.getActualCost(rule))
+                return false;
+            }
+            return true;
+          },
+
+          canSurvive: () => {
+            if (_state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD)
+              return false;
+            if (_state.fuel >= VoyageSession.getTravelCost()) return true;
+            if (_state.hull > GAME_DATA.config.DESPERATE_HULL_COST) return true;
+
+            const node = GAME_DATA.nodes[_state.dimId];
+            if (
+              _state.phase === GAME_DATA.phases.idle &&
+              _state.energy >= node.exploreCost
+            )
+              return true;
+
+            if (_state.phase === GAME_DATA.phases.encounter) {
+              return node.actions.some((actId) => {
+                const act = GAME_DATA.actions[actId];
+                return !act.isMenu && VoyageSession.canAffordAction(act);
+              });
+            }
+            return false;
+          },
+
+          evaluateSurvival: () => {
+            if (_state.phase === GAME_DATA.phases.dialogue) return;
+            if (_state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+              Engine.transitionTo(GAME_DATA.phases.dead);
+            } else if (!VoyageSession.canSurvive()) {
+              Engine.transitionTo(GAME_DATA.phases.stranded);
+            }
+          },
+
+          enforceStateBounds: () => {
+            if (_state.hull > GAME_DATA.config.MAX_HULL)
+              _state.hull = GAME_DATA.config.MAX_HULL;
+            if (_state.hull < 0) _state.hull = 0;
+            if (_state.energy > VoyageSession.getMaxEnergy())
+              _state.energy = VoyageSession.getMaxEnergy();
+          },
+
+          assertInvariants: () => {
+            if (_state.hull > GAME_DATA.config.MAX_HULL)
+              console.error("INVARIANT BREACH: Hull > Max");
+            if (
+              _state.hull < 0 ||
+              _state.energy < 0 ||
+              _state.fuel < 0 ||
+              _state.flux < 0
+            )
+              console.error("INVARIANT BREACH: Resource dropped below 0");
+            if (!GAME_DATA.permissions[_state.phase])
+              console.error(
+                `INVARIANT BREACH: No permissions defined for phase '${_state.phase}'`,
+              );
+          },
+
+          exploreNode: () => {
+            const node = GAME_DATA.nodes[_state.dimId];
+            if (_state.energy < node.exploreCost) return false;
+
+            _state.energy -= node.exploreCost;
+            _state.isSurveyed = true;
+            VoyageSession.enforceStateBounds();
+            SaveSystem.save();
+            return true;
+          },
+
+          executeAction: (actId) => {
+            const act = GAME_DATA.actions[actId];
+            if (!act) return { isMenu: false, success: false };
+
+            if (act.isMenu) {
+              return { isMenu: true, menuTarget: act.menuTarget };
+            }
+
+            for (const rule of act.consumes) {
+              _state[rule.res] -= VoyageSession.getActualCost(rule);
+            }
+
+            const success =
+              !act.probability ||
+              Math.random() <= act.probability(_state, GAME_DATA.config);
+
+            if (success) {
+              if (act.produces) {
+                for (const rule of act.produces) {
+                  _state[rule.res] += rule.amount(_state, GAME_DATA.config);
+                }
+              }
+            } else {
+              if (act.failConsumes) {
+                for (const rule of act.failConsumes) {
+                  _state[rule.res] -= VoyageSession.getActualCost(rule);
+                }
+              }
+            }
+
+            VoyageSession.enforceStateBounds();
+            SaveSystem.save();
+
+            return {
+              isMenu: false,
+              success,
+              logText: success ? act.logSuccess : act.logFail,
+              logClass: success
+                ? GAME_DATA.dom.classes.logSuccess
+                : GAME_DATA.dom.classes.logDamage,
+            };
+          },
+
+          desperateScavenge: () => {
+            if (_state.hull <= GAME_DATA.config.DESPERATE_HULL_COST)
+              return false;
+            _state.hull -= GAME_DATA.config.DESPERATE_HULL_COST;
+            _state.fuel += GAME_DATA.config.DESPERATE_FUEL_YIELD;
+            VoyageSession.enforceStateBounds();
+            SaveSystem.save();
+            return true;
+          },
+
+          forgeUpgrade: (tierKey, onUpgrade) => {
+            const cost = VoyageSession.getForgeCost(_state[tierKey]);
+            if (
+              _state.flux >= cost &&
+              _state[tierKey] < GAME_DATA.config.MAX_TIER
+            ) {
+              _state.flux -= cost;
+              _state[tierKey]++;
+              if (onUpgrade) onUpgrade();
+              VoyageSession.enforceStateBounds();
+              SaveSystem.save();
+              return true;
+            }
+            return false;
+          },
+
+          setYardCategory: (cat) => {
+            _state.yardCat = cat;
+          },
+
+          buyYardItem: (itemKey) => {
+            const item = GAME_DATA.yard[itemKey];
+            if (!item || _state.flux < item.cost) return false;
+
+            _state.flux -= item.cost;
+            _state[item.type] = item.name;
+            SaveSystem.save();
+            return true;
+          },
+
+          initiateTravel: () => {
+            const cost = VoyageSession.getTravelCost();
+            if (_state.fuel < cost) return null;
+
+            _state.fuel -= cost;
+            const hasAstrolabe = _state.module === GAME_DATA.yard.astro.name;
+            const choices = ConduitDeck.getTrajectories(
+              _state.jumpCount,
+              hasAstrolabe,
+            );
+
+            if (hasAstrolabe) {
+              _state.navChoices = choices;
+              return { isNavigating: true, choices };
+            } else {
+              const choice = choices[0];
+              _state.targetDimId = choice.id;
+              _state.targetDimName = choice.name;
+              return {
+                isNavigating: false,
+                targetDimId: choice.id,
+                targetDimName: choice.name,
+              };
+            }
+          },
+
+          commitJumpTarget: (dimId, dimName) => {
+            _state.targetDimId = dimId;
+            _state.targetDimName = dimName;
+          },
+
+          completeJump: (targetDimId, targetDimName) => {
+            _state.jumpCount++;
+            _state.energy = VoyageSession.getMaxEnergy();
+
+            let greenhouseYield = 0;
+            let goblinYield = 0;
+
+            if (_state.carriage === GAME_DATA.yard.green.name) {
+              _state.fuel += GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
+              greenhouseYield = GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
+            }
+            if (
+              _state.crew === GAME_DATA.yard.goblin.name &&
+              _state.hull < GAME_DATA.config.MAX_HULL
+            ) {
+              _state.hull = Math.min(
+                GAME_DATA.config.MAX_HULL,
+                _state.hull + GAME_DATA.config.GOBLIN_HULL_YIELD,
+              );
+              goblinYield = GAME_DATA.config.GOBLIN_HULL_YIELD;
+            }
+
+            _state.dimId = targetDimId;
+            _state.dimName = targetDimName;
+            _state.targetDimId = null;
+            _state.targetDimName = null;
+            _state.isSurveyed = false;
+
+            VoyageSession.enforceStateBounds();
+            SaveSystem.save();
+
+            return {
+              jumpCount: _state.jumpCount,
+              greenhouseYield,
+              goblinYield,
+            };
+          },
+
+          markCutsceneSeen: (id) => {
+            if (!_state.seenCutscenes) _state.seenCutscenes = [];
+            if (!_state.seenCutscenes.includes(id)) {
+              _state.seenCutscenes.push(id);
+              SaveSystem.save();
+            }
+          },
+
+          loadState: (saved) => {
+            if (!saved) return;
+            Object.assign(_state, saved);
+            _state.phase = GAME_DATA.phases.start;
+            ConduitDeck.init(saved.sectorBag);
+            VoyageSession.enforceStateBounds();
+          },
+
+          resetState: () => {
+            _state = JSON.parse(JSON.stringify(INITIAL_STATE));
+            ConduitDeck.init();
+          },
+
+          serialize: () => ({
+            jumpCount: _state.jumpCount,
+            sectorBag: ConduitDeck.serialize(),
+            hull: _state.hull,
+            fuel: _state.fuel,
+            flux: _state.flux,
+            rep: _state.rep,
+            energy: _state.energy,
+            engineTier: _state.engineTier,
+            weaponTier: _state.weaponTier,
+            module: _state.module,
+            carriage: _state.carriage,
+            crew: _state.crew,
+            dimId: _state.dimId,
+            dimName: _state.dimName,
+            isSurveyed: !!_state.isSurveyed,
+            seenCutscenes: _state.seenCutscenes || [],
+          }),
+        };
+      })();
+
+      const state = new Proxy(
+        {},
+        { get: (t, p) => VoyageSession.getSnapshot()[p] },
+      );
+
+      /* ========================================================
+         LOCAL STORAGE SAVE SYSTEM
+         ======================================================== */
+      const SaveSystem = {
+        STORAGE_KEY: "rift_rails_auto_save",
+        AUDIO_KEY: "rift_rails_audio_prefs",
+
+        save: () => {
+          try {
+            const payload = VoyageSession.serialize();
+            localStorage.setItem(
+              SaveSystem.STORAGE_KEY,
+              JSON.stringify(payload),
+            );
+            Engine.log(
+              "[CONDUIT] Voyage telemetry archived automatically.",
+              GAME_DATA.dom.classes.logSystem,
+            );
+          } catch (e) {
+            console.warn("Auto-save failed to write to localStorage:", e);
+          }
+        },
+
+        load: () => {
+          try {
+            const raw = localStorage.getItem(SaveSystem.STORAGE_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+          } catch (e) {
+            console.warn("Failed to parse auto-save:", e);
+            return null;
+          }
+        },
+
+        saveAudioPrefs: () => {
+          try {
+            const prefs = {
+              mode: SoundFX.ambientMode,
+              ambientSlider: SoundFX.ambientSliderVal,
+              sfxSlider: SoundFX.sfxSliderVal,
+              muted: SoundFX.isMuted,
+            };
+            localStorage.setItem(SaveSystem.AUDIO_KEY, JSON.stringify(prefs));
+          } catch (e) {}
+        },
+
+        loadAudioPrefs: () => {
+          try {
+            const raw = localStorage.getItem(SaveSystem.AUDIO_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+          } catch (e) {
+            return null;
+          }
+        },
+
+        clear: () => {
+          try {
+            localStorage.removeItem(SaveSystem.STORAGE_KEY);
+          } catch (e) {
+            console.warn("Failed to clear auto-save:", e);
+          }
+        },
+
+        hasSave: () => {
+          try {
+            return !!localStorage.getItem(SaveSystem.STORAGE_KEY);
+          } catch (e) {
+            return false;
+          }
+        },
+      };
       /* ========================================================
          WARP CANVAS & THEMATIC FX
          ======================================================== */
@@ -2524,8 +3015,10 @@
             GAME_DATA.dom.cssVars.bg,
             theme.bg,
           );
-          DOM.artGlyph.innerText = theme.glyph;
-          DOM.artGlyph.style.color = theme.primary;
+          if (DOM.artGlyph) {
+            DOM.artGlyph.innerText = theme.glyph;
+            DOM.artGlyph.style.color = theme.primary;
+          }
 
           SoundFX.updateAmbientTheme(adj);
         },
@@ -2680,11 +3173,7 @@
 
           CutsceneEngine.activeCutscene = cutscene;
           CutsceneEngine.beatIndex = 0;
-
-          if (!state.seenCutscenes) state.seenCutscenes = [];
-          if (!state.seenCutscenes.includes(cutsceneId)) {
-            state.seenCutscenes.push(cutsceneId);
-          }
+          VoyageSession.markCutsceneSeen(cutsceneId);
 
           Engine.transitionTo(GAME_DATA.phases.dialogue);
           DOM.cutsceneOverlay.style.display = GAME_DATA.dom.styles.displayFlex;
@@ -2733,10 +3222,12 @@
           CutsceneEngine.beatIndex = 0;
 
           Engine.transitionTo(GAME_DATA.phases.idle);
-          Engine.evaluateSurvival();
+          VoyageSession.evaluateSurvival();
         },
       };
-
+      /* ========================================================
+         TACTICAL GAME ENGINE (ORCHESTRATOR & UI ADAPTER)
+         ======================================================== */
       const Engine = {
         verifyGraphIntegrity: () => {
           const phases = Object.values(GAME_DATA.phases);
@@ -2786,7 +3277,7 @@
         },
 
         verifyPaletteIntegrity: () => {
-          const MIN_DELTA_E = 0.08; // Minimum perceptual difference threshold in Oklab
+          const MIN_DELTA_E = 0.08;
           const dummy = document.createElement("div");
           dummy.style.display = "none";
           document.body.appendChild(dummy);
@@ -2802,7 +3293,6 @@
           const colorNodes = [];
 
           types.forEach((type) => {
-            // Apply both base class and modifier so --base-l is inherited properly
             dummy.className = `log-entry log-${type}`;
             const style = getComputedStyle(dummy);
 
@@ -2839,47 +3329,16 @@
           }
         },
 
-        assertInvariants: () => {
-          if (state.hull > GAME_DATA.config.MAX_HULL)
-            console.error("INVARIANT BREACH: Hull > Max");
-          if (
-            state.hull < 0 ||
-            state.energy < 0 ||
-            state.fuel < 0 ||
-            state.flux < 0
-          )
-            console.error("INVARIANT BREACH: Resource dropped below 0");
-          if (!GAME_DATA.permissions[state.phase])
-            console.error(
-              `INVARIANT BREACH: No permissions defined for phase '${state.phase}'`,
-            );
-        },
-
-        getMaxEnergy: () => GAME_DATA.config.START_ENERGY + state.engineTier,
-        getTravelCost: () =>
-          GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
-          state.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT,
-        getNextTierTravelCost: () =>
-          GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
-          (state.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT,
-        getForgeCost: (tier) =>
-          (tier + 1) * GAME_DATA.config.FORGE_BASE_FLUX_COST,
-
-        applyMitigation: (resourceKey, rawAmount) => {
-          if (
-            resourceKey === "hull" &&
-            state.module === GAME_DATA.yard.exo.name
-          ) {
-            return Math.round(rawAmount * GAME_DATA.config.EXO_DMG_MULT);
-          }
-          return rawAmount;
-        },
-
-        getActualCost: (rule) =>
-          Engine.applyMitigation(
-            rule.res,
-            rule.amount(state, GAME_DATA.config),
-          ),
+        assertInvariants: () => VoyageSession.assertInvariants(),
+        getMaxEnergy: () => VoyageSession.getMaxEnergy(),
+        getTravelCost: () => VoyageSession.getTravelCost(),
+        getNextTierTravelCost: () => VoyageSession.getNextTierTravelCost(),
+        getForgeCost: (tier) => VoyageSession.getForgeCost(tier),
+        applyMitigation: (res, amt) => VoyageSession.applyMitigation(res, amt),
+        getActualCost: (rule) => VoyageSession.getActualCost(rule),
+        canAffordAction: (act) => VoyageSession.canAffordAction(act),
+        canSurvive: () => VoyageSession.canSurvive(),
+        evaluateSurvival: () => VoyageSession.evaluateSurvival(),
 
         log: (msg, styleClass) => {
           const div = document.createElement(GAME_DATA.dom.tags.div);
@@ -2897,131 +3356,58 @@
         },
 
         transitionTo: (newPhase) => {
-          const allowed = GAME_DATA.transitions[state.phase];
+          const currentPhase = VoyageSession.getPhase();
+          const allowed = GAME_DATA.transitions[currentPhase];
 
           if (!allowed.includes(newPhase)) {
             console.error(
-              `ILLEGAL TRANSITION: Cannot move from ${state.phase} to ${newPhase}`,
+              `ILLEGAL TRANSITION: Cannot move from ${currentPhase} to ${newPhase}`,
             );
             return false;
           }
 
-          if (StateHooks[state.phase]?.onExit) StateHooks[state.phase].onExit();
-          state.phase = newPhase;
+          if (StateHooks[currentPhase]?.onExit)
+            StateHooks[currentPhase].onExit();
+          VoyageSession.setPhase(newPhase);
           if (StateHooks[newPhase]?.onEnter) StateHooks[newPhase].onEnter();
 
           Engine.updateUI();
           return true;
         },
 
-        canSurvive: () => {
-          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) return false;
-          if (state.fuel >= Engine.getTravelCost()) return true;
-          if (state.hull > GAME_DATA.config.DESPERATE_HULL_COST) return true;
-
-          const node = GAME_DATA.nodes[state.dimId];
-          if (
-            state.phase === GAME_DATA.phases.idle &&
-            state.energy >= node.exploreCost
-          )
-            return true;
-
-          if (state.phase === GAME_DATA.phases.encounter) {
-            return node.actions.some((actId) => {
-              const act = GAME_DATA.actions[actId];
-              return !act.isMenu && Engine.canAffordAction(act);
-            });
-          }
-          return false;
-        },
-
-        evaluateSurvival: () => {
-          if (state.phase === GAME_DATA.phases.dialogue) return;
-          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
-            Engine.transitionTo(GAME_DATA.phases.dead);
-          } else if (!Engine.canSurvive()) {
-            Engine.transitionTo(GAME_DATA.phases.stranded);
-          }
-        },
-
-        canAffordAction: (act) => {
-          for (const [rKey, rVal] of Object.entries(act.requires || {})) {
-            if (
-              state[rKey] < rVal ||
-              (typeof rVal === "string" && state[rKey] !== rVal)
-            )
-              return false;
-          }
-          for (const rule of act.consumes) {
-            if (state[rule.res] < Engine.getActualCost(rule)) return false;
-          }
-          return true;
-        },
-
-        processActionCosts: (act) => {
-          for (const rule of act.consumes) {
-            state[rule.res] -= Engine.getActualCost(rule);
-          }
-        },
-
-        processActionYields: (rules) => {
-          if (!rules) return;
-          for (const rule of rules) {
-            state[rule.res] += rule.amount(state, GAME_DATA.config);
-          }
-        },
-
-        processActionFailConsumes: (rules) => {
-          if (!rules) return;
-          for (const rule of rules) {
-            state[rule.res] -= Engine.getActualCost(rule);
-          }
-        },
-
         executeAction: (actId) => {
-          const act = GAME_DATA.actions[actId];
-
-          if (act.isMenu) {
-            Engine.transitionTo(act.menuTarget);
+          const res = VoyageSession.executeAction(actId);
+          if (res.isMenu) {
+            Engine.transitionTo(res.menuTarget);
             return;
           }
 
-          Engine.processActionCosts(act);
-          const success =
-            !act.probability ||
-            Math.random() <= act.probability(state, GAME_DATA.config);
+          Engine.log(res.logText, res.logClass);
 
-          if (success) Engine.processActionYields(act.produces);
-          else Engine.processActionFailConsumes(act.failConsumes);
-
-          Engine.log(
-            success ? act.logSuccess : act.logFail,
-            success
-              ? GAME_DATA.dom.classes.logSuccess
-              : GAME_DATA.dom.classes.logDamage,
-          );
-
-          Engine.enforceStateBounds();
-
-          if (state.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
+          const snap = VoyageSession.getSnapshot();
+          if (snap.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
             Engine.transitionTo(GAME_DATA.phases.dead);
           } else {
             Engine.transitionTo(GAME_DATA.phases.idle);
-            Engine.evaluateSurvival();
+            VoyageSession.evaluateSurvival();
           }
         },
 
         exploreNode: () => {
-          const node = GAME_DATA.nodes[state.dimId];
-          if (state.energy < node.exploreCost) return;
+          const snap = VoyageSession.getSnapshot();
+          const node = GAME_DATA.nodes[snap.dimId];
+          if (snap.energy < node.exploreCost) return;
 
-          state.energy -= node.exploreCost;
+          const success = VoyageSession.exploreNode();
+          if (!success) return;
+
           Engine.log(
             GAME_DATA.text.logEncounterTitle(node.label, node.desc),
             GAME_DATA.dom.classes.logEvent,
           );
+          SoundFX.playDialogueChime();
           Engine.transitionTo(GAME_DATA.phases.encounter);
-          Engine.evaluateSurvival();
+          VoyageSession.evaluateSurvival();
 
           DOM.encounterChoices.scrollIntoView({
             behavior: "smooth",
@@ -3029,113 +3415,35 @@
           });
         },
 
-        shuffleArray: (arr) => {
-          for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]];
-          }
-          return arr;
-        },
-
-        createShuffledSectorBag: () => {
-          const bag = [];
-          for (const [nodeType, count] of Object.entries(
-            GAME_DATA.sectorPoolCounts,
-          )) {
-            for (let i = 0; i < count; i++) bag.push(nodeType);
-          }
-          return Engine.shuffleArray(bag);
-        },
-
-        resolveNextNodeId: (pop = false) => {
-          const nextJump = state.jumpCount + 1;
-          if (nextJump <= GAME_DATA.runway.length) {
-            return GAME_DATA.runway[nextJump - 1];
-          }
-          if (nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0) {
-            return "hub";
-          }
-          if (!state.sectorBag || state.sectorBag.length === 0) {
-            state.sectorBag = Engine.createShuffledSectorBag();
-          }
-          return pop
-            ? state.sectorBag.pop()
-            : state.sectorBag[state.sectorBag.length - 1];
-        },
-        peekNextNodeId: () => Engine.resolveNextNodeId(false),
-        popNextNodeId: () => Engine.resolveNextNodeId(true),
-
-        generateDimensionForId: (chosenId) => {
-          const adj =
-            GAME_DATA.procedural.adjectives[
-              Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
-            ];
-          const nouns = GAME_DATA.procedural.nouns[chosenId];
-          const noun = nouns[Math.floor(Math.random() * nouns.length)];
-          return { id: chosenId, name: `${adj} ${noun}` };
-        },
-
         initiateTravel: () => {
-          const cost = Engine.getTravelCost();
-          if (state.fuel < cost) return;
+          const travel = VoyageSession.initiateTravel();
+          if (!travel) return;
 
-          state.fuel -= cost;
-
-          if (state.module === GAME_DATA.yard.astro.name) {
-            const nextJump = state.jumpCount + 1;
-            const isFixedPoint =
-              nextJump <= GAME_DATA.runway.length ||
-              nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0;
-
-            let id1, id2;
-            if (isFixedPoint) {
-              id1 = Engine.popNextNodeId();
-              id2 = id1;
-            } else {
-              id1 = Engine.popNextNodeId();
-              id2 = Engine.popNextNodeId();
-            }
-
-            const dest1 = Engine.generateDimensionForId(id1);
-            const dest2 = Engine.generateDimensionForId(id2);
-
-            state.navChoices = [
-              { ...dest1, returnId: isFixedPoint ? null : id2 },
-              { ...dest2, returnId: isFixedPoint ? null : id1 },
-            ];
+          if (travel.isNavigating) {
             Engine.transitionTo(GAME_DATA.phases.navigating);
           } else {
-            const chosenId = Engine.popNextNodeId();
-            const dest = Engine.generateDimensionForId(chosenId);
-            Engine.finalizeJump(dest.id, dest.name);
+            Engine.finalizeJump(travel.targetDimId, travel.targetDimName);
           }
         },
 
         finalizeJump: (dimId, dimName) => {
-          state.targetDimId = dimId;
-          state.targetDimName = dimName;
+          VoyageSession.commitJumpTarget(dimId, dimName);
           Engine.transitionTo(GAME_DATA.phases.jumping);
         },
 
         desperateScavenge: () => {
-          if (state.hull <= GAME_DATA.config.DESPERATE_HULL_COST) return;
-          state.hull -= GAME_DATA.config.DESPERATE_HULL_COST;
-          state.fuel += GAME_DATA.config.DESPERATE_FUEL_YIELD;
+          const success = VoyageSession.desperateScavenge();
+          if (!success) return;
+
           Engine.log(
             GAME_DATA.text.logDesperate,
             GAME_DATA.dom.classes.logDamage,
           );
           Engine.updateUI();
-          Engine.evaluateSurvival();
+          VoyageSession.evaluateSurvival();
         },
 
-        enforceStateBounds: () => {
-          if (state.hull > GAME_DATA.config.MAX_HULL)
-            state.hull = GAME_DATA.config.MAX_HULL;
-          if (state.hull < 0) state.hull = 0;
-          if (state.energy > Engine.getMaxEnergy())
-            state.energy = Engine.getMaxEnergy();
-        },
+        enforceStateBounds: () => VoyageSession.enforceStateBounds(),
 
         buildMenuButton: (label, onClick, uiClass, dataActId) => {
           const btn = document.createElement(GAME_DATA.dom.tags.button);
@@ -3148,7 +3456,8 @@
         },
 
         updateActionBtnData: (btn, act) => {
-          const meetsReqsAndAffords = Engine.canAffordAction(act);
+          const snap = VoyageSession.getSnapshot();
+          const meetsReqsAndAffords = VoyageSession.canAffordAction(act);
           const reqStrs = [];
           for (const [rKey, rVal] of Object.entries(act.requires || {})) {
             reqStrs.push(
@@ -3159,20 +3468,20 @@
           }
           const costStrs = act.consumes.map((rule) =>
             GAME_DATA.text.formatResVal(
-              Engine.getActualCost(rule),
+              VoyageSession.getActualCost(rule),
               GAME_DATA.resources[rule.res],
             ),
           );
           if (act.probability) {
             costStrs.push(
               GAME_DATA.text.formatChance(
-                Math.floor(act.probability(state, GAME_DATA.config) * 100),
+                Math.floor(act.probability(snap, GAME_DATA.config) * 100),
               ),
             );
           }
           const prodStrs = (act.produces || []).map((rule) =>
             GAME_DATA.text.formatResVal(
-              rule.amount(state, GAME_DATA.config),
+              rule.amount(snap, GAME_DATA.config),
               GAME_DATA.resources[rule.res],
             ),
           );
@@ -3187,12 +3496,13 @@
         },
 
         updateYardBtnData: (btn, item) => {
+          const snap = VoyageSession.getSnapshot();
           let label = GAME_DATA.text.yardItemLabelMenu(
             item.name,
             item.desc,
             item.cost,
           );
-          const currentEq = state[item.type];
+          const currentEq = snap[item.type];
 
           if (currentEq === item.name) {
             label += `\n${GAME_DATA.text.yardOwned}`;
@@ -3200,13 +3510,14 @@
           } else {
             if (currentEq !== GAME_DATA.text.noneState)
               label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
-            if (state.flux < item.cost) btn.disabled = true;
+            if (snap.flux < item.cost) btn.disabled = true;
           }
           btn.innerText = label;
         },
 
         refreshActiveMenu: () => {
-          if (state.phase === GAME_DATA.phases.encounter) {
+          const snap = VoyageSession.getSnapshot();
+          if (snap.phase === GAME_DATA.phases.encounter) {
             Array.from(DOM.encounterChoices.children).forEach((btn) => {
               if (btn.dataset.actId)
                 Engine.updateActionBtnData(
@@ -3214,7 +3525,7 @@
                   GAME_DATA.actions[btn.dataset.actId],
                 );
             });
-          } else if (state.phase === GAME_DATA.phases.yard_category) {
+          } else if (snap.phase === GAME_DATA.phases.yard_category) {
             Array.from(DOM.encounterChoices.children).forEach((btn) => {
               if (btn.dataset.yardId)
                 Engine.updateYardBtnData(
@@ -3225,113 +3536,145 @@
           }
         },
 
+        renderSensors: () => {
+          const snap = VoyageSession.getSnapshot();
+          if (!DOM.artDisplay) return;
+
+          if (snap.isSurveyed) {
+            const svgMarkup = DioramaPipeline.render(
+              snap.dimName,
+              (asyncSvg) => {
+                if (
+                  asyncSvg &&
+                  DOM.artDisplay &&
+                  VoyageSession.getSnapshot().isSurveyed
+                ) {
+                  DOM.artDisplay.innerHTML = asyncSvg;
+                }
+              },
+            );
+
+            if (svgMarkup) {
+              DOM.artDisplay.innerHTML = svgMarkup;
+            }
+          } else {
+            DOM.artDisplay.innerHTML = `
+              <div id="art-glyph"></div>
+              <span id="art-label">SIGNAL LOCKED</span>
+            `;
+            DOM.artLabel = document.getElementById("art-label");
+            DOM.artGlyph = document.getElementById("art-glyph");
+            TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
+          }
+        },
+
         renderVitals: () => {
+          const snap = VoyageSession.getSnapshot();
           DOM.locationName.innerText = GAME_DATA.text.formatDimName(
-            state.dimName,
+            snap.dimName,
           );
 
           DOM.statHull.innerText = GAME_DATA.text.formatPct(
-            Math.floor(state.hull),
+            Math.floor(snap.hull),
           );
-          DOM.statFuel.innerText = Math.floor(state.fuel);
+          DOM.statFuel.innerText = Math.floor(snap.fuel);
           DOM.statEnergy.innerText = GAME_DATA.text.formatStatPair(
-            state.energy,
-            Engine.getMaxEnergy(),
+            snap.energy,
+            VoyageSession.getMaxEnergy(),
           );
-          DOM.statFlux.innerText = Math.floor(state.flux);
-          DOM.statRep.innerText = state.rep;
+          DOM.statFlux.innerText = Math.floor(snap.flux);
+          DOM.statRep.innerText = snap.rep;
           DOM.statSector.innerText = GAME_DATA.text.formatSectorWaypoint(
-            state.jumpCount,
+            snap.jumpCount,
           );
 
-          DOM.eqEngine.innerText = GAME_DATA.text.formatTier(state.engineTier);
-          DOM.eqWeapon.innerText = GAME_DATA.text.formatTier(state.weaponTier);
-          DOM.eqModule.innerText = state.module;
-          DOM.eqCarriage.innerText = state.carriage;
-          DOM.eqCrew.innerText = state.crew;
+          DOM.eqEngine.innerText = GAME_DATA.text.formatTier(snap.engineTier);
+          DOM.eqWeapon.innerText = GAME_DATA.text.formatTier(snap.weaponTier);
+          DOM.eqModule.innerText = snap.module;
+          DOM.eqCarriage.innerText = snap.carriage;
+          DOM.eqCrew.innerText = snap.crew;
           DOM.locationType.innerText = GAME_DATA.text.formatDimType(
-            GAME_DATA.nodes[state.dimId].label,
+            GAME_DATA.nodes[snap.dimId].label,
           );
-          DOM.dimTypeCodex.innerText = GAME_DATA.nodes[state.dimId].label;
+          DOM.dimTypeCodex.innerText = GAME_DATA.nodes[snap.dimId].label;
 
           DOM.statHull.style.color =
-            state.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
+            snap.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
               ? GAME_DATA.dom.styles.colorDanger
               : GAME_DATA.dom.styles.colorSuccess;
           DOM.statFuel.style.color =
-            state.fuel < Engine.getTravelCost()
+            snap.fuel < VoyageSession.getTravelCost()
               ? GAME_DATA.dom.styles.colorDanger
               : GAME_DATA.dom.styles.colorAction;
           DOM.statEnergy.style.color =
-            state.energy === 0
+            snap.energy === 0
               ? GAME_DATA.dom.styles.colorWarning
               : GAME_DATA.dom.styles.colorEnergy;
         },
 
         renderInteractiveControls: () => {
-          const travelCost = Engine.getTravelCost();
-          const node = GAME_DATA.nodes[state.dimId];
-          const perms = GAME_DATA.permissions[state.phase];
+          const snap = VoyageSession.getSnapshot();
+          const travelCost = VoyageSession.getTravelCost();
+          const node = GAME_DATA.nodes[snap.dimId];
+          const perms = GAME_DATA.permissions[snap.phase];
 
           DOM.btnExplore.innerText = node.isHub
             ? GAME_DATA.text.btnExploreHub(node.exploreCost)
             : GAME_DATA.text.btnExploreClosed(node.exploreCost);
           DOM.btnExplore.disabled =
-            !perms.explore || state.energy < node.exploreCost;
+            !perms.explore || snap.energy < node.exploreCost;
 
           DOM.btnTravel.innerText = GAME_DATA.text.btnJump(travelCost);
-          DOM.btnTravel.disabled = !perms.travel || state.fuel < travelCost;
+          DOM.btnTravel.disabled = !perms.travel || snap.fuel < travelCost;
 
           DOM.btnDesperate.innerText = GAME_DATA.text.btnDesperate(
             GAME_DATA.config.DESPERATE_HULL_COST,
             GAME_DATA.config.DESPERATE_FUEL_YIELD,
           );
           DOM.btnDesperate.style.display =
-            state.fuel < travelCost &&
-            state.hull > GAME_DATA.config.DESPERATE_HULL_COST &&
+            snap.fuel < travelCost &&
+            snap.hull > GAME_DATA.config.DESPERATE_HULL_COST &&
             perms.travel
               ? GAME_DATA.dom.styles.displayBlock
               : GAME_DATA.dom.styles.displayNone;
         },
 
         renderForge: () => {
-          const fEngCost = Engine.getForgeCost(state.engineTier);
-          const perms = GAME_DATA.permissions[state.phase];
-          const nextJumpCost = Engine.getNextTierTravelCost();
+          const snap = VoyageSession.getSnapshot();
+          const fEngCost = VoyageSession.getForgeCost(snap.engineTier);
+          const perms = GAME_DATA.permissions[snap.phase];
+          const nextJumpCost = VoyageSession.getNextTierTravelCost();
 
           DOM.btnForgeEng.innerText =
-            state.engineTier >= GAME_DATA.config.MAX_TIER
+            snap.engineTier >= GAME_DATA.config.MAX_TIER
               ? GAME_DATA.text.btnApexEngine
               : GAME_DATA.text.btnForgeEngine(
                   fEngCost,
                   GAME_DATA.config.TRAVEL_TIER_MULT,
                   nextJumpCost,
-                  state.fuel,
+                  snap.fuel,
                 );
           DOM.btnForgeEng.disabled =
             !perms.forge ||
-            state.flux < fEngCost ||
-            state.engineTier >= GAME_DATA.config.MAX_TIER;
+            snap.flux < fEngCost ||
+            snap.engineTier >= GAME_DATA.config.MAX_TIER;
 
-          const fWpnCost = Engine.getForgeCost(state.weaponTier);
+          const fWpnCost = VoyageSession.getForgeCost(snap.weaponTier);
           DOM.btnForgeWpn.innerText =
-            state.weaponTier >= GAME_DATA.config.MAX_TIER
+            snap.weaponTier >= GAME_DATA.config.MAX_TIER
               ? GAME_DATA.text.btnApexWeapon
               : GAME_DATA.text.btnForgeWeapon(fWpnCost);
           DOM.btnForgeWpn.disabled =
             !perms.forge ||
-            state.flux < fWpnCost ||
-            state.weaponTier >= GAME_DATA.config.MAX_TIER;
+            snap.flux < fWpnCost ||
+            snap.weaponTier >= GAME_DATA.config.MAX_TIER;
         },
 
         forgeUpgrade: (tierKey, onUpgrade) => {
-          const cost = Engine.getForgeCost(state[tierKey]);
-          if (state.flux >= cost) {
-            state.flux -= cost;
-            state[tierKey]++;
-            if (onUpgrade) onUpgrade();
+          const success = VoyageSession.forgeUpgrade(tierKey, onUpgrade);
+          if (success) {
             Engine.updateUI();
-            Engine.evaluateSurvival();
+            VoyageSession.evaluateSurvival();
           }
         },
 
@@ -3357,12 +3700,13 @@
         },
 
         updateUI: () => {
-          Engine.enforceStateBounds();
+          VoyageSession.enforceStateBounds();
           Engine.renderVitals();
           Engine.renderInteractiveControls();
           Engine.renderForge();
           Engine.refreshActiveMenu();
-          Engine.assertInvariants();
+          Engine.renderSensors();
+          VoyageSession.assertInvariants();
         },
 
         cacheDOM: () => {
@@ -3386,6 +3730,7 @@
         },
 
         setupStaticText: () => {
+          const snap = VoyageSession.getSnapshot();
           const audioPrefs = SaveSystem.loadAudioPrefs();
           if (audioPrefs) {
             SoundFX.ambientMode = audioPrefs.mode || "rails";
@@ -3431,7 +3776,7 @@
           }
           DOM.lblForge.innerText = GAME_DATA.text.lblForge;
           DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
-          TransitionFX.applyThemeStyles(state.dimName.split(" ")[0]);
+          TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
           Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
         },
 
@@ -3494,11 +3839,17 @@
           );
 
           DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
-            Engine.forgeUpgrade("engineTier", () => state.energy++);
+            VoyageSession.forgeUpgrade("engineTier", () => {
+              const snap = VoyageSession.getSnapshot();
+            });
+            Engine.updateUI();
+            VoyageSession.evaluateSurvival();
           });
 
           DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
-            Engine.forgeUpgrade("weaponTier");
+            VoyageSession.forgeUpgrade("weaponTier");
+            Engine.updateUI();
+            VoyageSession.evaluateSurvival();
           });
 
           DOM.btnResetSave.addEventListener(GAME_DATA.dom.events.click, () =>
@@ -3516,7 +3867,6 @@
             CutsceneEngine.advance(),
           );
 
-          /* Acoustic Settings Handlers */
           DOM.selectAmbientMode.addEventListener("change", (e) => {
             SoundFX.setAmbientMode(e.target.value);
             Engine.log(
@@ -3555,13 +3905,15 @@
 
             const saved = SaveSystem.load();
             if (saved) {
-              Object.assign(state, saved);
-              state.phase = GAME_DATA.phases.start;
-              TransitionFX.applyThemeStyles(state.dimName.split(" ")[0]);
+              VoyageSession.loadState(saved);
+              const snap = VoyageSession.getSnapshot();
+              TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
               Engine.log(
-                `[CONDUIT] Resumed trajectory at ${state.dimName} (Waypoint ${state.jumpCount}).`,
+                `[CONDUIT] Resumed trajectory at ${snap.dimName} (Waypoint ${snap.jumpCount}).`,
                 GAME_DATA.dom.classes.logSystem,
               );
+            } else {
+              ConduitDeck.init();
             }
 
             Engine.transitionTo(GAME_DATA.phases.idle);
@@ -3570,10 +3922,8 @@
               Engine.scrollToPane(2);
             }, 50);
 
-            if (
-              state.jumpCount === 1 &&
-              !state.seenCutscenes?.includes("wp1")
-            ) {
+            const snap = VoyageSession.getSnapshot();
+            if (snap.jumpCount === 1 && !snap.seenCutscenes?.includes("wp1")) {
               setTimeout(() => {
                 CutsceneEngine.play("wp1");
               }, 120);
@@ -3597,6 +3947,7 @@
           Engine.verifyGraphIntegrity();
           Engine.verifyPaletteIntegrity();
           Engine.cacheDOM();
+          DioramaPipeline.init();
           TransitionFX.init();
           Engine.setupStaticText();
           Engine.bindEvents();
@@ -3608,7 +3959,8 @@
       const StateHooks = {
         ENCOUNTER: {
           onEnter: () => {
-            GAME_DATA.nodes[state.dimId].actions.forEach((actId) => {
+            const snap = VoyageSession.getSnapshot();
+            GAME_DATA.nodes[snap.dimId].actions.forEach((actId) => {
               const act = GAME_DATA.actions[actId];
               const btn = Engine.buildMenuButton(
                 "",
@@ -3639,7 +3991,7 @@
             ];
             categories.forEach(({ label, cat }) => {
               Engine.buildMenuButton(label, () => {
-                state.yardCat = cat;
+                VoyageSession.setYardCategory(cat);
                 Engine.transitionTo(GAME_DATA.phases.yard_category);
               });
             });
@@ -3647,7 +3999,7 @@
               GAME_DATA.text.btnYardLeave,
               () => {
                 Engine.transitionTo(GAME_DATA.phases.encounter);
-                Engine.evaluateSurvival();
+                VoyageSession.evaluateSurvival();
               },
               GAME_DATA.dom.classes.btnDesperate,
             );
@@ -3656,13 +4008,12 @@
         },
         YARD_CATEGORY: {
           onEnter: () => {
+            const snap = VoyageSession.getSnapshot();
             Object.entries(GAME_DATA.yard)
-              .filter(([_, i]) => i.type === state.yardCat)
+              .filter(([_, i]) => i.type === snap.yardCat)
               .forEach(([k, item]) => {
                 const btn = Engine.buildMenuButton("", () => {
-                  if (state.flux >= item.cost) {
-                    state.flux -= item.cost;
-                    state[item.type] = item.name;
+                  if (VoyageSession.buyYardItem(k)) {
                     Engine.log(
                       GAME_DATA.text.logYardPurchase(item.name),
                       GAME_DATA.dom.classes.logSuccess,
@@ -3682,9 +4033,10 @@
         },
         NAVIGATING: {
           onEnter: () => {
+            const snap = VoyageSession.getSnapshot();
             DOM.navScreen.style.display = GAME_DATA.dom.styles.displayFlex;
             DOM.navChoices.innerHTML = "";
-            state.navChoices.forEach((choice) => {
+            snap.navChoices.forEach((choice) => {
               const btn = document.createElement(GAME_DATA.dom.tags.button);
               btn.className = `${GAME_DATA.dom.classes.btnTravel} ${GAME_DATA.dom.classes.navBtn}`;
               const nameSpan = document.createElement(GAME_DATA.dom.tags.span);
@@ -3698,11 +4050,8 @@
               btn.appendChild(nameSpan);
               btn.appendChild(typeSpan);
               btn.addEventListener(GAME_DATA.dom.events.click, () => {
-                if (choice.returnId && state.sectorBag) {
-                  state.sectorBag.push(choice.returnId);
-                  Engine.shuffleArray(state.sectorBag);
-                }
-                Engine.finalizeJump(choice.id, choice.name);
+                const committed = ConduitDeck.commitTrajectory(choice);
+                Engine.finalizeJump(committed.dimId, committed.dimName);
               });
               DOM.navChoices.appendChild(btn);
             });
@@ -3712,70 +4061,65 @@
         },
         JUMPING: {
           onEnter: () => {
-            const targetDimId = state.targetDimId;
-            const targetDimName = state.targetDimName;
+            const snap = VoyageSession.getSnapshot();
+            const targetDimId = snap.targetDimId;
+            const targetDimName = snap.targetDimName;
+
+            DOM.artDisplay.innerHTML = `
+              <div id="art-glyph"></div>
+              <span id="art-label">SIGNAL LOCKED</span>
+            `;
+            DOM.artLabel = document.getElementById("art-label");
+            DOM.artGlyph = document.getElementById("art-glyph");
+            TransitionFX.applyThemeStyles(targetDimName.split(" ")[0]);
 
             TransitionFX.playJumpEffect(
               targetDimId,
               targetDimName,
               () => {
-                state.jumpCount++;
-                state.energy = Engine.getMaxEnergy();
+                const jumpResult = VoyageSession.completeJump(
+                  targetDimId,
+                  targetDimName,
+                );
 
-                if (state.carriage === GAME_DATA.yard.green.name) {
-                  state.fuel += GAME_DATA.config.GREENHOUSE_FUEL_YIELD;
+                if (jumpResult.greenhouseYield > 0) {
                   Engine.log(
-                    GAME_DATA.text.logGreenhouse(
-                      GAME_DATA.config.GREENHOUSE_FUEL_YIELD,
-                    ),
+                    GAME_DATA.text.logGreenhouse(jumpResult.greenhouseYield),
                     GAME_DATA.dom.classes.logSystem,
                   );
                 }
-                if (
-                  state.crew === GAME_DATA.yard.goblin.name &&
-                  state.hull < GAME_DATA.config.MAX_HULL
-                ) {
-                  state.hull = Math.min(
-                    GAME_DATA.config.MAX_HULL,
-                    state.hull + GAME_DATA.config.GOBLIN_HULL_YIELD,
-                  );
+                if (jumpResult.goblinYield > 0) {
                   Engine.log(
-                    GAME_DATA.text.logGoblin(
-                      GAME_DATA.config.GOBLIN_HULL_YIELD,
-                    ),
+                    GAME_DATA.text.logGoblin(jumpResult.goblinYield),
                     GAME_DATA.dom.classes.logSystem,
                   );
                 }
-
-                state.dimId = targetDimId;
-                state.dimName = targetDimName;
 
                 Engine.log(
                   GAME_DATA.text.logLocEnter(
                     targetDimName,
-                    GAME_DATA.nodes[state.dimId].label,
-                    state.jumpCount,
+                    GAME_DATA.nodes[targetDimId].label,
+                    jumpResult.jumpCount,
                   ),
                   GAME_DATA.dom.classes.logSystem,
                 );
               },
               () => {
-                state.targetDimId = null;
-                state.targetDimName = null;
                 Engine.transitionTo(GAME_DATA.phases.idle);
-                Engine.evaluateSurvival();
+                VoyageSession.evaluateSurvival();
                 SaveSystem.save();
 
+                const currentSnap = VoyageSession.getSnapshot();
                 const wpCutsceneMap = {
                   2: "wp2",
                   3: "wp3",
                   4: "wp4",
                   5: "wp5",
                 };
-                const nextCutscene = wpCutsceneMap[state.jumpCount];
+                const nextCutscene = wpCutsceneMap[currentSnap.jumpCount];
                 if (
                   nextCutscene &&
-                  !state.seenCutscenes?.includes(nextCutscene)
+                  !currentSnap.seenCutscenes?.includes(nextCutscene)
                 ) {
                   setTimeout(() => {
                     CutsceneEngine.play(nextCutscene);
