@@ -3289,33 +3289,6 @@
           }
         },
 
-        getPaletteFromCSS: () => {
-          const palette = {};
-          const dummy = document.createElement("div");
-          dummy.style.display = "none";
-          document.body.appendChild(dummy);
-
-          const types = [
-            "damage",
-            "lore",
-            "success",
-            "system",
-            "event",
-            "help",
-          ];
-          types.forEach((type) => {
-            dummy.className = `log-${type}`;
-            const style = getComputedStyle(dummy);
-            const hVal = parseFloat(style.getPropertyValue("--h").trim());
-            if (!isNaN(hVal)) {
-              palette[type] = hVal;
-            }
-          });
-
-          document.body.removeChild(dummy);
-          return palette;
-        },
-
         verifyPaletteIntegrity: () => {
           const MIN_DELTA_E = 0.08;
           const dummy = document.createElement("div");
@@ -3879,9 +3852,7 @@
           );
 
           DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
-            VoyageSession.forgeUpgrade("engineTier", () => {
-              const snap = VoyageSession.getSnapshot();
-            });
+            VoyageSession.forgeUpgrade("engineTier");
             Engine.updateUI();
             VoyageSession.evaluateSurvival();
           });
