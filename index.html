@@ -2531,6 +2531,47 @@
           osc.start(now);
           osc.stop(now + 0.22);
         },
+
+        playActionSuccess: () => {
+          if (!SoundFX.ctx || SoundFX.isMuted) return;
+          try {
+            const now = SoundFX.ctx.currentTime;
+            const osc = SoundFX.ctx.createOscillator();
+            const gain = SoundFX.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.06);
+            osc.frequency.setValueAtTime(783.99, now + 0.12);
+
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+            osc.connect(gain);
+            gain.connect(SoundFX.sfxGain);
+            osc.start(now);
+            osc.stop(now + 0.3);
+          } catch (e) {}
+        },
+
+        playActionDamage: () => {
+          if (!SoundFX.ctx || SoundFX.isMuted) return;
+          try {
+            const now = SoundFX.ctx.currentTime;
+            const osc = SoundFX.ctx.createOscillator();
+            const gain = SoundFX.ctx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(110, now);
+            osc.frequency.exponentialRampToValueAtTime(45, now + 0.2);
+
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+            osc.connect(gain);
+            gain.connect(SoundFX.sfxGain);
+            osc.start(now);
+            osc.stop(now + 0.24);
+          } catch (e) {}
+        },
       };
 
       const AcousticSoundscape = SoundFX;
@@ -2708,12 +2749,14 @@
                   _state[rule.res] += rule.amount(_state, GAME_DATA.config);
                 }
               }
+              SoundFX.playActionSuccess();
             } else {
               if (act.failConsumes) {
                 for (const rule of act.failConsumes) {
                   _state[rule.res] -= VoyageSession.getActualCost(rule);
                 }
               }
+              SoundFX.playActionDamage();
             }
 
             VoyageSession.enforceStateBounds();
@@ -2735,6 +2778,7 @@
             _state.hull -= GAME_DATA.config.DESPERATE_HULL_COST;
             _state.fuel += GAME_DATA.config.DESPERATE_FUEL_YIELD;
             VoyageSession.enforceStateBounds();
+            SoundFX.playActionDamage();
             SaveSystem.save();
             return true;
           },
@@ -2749,6 +2793,7 @@
               _state[tierKey]++;
               if (onUpgrade) onUpgrade();
               VoyageSession.enforceStateBounds();
+              SoundFX.playActionSuccess();
               SaveSystem.save();
               return true;
             }
@@ -2765,6 +2810,7 @@
 
             _state.flux -= item.cost;
             _state[item.type] = item.name;
+            SoundFX.playActionSuccess();
             SaveSystem.save();
             return true;
           },
