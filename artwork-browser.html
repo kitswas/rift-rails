@@ -4766,6 +4766,47 @@
       });
 
       renderGallery();
+
+      /* ========================================================
+         CROSS-ORIGIN / IFRAME ARTWORK BRIDGE FOR RIFT RAILS
+         ======================================================== */
+      window.renderVectorDiorama = function (dimName) {
+        try {
+          const parts = (dimName || "Fractured Vale").split(" ");
+          const adjective = parts[0] || "Fractured";
+          const noun = parts.slice(1).join(" ") || "Vale";
+          const fullName = `The ${adjective} ${noun}`;
+          const rng = new SeededRNG(fullName);
+          const palette = PALETTES[adjective] || PALETTES.Fractured;
+          const svgStr = createVectorSVG(noun, adjective, rng, palette);
+          const filterDefs =
+            document.querySelector("svg > defs")?.innerHTML || "";
+          if (filterDefs && !svgStr.includes('id="distantFog"')) {
+            return svgStr.replace("<defs>", `<defs>${filterDefs}`);
+          }
+          return svgStr;
+        } catch (e) {
+          console.error("renderVectorDiorama error:", e);
+          return "";
+        }
+      };
+
+      window.addEventListener("message", (event) => {
+        if (event.data && event.data.type === "RENDER_DIORAMA") {
+          const svg = window.renderVectorDiorama(event.data.dimName);
+          if (event.source && event.source.postMessage) {
+            event.source.postMessage(
+              {
+                type: "DIORAMA_RESULT",
+                reqId: event.data.reqId,
+                dimName: event.data.dimName,
+                svg,
+              },
+              "*",
+            );
+          }
+        }
+      });
     </script>
   </body>
 </html>
