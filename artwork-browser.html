@@ -1964,10 +1964,6 @@
             styleParts.length > 0 ? `style="${styleParts.join(" ")}"` : "";
           return `<g class="layer-${this.index}" data-layer="${this.index}" ${svgFilterAttr} ${styleAttr}>${this.content}</g>`;
         }
-
-        toString() {
-          return this.render();
-        }
       }
 
       class UnifiedPathAccumulator {

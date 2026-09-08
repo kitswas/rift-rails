@@ -1444,29 +1444,6 @@
             lblSfxVol: "lbl-sfx-vol",
             btnToggleMute: "btn-toggle-mute",
           },
-          styles: {
-            displayNone: "none",
-            displayBlock: "block",
-            displayGrid: "grid",
-            displayFlex: "flex",
-            colorDanger: "var(--danger)",
-            colorWarning: "var(--warning)",
-            colorSuccess: "var(--success)",
-            colorAction: "var(--action)",
-            colorEnergy: "var(--energy)",
-            colorInfo: "var(--info)",
-            colorHelp: "var(--help)",
-            colorThemePrimary: "var(--theme-primary)",
-            colorThemeSecondary: "var(--theme-secondary)",
-          },
-          cssVars: {
-            themePrimary: "--theme-primary",
-            themeSecondary: "--theme-secondary",
-            themeGlow: "--theme-glow",
-            bg: "--bg",
-          },
-          events: { click: "click" },
-          tags: { div: "div", span: "span", button: "button" },
         },
 
         cutscenes: {
@@ -1998,36 +1975,18 @@
         },
       };
       /* ========================================================
-         DIORAMA PIPELINE (BRIDGE ADAPTER TO ARTWORK-BROWSER.HTML)
-         ======================================================== */
+                DIORAMA PIPELINE (BRIDGE TO ARTWORK-BROWSER.HTML)
+                ======================================================== */
       const DioramaPipeline = {
         bridgeIframe: null,
-        isReady: false,
-        pendingRequests: new Map(),
         cache: new Map(),
 
         init: () => {
           if (DioramaPipeline.bridgeIframe) return;
-
-          window.addEventListener("message", (event) => {
-            if (event.data && event.data.type === "DIORAMA_RESULT") {
-              const { reqId, dimName, svg } = event.data;
-              if (svg) DioramaPipeline.cache.set(dimName, svg);
-              const callback = DioramaPipeline.pendingRequests.get(reqId);
-              if (callback) {
-                DioramaPipeline.pendingRequests.delete(reqId);
-                callback(svg);
-              }
-            }
-          });
-
           const iframe = document.createElement("iframe");
           iframe.id = "art-bridge";
           iframe.src = "artwork-browser.html";
           iframe.style.display = "none";
-          iframe.onload = () => {
-            DioramaPipeline.isReady = true;
-          };
           document.body.appendChild(iframe);
           DioramaPipeline.bridgeIframe = iframe;
         },
@@ -2039,8 +1998,6 @@
             if (callback) callback(cachedSvg);
             return cachedSvg;
           }
-
-          // Try synchronous direct invocation if accessible
           try {
             if (
               DioramaPipeline.bridgeIframe?.contentWindow?.renderVectorDiorama
@@ -2056,25 +2013,12 @@
               }
             }
           } catch (e) {}
-
-          // Fallback: asynchronous postMessage
-          if (DioramaPipeline.bridgeIframe?.contentWindow) {
-            const reqId = "req_" + Math.random().toString(36).substr(2, 9);
-            if (callback) {
-              DioramaPipeline.pendingRequests.set(reqId, callback);
-            }
-            DioramaPipeline.bridgeIframe.contentWindow.postMessage(
-              { type: "RENDER_DIORAMA", dimName, reqId },
-              "*",
-            );
-          }
-
           return "";
         },
       };
       /* ========================================================
-         CONDUIT DECK (PROCEDURAL RUNWAY & SECTOR PACING)
-         ======================================================== */
+        CONDUIT DECK (PROCEDURAL RUNWAY & SECTOR PACING)
+        ======================================================== */
       const ConduitDeck = {
         sectorBag: [],
 
@@ -2086,13 +2030,7 @@
           }
         },
 
-        shuffleArray: (arr) => {
-          for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]];
-          }
-          return arr;
-        },
+        shuffleArray: (arr) => arr.sort(() => Math.random() - 0.5),
 
         createShuffledSectorBag: () => {
           const bag = [];
@@ -2171,8 +2109,8 @@
         serialize: () => ConduitDeck.sectorBag || [],
       };
       /* ========================================================
-         HEADACHE-FREE PROCEDURAL ACOUSTIC ENGINE (2 MODES)
-         ======================================================== */
+               HEADACHE-FREE PROCEDURAL ACOUSTIC ENGINE (2 MODES)
+               ======================================================== */
       const SoundFX = {
         ctx: null,
         masterGain: null,
@@ -2197,13 +2135,6 @@
           const clamped = Math.max(0, Math.min(100, sliderVal));
           if (clamped <= 0) return 0;
           return Math.pow(clamped / 100, GAME_DATA.audio.LOG_AUDIO_EXPONENT);
-        },
-
-        gainToSlider: (gain) => {
-          const clamped = Math.max(0, Math.min(1, gain));
-          return Math.round(
-            Math.pow(clamped, 1 / GAME_DATA.audio.LOG_AUDIO_EXPONENT) * 100,
-          );
         },
 
         init: () => {
@@ -2574,10 +2505,9 @@
         },
       };
 
-      const AcousticSoundscape = SoundFX;
       /* ========================================================
-         INITIAL LOCOMOTIVE STATE
-         ======================================================== */
+                INITIAL LOCOMOTIVE STATE
+               ======================================================== */
       const INITIAL_STATE = {
         phase: GAME_DATA.phases.start,
         jumpCount: 1,
@@ -2603,8 +2533,8 @@
       };
 
       /* ========================================================
-         VOYAGE SESSION (DEEP LOCOMOTIVE STATE & LIFECYCLE SEAM)
-         ======================================================== */
+               VOYAGE SESSION (DEEP LOCOMOTIVE STATE & LIFECYCLE SEAM)
+               ======================================================== */
       const VoyageSession = (() => {
         let _state = JSON.parse(JSON.stringify(INITIAL_STATE));
 
@@ -2920,14 +2850,9 @@
         };
       })();
 
-      const state = new Proxy(
-        {},
-        { get: (t, p) => VoyageSession.getSnapshot()[p] },
-      );
-
       /* ========================================================
-         LOCAL STORAGE SAVE SYSTEM
-         ======================================================== */
+                LOCAL STORAGE SAVE SYSTEM
+               ======================================================== */
       const SaveSystem = {
         STORAGE_KEY: "rift_rails_auto_save",
         AUDIO_KEY: "rift_rails_audio_prefs",
@@ -2998,8 +2923,8 @@
         },
       };
       /* ========================================================
-         WARP CANVAS & THEMATIC FX
-         ======================================================== */
+               WARP CANVAS & THEMATIC FX
+               ======================================================== */
       const TransitionFX = {
         canvas: null,
         ctx: null,
@@ -3040,21 +2965,18 @@
             GAME_DATA.procedural.themes[adj] ||
             GAME_DATA.procedural.defaultTheme;
           document.documentElement.style.setProperty(
-            GAME_DATA.dom.cssVars.themePrimary,
+            "--theme-primary",
             theme.primary,
           );
           document.documentElement.style.setProperty(
-            GAME_DATA.dom.cssVars.themeSecondary,
+            "--theme-secondary",
             theme.secondary,
           );
           document.documentElement.style.setProperty(
-            GAME_DATA.dom.cssVars.themeGlow,
+            "--theme-glow",
             `${theme.primary}55`,
           );
-          document.documentElement.style.setProperty(
-            GAME_DATA.dom.cssVars.bg,
-            theme.bg,
-          );
+          document.documentElement.style.setProperty("--bg", theme.bg);
           if (DOM.artGlyph) {
             DOM.artGlyph.innerText = theme.glyph;
             DOM.artGlyph.style.color = theme.primary;
@@ -3201,8 +3123,8 @@
       };
 
       /* ========================================================
-         CUTSCENE LOG CONTROLLER
-         ======================================================== */
+               CUTSCENE LOG CONTROLLER
+               ======================================================== */
       const CutsceneEngine = {
         activeCutscene: null,
         beatIndex: 0,
@@ -3216,7 +3138,7 @@
           VoyageSession.markCutsceneSeen(cutsceneId);
 
           Engine.transitionTo(GAME_DATA.phases.dialogue);
-          DOM.cutsceneOverlay.style.display = GAME_DATA.dom.styles.displayFlex;
+          DOM.cutsceneOverlay.style.display = "flex";
           CutsceneEngine.renderCurrentBeat();
         },
 
@@ -3252,7 +3174,7 @@
 
         close: () => {
           const cutscene = CutsceneEngine.activeCutscene;
-          DOM.cutsceneOverlay.style.display = GAME_DATA.dom.styles.displayNone;
+          DOM.cutsceneOverlay.style.display = "none";
 
           if (cutscene?.logSummary) {
             Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore);
@@ -3266,8 +3188,8 @@
         },
       };
       /* ========================================================
-         TACTICAL GAME ENGINE (ORCHESTRATOR & UI ADAPTER)
-         ======================================================== */
+               TACTICAL GAME ENGINE (ORCHESTRATOR & UI ADAPTER)
+               ======================================================== */
       const Engine = {
         verifyGraphIntegrity: () => {
           const phases = Object.values(GAME_DATA.phases);
@@ -3341,20 +3263,8 @@
             }
           }
         },
-
-        assertInvariants: () => VoyageSession.assertInvariants(),
-        getMaxEnergy: () => VoyageSession.getMaxEnergy(),
-        getTravelCost: () => VoyageSession.getTravelCost(),
-        getNextTierTravelCost: () => VoyageSession.getNextTierTravelCost(),
-        getForgeCost: (tier) => VoyageSession.getForgeCost(tier),
-        applyMitigation: (res, amt) => VoyageSession.applyMitigation(res, amt),
-        getActualCost: (rule) => VoyageSession.getActualCost(rule),
-        canAffordAction: (act) => VoyageSession.canAffordAction(act),
-        canSurvive: () => VoyageSession.canSurvive(),
-        evaluateSurvival: () => VoyageSession.evaluateSurvival(),
-
         log: (msg, styleClass) => {
-          const div = document.createElement(GAME_DATA.dom.tags.div);
+          const div = document.createElement("div");
           div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
           div.innerHTML = msg;
           DOM.storyLog.appendChild(div);
@@ -3455,15 +3365,12 @@
           Engine.updateUI();
           VoyageSession.evaluateSurvival();
         },
-
-        enforceStateBounds: () => VoyageSession.enforceStateBounds(),
-
         buildMenuButton: (label, onClick, uiClass, dataActId) => {
-          const btn = document.createElement(GAME_DATA.dom.tags.button);
+          const btn = document.createElement("button");
           btn.innerText = label;
           if (uiClass) btn.className = uiClass;
           if (dataActId) btn.dataset.actId = dataActId;
-          btn.addEventListener(GAME_DATA.dom.events.click, onClick);
+          btn.addEventListener("click", onClick);
           DOM.encounterChoices.appendChild(btn);
           return btn;
         },
@@ -3572,9 +3479,9 @@
             }
           } else {
             DOM.artDisplay.innerHTML = `
-              <div id="art-glyph"></div>
-              <span id="art-label">SIGNAL LOCKED</span>
-            `;
+                    <div id="art-glyph"></div>
+                    <span id="art-label">SIGNAL LOCKED</span>
+                  `;
             DOM.artLabel = document.getElementById("art-label");
             DOM.artGlyph = document.getElementById("art-glyph");
             TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
@@ -3613,16 +3520,14 @@
 
           DOM.statHull.style.color =
             snap.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD
-              ? GAME_DATA.dom.styles.colorDanger
-              : GAME_DATA.dom.styles.colorSuccess;
+              ? "var(--danger)"
+              : "var(--success)";
           DOM.statFuel.style.color =
             snap.fuel < VoyageSession.getTravelCost()
-              ? GAME_DATA.dom.styles.colorDanger
-              : GAME_DATA.dom.styles.colorAction;
+              ? "var(--danger)"
+              : "var(--action)";
           DOM.statEnergy.style.color =
-            snap.energy === 0
-              ? GAME_DATA.dom.styles.colorWarning
-              : GAME_DATA.dom.styles.colorEnergy;
+            snap.energy === 0 ? "var(--warning)" : "var(--energy)";
         },
 
         renderInteractiveControls: () => {
@@ -3648,8 +3553,8 @@
             snap.fuel < travelCost &&
             snap.hull > GAME_DATA.config.DESPERATE_HULL_COST &&
             perms.travel
-              ? GAME_DATA.dom.styles.displayBlock
-              : GAME_DATA.dom.styles.displayNone;
+              ? "block"
+              : "none";
         },
 
         renderForge: () => {
@@ -3706,7 +3611,7 @@
           SaveSystem.clear();
           SoundFX.silenceOnDeath();
           document
-            .querySelectorAll(GAME_DATA.dom.tags.button)
+            .querySelectorAll("button")
             .forEach((b) => (b.disabled = true));
           DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
           Engine.log(logMessage, GAME_DATA.dom.classes.logDamage);
@@ -3774,14 +3679,12 @@
             DOM.btnIgnite.innerText = `Resume Journey (Waypoint ${saved ? saved.jumpCount : 1})`;
             if (DOM.btnStartFresh) {
               DOM.btnStartFresh.innerText = GAME_DATA.text.btnNewGame;
-              DOM.btnStartFresh.style.display =
-                GAME_DATA.dom.styles.displayFlex;
+              DOM.btnStartFresh.style.display = "flex";
             }
           } else {
             DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
             if (DOM.btnStartFresh) {
-              DOM.btnStartFresh.style.display =
-                GAME_DATA.dom.styles.displayNone;
+              DOM.btnStartFresh.style.display = "none";
             }
           }
           if (DOM.btnResetSave) {
@@ -3838,43 +3741,34 @@
         },
 
         bindEvents: () => {
-          DOM.btnExplore.addEventListener(
-            GAME_DATA.dom.events.click,
-            Engine.exploreNode,
-          );
-          DOM.btnTravel.addEventListener(
-            GAME_DATA.dom.events.click,
-            Engine.initiateTravel,
-          );
-          DOM.btnDesperate.addEventListener(
-            GAME_DATA.dom.events.click,
-            Engine.desperateScavenge,
-          );
+          DOM.btnExplore.addEventListener("click", Engine.exploreNode);
+          DOM.btnTravel.addEventListener("click", Engine.initiateTravel);
+          DOM.btnDesperate.addEventListener("click", Engine.desperateScavenge);
 
-          DOM.btnForgeEng.addEventListener(GAME_DATA.dom.events.click, () => {
+          DOM.btnForgeEng.addEventListener("click", () => {
             VoyageSession.forgeUpgrade("engineTier");
             Engine.updateUI();
             VoyageSession.evaluateSurvival();
           });
 
-          DOM.btnForgeWpn.addEventListener(GAME_DATA.dom.events.click, () => {
+          DOM.btnForgeWpn.addEventListener("click", () => {
             VoyageSession.forgeUpgrade("weaponTier");
             Engine.updateUI();
             VoyageSession.evaluateSurvival();
           });
 
-          DOM.btnResetSave.addEventListener(GAME_DATA.dom.events.click, () =>
+          DOM.btnResetSave.addEventListener("click", () =>
             Engine.resetGame(true),
           );
 
-          DOM.btnStartFresh.addEventListener(GAME_DATA.dom.events.click, () =>
+          DOM.btnStartFresh.addEventListener("click", () =>
             Engine.resetGame(true),
           );
 
-          DOM.cutsceneBtnA.addEventListener(GAME_DATA.dom.events.click, () =>
+          DOM.cutsceneBtnA.addEventListener("click", () =>
             CutsceneEngine.advance(),
           );
-          DOM.cutsceneBtnB.addEventListener(GAME_DATA.dom.events.click, () =>
+          DOM.cutsceneBtnB.addEventListener("click", () =>
             CutsceneEngine.advance(),
           );
 
@@ -3909,10 +3803,10 @@
               : "var(--text)";
           });
 
-          DOM.btnIgnite.addEventListener(GAME_DATA.dom.events.click, () => {
+          DOM.btnIgnite.addEventListener("click", () => {
             SoundFX.init();
-            DOM.startScreen.style.display = GAME_DATA.dom.styles.displayNone;
-            DOM.gameContainer.style.display = GAME_DATA.dom.styles.displayFlex;
+            DOM.startScreen.style.display = "none";
+            DOM.gameContainer.style.display = "flex";
 
             const saved = SaveSystem.load();
             if (saved) {
@@ -3943,9 +3837,7 @@
 
           DOM.tabs.forEach((tab, idx) => {
             if (tab) {
-              tab.addEventListener(GAME_DATA.dom.events.click, () =>
-                Engine.scrollToPane(idx),
-              );
+              tab.addEventListener("click", () => Engine.scrollToPane(idx));
             }
           });
 
@@ -4045,30 +3937,29 @@
         NAVIGATING: {
           onEnter: () => {
             const snap = VoyageSession.getSnapshot();
-            DOM.navScreen.style.display = GAME_DATA.dom.styles.displayFlex;
+            DOM.navScreen.style.display = "flex";
             DOM.navChoices.innerHTML = "";
             snap.navChoices.forEach((choice) => {
-              const btn = document.createElement(GAME_DATA.dom.tags.button);
+              const btn = document.createElement("button");
               btn.className = `${GAME_DATA.dom.classes.btnTravel} ${GAME_DATA.dom.classes.navBtn}`;
-              const nameSpan = document.createElement(GAME_DATA.dom.tags.span);
+              const nameSpan = document.createElement("span");
               nameSpan.className = GAME_DATA.dom.classes.dimName;
               nameSpan.innerText = GAME_DATA.text.formatDimName(choice.name);
-              const typeSpan = document.createElement(GAME_DATA.dom.tags.span);
+              const typeSpan = document.createElement("span");
               typeSpan.className = GAME_DATA.dom.classes.dimType;
               typeSpan.innerText = GAME_DATA.text.formatDimType(
                 GAME_DATA.nodes[choice.id].label,
               );
               btn.appendChild(nameSpan);
               btn.appendChild(typeSpan);
-              btn.addEventListener(GAME_DATA.dom.events.click, () => {
+              btn.addEventListener("click", () => {
                 const committed = ConduitDeck.commitTrajectory(choice);
                 Engine.finalizeJump(committed.dimId, committed.dimName);
               });
               DOM.navChoices.appendChild(btn);
             });
           },
-          onExit: () =>
-            (DOM.navScreen.style.display = GAME_DATA.dom.styles.displayNone),
+          onExit: () => (DOM.navScreen.style.display = "none"),
         },
         JUMPING: {
           onEnter: () => {
@@ -4077,9 +3968,9 @@
             const targetDimName = snap.targetDimName;
 
             DOM.artDisplay.innerHTML = `
-              <div id="art-glyph"></div>
-              <span id="art-label">SIGNAL LOCKED</span>
-            `;
+                    <div id="art-glyph"></div>
+                    <span id="art-label">SIGNAL LOCKED</span>
+                  `;
             DOM.artLabel = document.getElementById("art-label");
             DOM.artGlyph = document.getElementById("art-glyph");
             TransitionFX.applyThemeStyles(targetDimName.split(" ")[0]);
