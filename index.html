@@ -316,11 +316,16 @@
       }
 
       /* ================= SENSORS DISPLAY ================= */
-      #art-display svg {
+      #art-display svg,
+      #art-display img {
         width: 100%;
         height: 100%;
         display: block;
         border-radius: calc(var(--radius) - 2px);
+      }
+
+      #art-display img {
+        image-rendering: pixelated;
       }
 
       #art-display {
@@ -1979,7 +1984,9 @@
                 ======================================================== */
       const DioramaPipeline = {
         bridgeIframe: null,
+        ready: null,
         cache: new Map(),
+        pending: new Map(),
 
         init: () => {
           if (DioramaPipeline.bridgeIframe) return;
@@ -1987,32 +1994,42 @@
           iframe.id = "art-bridge";
           iframe.src = "artwork-browser.html";
           iframe.style.display = "none";
-          document.body.appendChild(iframe);
+          DioramaPipeline.ready = new Promise((resolve) => {
+            iframe.addEventListener("load", resolve, { once: true });
+          });
           DioramaPipeline.bridgeIframe = iframe;
+          document.body.appendChild(iframe);
         },
 
         render: (dimName, callback) => {
           if (!dimName) return "";
           if (DioramaPipeline.cache.has(dimName)) {
-            const cachedSvg = DioramaPipeline.cache.get(dimName);
-            if (callback) callback(cachedSvg);
-            return cachedSvg;
+            return DioramaPipeline.cache.get(dimName);
           }
-          try {
-            if (
-              DioramaPipeline.bridgeIframe?.contentWindow?.renderVectorDiorama
-            ) {
-              const svg =
-                DioramaPipeline.bridgeIframe.contentWindow.renderVectorDiorama(
-                  dimName,
-                );
-              if (svg) {
-                DioramaPipeline.cache.set(dimName, svg);
-                if (callback) callback(svg);
-                return svg;
-              }
-            }
-          } catch (e) {}
+          DioramaPipeline.init();
+          if (!DioramaPipeline.pending.has(dimName)) {
+            // Reuse the artwork browser's Bayer matrix and low-res pipeline.
+            const pending = DioramaPipeline.ready
+              .then(async () => {
+                const src =
+                  await DioramaPipeline.bridgeIframe.contentWindow.renderPixelDiorama(
+                    dimName,
+                  );
+                const markup = `<img src="${src}" alt="Dithered dimension diorama" />`;
+                DioramaPipeline.cache.set(dimName, markup);
+                return markup;
+              })
+              .finally(() => DioramaPipeline.pending.delete(dimName));
+            DioramaPipeline.pending.set(dimName, pending);
+          }
+          DioramaPipeline.pending
+            .get(dimName)
+            .then((markup) => {
+              if (callback) callback(markup);
+            })
+            .catch((error) =>
+              console.error("Diorama rendering failed:", error),
+            );
           return "";
         },
       };
@@ -3461,21 +3478,23 @@
           if (!DOM.artDisplay) return;
 
           if (snap.isSurveyed) {
-            const svgMarkup = DioramaPipeline.render(
+            const artworkMarkup = DioramaPipeline.render(
               snap.dimName,
-              (asyncSvg) => {
+              (asyncArtwork) => {
+                const current = VoyageSession.getSnapshot();
                 if (
-                  asyncSvg &&
+                  asyncArtwork &&
                   DOM.artDisplay &&
-                  VoyageSession.getSnapshot().isSurveyed
+                  current.isSurveyed &&
+                  current.dimName === snap.dimName
                 ) {
-                  DOM.artDisplay.innerHTML = asyncSvg;
+                  DOM.artDisplay.innerHTML = asyncArtwork;
                 }
               },
             );
 
-            if (svgMarkup) {
-              DOM.artDisplay.innerHTML = svgMarkup;
+            if (artworkMarkup) {
+              DOM.artDisplay.innerHTML = artworkMarkup;
             }
           } else {
             DOM.artDisplay.innerHTML = `

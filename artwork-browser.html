@@ -1142,10 +1142,18 @@
         MULBERRY_DIVISOR: 4294967296,
       };
 
+      // Ordered Bayer matrix and luminance strength from concept.html.
+      const BAYER_4X4 = [
+        [0, 8, 2, 10],
+        [12, 4, 14, 6],
+        [3, 11, 1, 9],
+        [15, 7, 13, 5],
+      ];
       const DITHER_CONFIG = {
         BAYER_SIZE: 4,
         THRESHOLD_OFFSET: 0.5,
         DIVISOR: 16,
+        STRENGTH: 64,
       };
 
       const GLITCH_CONFIG = {
@@ -1329,12 +1337,7 @@
           this.ctx = this.canvas.getContext("2d");
           this.imageData = this.ctx.createImageData(this.w, this.h);
           this.buf = new Uint32Array(this.imageData.data.buffer);
-          this.bayer = [
-            [0, 8, 2, 10],
-            [12, 4, 14, 6],
-            [3, 11, 1, 9],
-            [15, 7, 13, 5],
-          ];
+          this.bayer = BAYER_4X4;
         }
         setPalette(hexColors) {
           const OPAQUE_ALPHA_SHIFT = 24;
@@ -3773,15 +3776,106 @@
        *  ========================================================================= */
 
       function renderPixelCanvas(noun, adjective, rng, palette) {
-        const renderer = new PixelRenderer(
-          PIXEL_CONFIG.WIDTH,
-          PIXEL_CONFIG.HEIGHT,
+        return renderPixelDitherCanvas(noun, adjective, rng, palette);
+      }
+
+      /* =========================================================================
+       *  LOW-RES BAYER DITHERING PIPELINE (borrowed from concept.html)
+       *  1. Rasterize the vector scene into a low-resolution buffer.
+       *  2. Quantize luminance to the 5-tone palette using the Bayer matrix.
+       *  3. Upscale to display size with smoothing disabled.
+       *  ======================================================================= */
+      function renderPixelDitherCanvas(noun, adjective, rng, palette) {
+        const lw = PIXEL_CONFIG.WIDTH;
+        const lh = PIXEL_CONFIG.HEIGHT;
+
+        const lowResCanvas = document.createElement("canvas");
+        lowResCanvas.width = lw;
+        lowResCanvas.height = lh;
+        const lowResCtx = lowResCanvas.getContext("2d", {
+          willReadFrequently: true,
+        });
+
+        // Include the existing shared filters in the standalone SVG image.
+        const filterDefs = document.querySelector("svg > defs").innerHTML;
+        const svgMarkup = createVectorSVG(noun, adjective, rng, palette)
+          .replace(
+            "<svg ",
+            `<svg width="${SVG_CONFIG.WIDTH}" height="${SVG_CONFIG.HEIGHT}" `,
+          )
+          .replace("<defs>", `<defs>${filterDefs}`);
+        const svgUrl = URL.createObjectURL(
+          new Blob([svgMarkup], { type: "image/svg+xml" }),
         );
-        renderer.setPalette(palette);
-        if (GenPixel[noun]) GenPixel[noun](renderer, rng);
-        if (ADJECTIVE_EFFECTS[adjective]?.glitchPixel)
-          renderer.applyGlitch(rng);
-        return renderer.present();
+        const outCanvas = document.createElement("canvas");
+        outCanvas.width = SVG_CONFIG.WIDTH;
+        outCanvas.height = SVG_CONFIG.HEIGHT;
+        const outCtx = outCanvas.getContext("2d");
+        outCtx.fillStyle = palette[0];
+        outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+        const img = new Image();
+
+        // Return a canvas immediately for gallery/inspector callers; the bridge
+        // awaits ready before caching or displaying the completed image.
+        outCanvas.ready = new Promise((resolve, reject) => {
+          img.onload = () => {
+            try {
+              // 1. Rasterize the unchanged scene at low resolution.
+              lowResCtx.fillStyle = palette[0];
+              lowResCtx.fillRect(0, 0, lw, lh);
+              lowResCtx.drawImage(img, 0, 0, lw, lh);
+              const imageData = lowResCtx.getImageData(0, 0, lw, lh);
+              const data = imageData.data;
+              const paletteRGB = palette.map((hex) => {
+                const num = parseInt(hex.slice(1), 16);
+                return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+              });
+
+              // 2. Concept's luminance + Bayer offset + five-tone quantization.
+              for (let y = 0; y < lh; y++) {
+                for (let x = 0; x < lw; x++) {
+                  const idx = (y * lw + x) * 4;
+                  const lum =
+                    0.299 * data[idx] +
+                    0.587 * data[idx + 1] +
+                    0.114 * data[idx + 2];
+                  const offset = BAYER_4X4[y % 4][x % 4] / 16 - 0.5;
+                  const level = Math.min(
+                    255,
+                    Math.max(0, lum + offset * DITHER_CONFIG.STRENGTH),
+                  );
+                  const color = paletteRGB[Math.floor((level / 256) * 5)];
+                  data[idx] = color[0];
+                  data[idx + 1] = color[1];
+                  data[idx + 2] = color[2];
+                }
+              }
+              lowResCtx.putImageData(imageData, 0, 0);
+
+              // 3. Upscale without smoothing, preserving the Bayer pattern.
+              outCtx.imageSmoothingEnabled = false;
+              outCtx.drawImage(
+                lowResCanvas,
+                0,
+                0,
+                outCanvas.width,
+                outCanvas.height,
+              );
+              resolve(outCanvas);
+            } catch (error) {
+              reject(error);
+            } finally {
+              URL.revokeObjectURL(svgUrl);
+            }
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(svgUrl);
+            reject(new Error("Unable to rasterize diorama artwork"));
+          };
+          img.src = svgUrl;
+        });
+        outCanvas.ready.catch((error) => console.error("Pixel dither:", error));
+        return outCanvas;
       }
 
       function applyContainerEffects(container, adjective) {
@@ -4785,6 +4879,21 @@
           console.error("renderVectorDiorama error:", e);
           return "";
         }
+      };
+
+      // Share the same Bayer matrix/pipeline with the game, without duplicating it.
+      window.renderPixelDiorama = async function (dimName) {
+        const parts = (dimName || "Fractured Vale").split(" ");
+        const adjective = parts[0] || "Fractured";
+        const noun = parts.slice(1).join(" ") || "Vale";
+        const canvas = renderPixelCanvas(
+          noun,
+          adjective,
+          new SeededRNG(`The ${adjective} ${noun}`),
+          PALETTES[adjective] || PALETTES.Fractured,
+        );
+        await canvas.ready;
+        return canvas.toDataURL("image/png");
       };
 
       window.addEventListener("message", (event) => {
