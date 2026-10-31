@@ -3797,7 +3797,7 @@
         });
 
         // Include the existing shared filters in the standalone SVG image.
-        const filterDefs = document.querySelector("svg > defs").innerHTML;
+        const filterDefs = document.querySelector("svg > defs")?.innerHTML || "";
         const svgMarkup = createVectorSVG(noun, adjective, rng, palette)
           .replace(
             "<svg ",
@@ -4855,7 +4855,9 @@
         searchDebounceTimer = setTimeout(renderGallery, 100);
       });
 
-      renderGallery();
+      const isBridgeMode =
+        new URLSearchParams(window.location.search).get("bridge") === "1";
+      if (!isBridgeMode) renderGallery();
 
       /* ========================================================
          CROSS-ORIGIN / IFRAME ARTWORK BRIDGE FOR RIFT RAILS
@@ -4896,7 +4898,7 @@
         return canvas.toDataURL("image/png");
       };
 
-      window.addEventListener("message", (event) => {
+      window.addEventListener("message", async (event) => {
         if (event.data && event.data.type === "RENDER_DIORAMA") {
           const svg = window.renderVectorDiorama(event.data.dimName);
           if (event.source && event.source.postMessage) {
@@ -4909,6 +4911,29 @@
               },
               "*",
             );
+          }
+        } else if (event.data && event.data.type === "RENDER_PIXEL_DIORAMA") {
+          const { dimName, reqId } = event.data;
+          try {
+            const src = await window.renderPixelDiorama(dimName);
+            if (event.source && event.source.postMessage) {
+              event.source.postMessage(
+                { type: "DIORAMA_PIXEL_RESULT", reqId, dimName, src },
+                "*",
+              );
+            }
+          } catch (error) {
+            if (event.source && event.source.postMessage) {
+              event.source.postMessage(
+                {
+                  type: "DIORAMA_PIXEL_ERROR",
+                  reqId,
+                  dimName,
+                  error: String(error),
+                },
+                "*",
+              );
+            }
           }
         }
       });
