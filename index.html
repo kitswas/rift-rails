@@ -35,6 +35,14 @@
         --font-mono: "SF Mono", "Fira Code", monospace, "Courier New";
         --radius: 8px;
         --safe-bottom: env(safe-area-inset-bottom, 8px);
+
+        --layer-scene: 0;
+        --layer-game-ui: 10;
+        --layer-tutorial: 20;
+        --layer-narrative: 30;
+        --layer-route-selection: 40;
+        --layer-start-screen: 50;
+        --layer-transition-effects: 60;
       }
 
       * {
@@ -65,7 +73,7 @@
         inset: 0;
         width: 100vw;
         height: 100vh;
-        z-index: 2500;
+        z-index: var(--layer-transition-effects);
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.15s ease;
@@ -110,7 +118,7 @@
       #start-screen {
         position: fixed;
         inset: 0;
-        z-index: 2000;
+        z-index: var(--layer-start-screen);
         background: var(--bg);
         padding: 20px;
         overflow-y: auto;
@@ -213,6 +221,27 @@
         height: 100%;
         width: 100%;
         overflow: hidden;
+        position: relative;
+        z-index: var(--layer-game-ui);
+      }
+
+      #bridge-scene {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: var(--layer-scene);
+        background: radial-gradient(ellipse at 50% 30%, #17202c, var(--bg) 78%);
+      }
+
+      #bridge-scene img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.42;
+        filter: saturate(0.72) brightness(0.78);
+        -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
       }
 
       #snap-slider {
@@ -299,6 +328,10 @@
         flex-direction: column;
         transition: border-color 0.5s ease;
         position: relative;
+      }
+
+      #pane-bridge .panel-card {
+        background: rgba(16, 20, 29, 0.72);
       }
 
       h2,
@@ -445,19 +478,48 @@
 
       /* ================= CUTSCENE OVERLAY SYSTEM ================= */
       #cutscene-overlay {
-        position: absolute;
-        inset: 12px;
-        background: rgba(11, 15, 23, 0.98);
-        border: 1px solid var(--action);
-        border-radius: var(--radius);
-        z-index: 100;
-        display: none;
-        flex-direction: column;
-        padding: 14px;
-        box-shadow:
-          inset 0 0 24px rgba(245, 158, 11, 0.12),
-          0 4px 20px rgba(0, 0, 0, 0.8);
+        position: fixed;
+        inset: 0;
+        z-index: var(--layer-narrative);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 16px 16px calc(var(--safe-bottom) + 12px);
+        background: linear-gradient(to bottom, transparent 42%, rgba(5, 8, 13, 0.22));
         animation: cutsceneFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      #cutscene-overlay[hidden],
+      #tutorial-cue[hidden] {
+        display: none !important;
+      }
+
+      .cutscene-frame {
+        position: relative;
+        isolation: isolate;
+        width: min(100%, 1120px);
+        min-height: 160px;
+        max-height: 44dvh;
+        display: flex;
+        flex-direction: column;
+        padding: 24px 26px 14px;
+        border: 2px solid var(--action);
+        border-radius: 5px;
+        background: rgba(9, 13, 21, 0.92);
+        box-shadow: inset 0 0 22px rgba(245, 158, 11, 0.08), 0 8px 28px rgba(0, 0, 0, 0.62);
+      }
+
+      .cutscene-portrait {
+        position: absolute;
+        z-index: -1;
+        right: 3%;
+        bottom: 8px;
+        width: min(32vw, 270px);
+        height: min(40dvh, 330px);
+        object-fit: contain;
+        object-position: bottom;
+        filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.45));
+        pointer-events: none;
       }
 
       @keyframes cutsceneFadeIn {
@@ -473,16 +535,22 @@
 
       .cutscene-header {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
         align-items: center;
-        border-bottom: 1px solid rgba(245, 158, 11, 0.3);
-        padding-bottom: 8px;
-        margin-bottom: 10px;
+        width: fit-content;
+        max-width: 72%;
+        margin-top: -42px;
+        margin-bottom: 12px;
+        padding: 8px 13px;
+        border: 2px solid var(--action);
+        border-bottom: 0;
+        border-radius: 5px 5px 0 0;
+        background: rgba(9, 13, 21, 0.96);
       }
 
       .cutscene-speaker {
         font-weight: 800;
-        font-size: 0.82em;
+        font-size: 0.8em;
         color: var(--action);
         letter-spacing: 1px;
         display: flex;
@@ -491,50 +559,79 @@
       }
 
       .cutscene-pips {
-        font-size: 0.78em;
+        margin-left: 10px;
+        font-size: 0.72em;
         color: var(--text-muted);
-        letter-spacing: 2px;
+        white-space: nowrap;
       }
 
       .cutscene-text {
-        flex: 1;
+        width: 72%;
+        min-height: 2.8em;
+        max-height: 26dvh;
         overflow-y: auto;
         color: #f1f5f9;
-        font-size: 0.9em;
-        line-height: 1.6;
-        padding: 4px 2px;
-        font-style: normal;
-        border-left: 2px solid rgba(245, 158, 11, 0.4);
-        padding-left: 10px;
-        margin-bottom: 12px;
+        font-size: 0.94em;
+        line-height: 1.5;
+        padding: 0 4px 2px 0;
+        margin: 0 0 10px;
       }
 
       .cutscene-options {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: auto;
+        justify-content: flex-end;
       }
 
-      .btn-cutscene-choice {
-        background: rgba(245, 158, 11, 0.06);
-        border: 1px solid rgba(245, 158, 11, 0.4);
-        color: var(--text);
-        text-align: left;
-        padding: 9px 12px;
-        font-size: 0.82em !important;
-        font-weight: 600;
-        border-radius: 4px;
-        justify-content: flex-start;
-        transition: all 0.15s ease;
-        line-height: 1.35;
+      .btn-cutscene-continue {
+        width: auto;
+        min-width: 132px;
+        min-height: 38px;
+        margin: 0;
+        padding: 7px 12px;
+        justify-content: space-between;
+        border: 1px solid var(--action);
+        border-radius: 3px;
+        background: rgba(245, 158, 11, 0.14);
+        color: #fff;
       }
 
-      .btn-cutscene-choice:hover {
+      .btn-cutscene-continue::after {
+        content: "»";
+        margin-left: 14px;
+        color: var(--action);
+        font-size: 1.3em;
+      }
+
+      .btn-cutscene-continue:hover,
+      .btn-cutscene-continue:focus-visible {
         background: rgba(245, 158, 11, 0.16);
         border-color: var(--action);
-        color: #fff;
-        transform: translateX(2px);
+        outline: 2px solid rgba(245, 158, 11, 0.45);
+        outline-offset: 2px;
+      }
+
+      #tutorial-cue {
+        position: fixed;
+        z-index: var(--layer-tutorial);
+        left: 50%;
+        bottom: calc(var(--safe-bottom) + 60px);
+        transform: translateX(-50%);
+        width: min(calc(100vw - 24px), 390px);
+        padding: 9px 12px;
+        border: 1px solid var(--action);
+        border-radius: 5px;
+        background: rgba(9, 13, 21, 0.94);
+        color: var(--text);
+        text-align: center;
+        font-size: 0.82em;
+        line-height: 1.35;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+      }
+
+      #btn-explore.tutorial-highlight {
+        border-color: var(--action);
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35), 0 0 18px rgba(245, 158, 11, 0.28);
       }
 
       /* ================= BUTTONS & CONTROLS ================= */
@@ -770,7 +867,7 @@
         position: fixed;
         inset: 0;
         background-color: var(--overlay-bg);
-        z-index: 1500;
+        z-index: var(--layer-route-selection);
         display: none;
         flex-direction: column;
         align-items: center;
@@ -818,6 +915,62 @@
         opacity: 0.4;
         filter: grayscale(100%);
         cursor: not-allowed !important;
+      }
+
+      @media (max-width: 600px) {
+        #cutscene-overlay {
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+
+        .cutscene-frame {
+          min-height: 150px;
+          max-height: 48dvh;
+          padding: 20px 14px 12px;
+        }
+
+        .cutscene-portrait {
+          right: 0;
+          width: 39vw;
+          height: min(34dvh, 250px);
+        }
+
+        .cutscene-header {
+          max-width: 76%;
+          margin-top: -38px;
+          margin-bottom: 10px;
+          padding: 7px 9px;
+        }
+
+        .cutscene-speaker {
+          font-size: 0.68em;
+          letter-spacing: 0.5px;
+        }
+
+        .cutscene-pips {
+          margin-left: 6px;
+          font-size: 0.66em;
+        }
+
+        .cutscene-text {
+          width: 76%;
+          max-height: 30dvh;
+          font-size: 0.84em;
+          line-height: 1.45;
+        }
+
+        .btn-cutscene-continue {
+          min-height: 36px;
+          min-width: 116px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #cutscene-overlay,
+        .screen-shake,
+        .chromatic-flash {
+          animation-duration: 0.01ms !important;
+        }
       }
     </style>
   </head>
@@ -872,30 +1025,25 @@
     ========================================================
     -->
     <canvas id="fx-canvas"></canvas>
+    <div id="bridge-scene" aria-hidden="true"></div>
 
     <div id="start-screen">
       <div class="start-card">
-        <h1>RIFT RAILS // OPERATING DIRECTIVE</h1>
+        <h1>RIFT RAILS</h1>
         <p>
-          You command the <strong>Aethelgard Express</strong>, an armored
-          locomotive capable of piercing the veil between shattered realms.
-          Maintain structural integrity and furnace stability across the
-          infinite Ley-Rails.
+          Command the <strong>Aethelgard Express</strong> across the infinite
+          Ley-Rails. Keep the train fueled and intact.
         </p>
         <div class="briefing-box">
-          <b>ARCANE OPERATING CYCLE:</b><br />
-          [1] <b>SURVEY:</b> Spend locomotive Energy (EN) on the Bridge to
-          unlatch local realm gates.<br />
-          [2] <b>RESOLVE:</b> Execute mining, hunting, or trading rites to
-          secure Fuel & Flux.<br />
-          [3] <b>MUTATE:</b> Access the Workshop to forge heavier boilers or
-          reinforced ballistas.<br />
-          [4] <b>RIFT JUMP:</b> Burn refined fuel to breach the next realm
-          waypoint.
+          <b>HOW TO PLAY:</b><br />
+          [1] <b>EXPLORE:</b> Spend Energy to reveal actions.<br />
+          [2] <b>GATHER:</b> Collect Fuel and Flux.<br />
+          [3] <b>UPGRADE:</b> Spend Flux in the Workshop.<br />
+          [4] <b>RIFT JUMP:</b> Spend Fuel to reach the next realm and restore
+          Energy.
         </div>
         <p style="font-size: 0.82em; color: var(--text-muted)">
-          * Inspect any HUD telemetry cell for subsystem diagnostic reports.
-          Progress auto-saves after each rift jump.
+          Select a HUD stat for help. Progress auto-saves after each Rift Jump.
         </p>
         <button class="btn-start" id="btn-ignite"></button>
         <button
@@ -1041,30 +1189,8 @@
         <!-- PANE 2: TACTICAL BRIDGE & CUTSCENE LOG -->
         <div class="pane" id="pane-bridge">
           <div class="panel-card">
-            <h2 id="location-name"></h2>
+            <h2 id="location-name" tabindex="-1"></h2>
             <h3 id="location-type"></h3>
-
-            <!-- CUTSCENE OVERLAY CONTAINER -->
-            <div id="cutscene-overlay">
-              <div class="cutscene-header">
-                <span class="cutscene-speaker">
-                  <span style="color: var(--action)">⚜</span> MASTER CORVUS //
-                  VEILED SCHOLAR
-                </span>
-                <span id="cutscene-progress" class="cutscene-pips">✦ ✧ ✧</span>
-              </div>
-              <div id="cutscene-body" class="cutscene-text"></div>
-              <div id="cutscene-choices" class="cutscene-options">
-                <button
-                  class="btn-cutscene-choice"
-                  id="cutscene-btn-a"
-                ></button>
-                <button
-                  class="btn-cutscene-choice"
-                  id="cutscene-btn-b"
-                ></button>
-              </div>
-            </div>
 
             <div id="story-log"></div>
 
@@ -1197,6 +1323,42 @@
         <button class="nav-tab" id="tab-manual">Manual</button>
       </div>
     </div>
+
+    <!-- CUTSCENE OVERLAY CONTAINER -->
+    <div
+      id="cutscene-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cutscene-speaker"
+      aria-describedby="cutscene-body"
+      hidden
+    >
+      <section class="cutscene-frame">
+        <img
+          class="cutscene-portrait"
+          src="assets/corvus.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <div class="cutscene-header">
+          <span class="cutscene-speaker" id="cutscene-speaker">
+            <span aria-hidden="true">⚜</span> MASTER CORVUS // VEILED SCHOLAR
+          </span>
+          <span id="cutscene-progress" class="cutscene-pips"></span>
+        </div>
+        <div id="cutscene-body" class="cutscene-text" aria-live="polite"></div>
+        <div class="cutscene-options">
+          <button
+            class="btn-cutscene-continue"
+            id="cutscene-continue"
+            type="button"
+          >
+            Continue
+          </button>
+        </div>
+      </section>
+    </div>
+    <div id="tutorial-cue" role="status" hidden></div>
 
     <script>
       let DOM = {};
@@ -1388,6 +1550,7 @@
             screenShake: "screen-shake",
             chromaticFlash: "chromatic-flash",
             fxActive: "active",
+            tutorialHighlight: "tutorial-highlight",
           },
           ids: {
             startScreen: "start-screen",
@@ -1395,13 +1558,13 @@
             navChoices: "nav-choices",
             lblNavTitle: "lbl-nav-title",
             gameContainer: "game-container",
+            bridgeScene: "bridge-scene",
+            tutorialCue: "tutorial-cue",
             storyLog: "story-log",
             cutsceneOverlay: "cutscene-overlay",
             cutsceneProgress: "cutscene-progress",
             cutsceneBody: "cutscene-body",
-            cutsceneChoices: "cutscene-choices",
-            cutsceneBtnA: "cutscene-btn-a",
-            cutsceneBtnB: "cutscene-btn-b",
+            cutsceneContinue: "cutscene-continue",
             locationName: "location-name",
             locationType: "location-type",
             encounterChoices: "encounter-choices",
@@ -1457,18 +1620,12 @@
             beats: [
               {
                 text: "The Crucible fire drinks refined fuel, Conductor. Mind the draft gauges, or the cold between realms will breach the iron ribs before nightfall.",
-                choiceA: "I know how to tend a mystic furnace, Scholar.",
-                choiceB: "The wards will hold against the cold.",
               },
               {
                 text: "Hardly inspiring. Expend a spark of your locomotive's Energy to unlatch the station gates and survey the merchant yard. We need provisions before we breach the veil again.",
-                choiceA: "I will see what the scavengers are selling.",
-                choiceB: "Unlatching the gates now.",
               },
               {
                 text: "Do make haste. And remember: when the locomotive's local Energy runs dry, only a Rift Jump into the void will rekindle your reserves.",
-                choiceA: "Understood. The engine is primed.",
-                choiceB: "I'll keep the boiler fed.",
               },
             ],
             logSummary:
@@ -1479,13 +1636,9 @@
             beats: [
               {
                 text: "Smell that sulfurous stench? The air is thick with raw ether and condensed Flux. A novice burns out their boiler trying to harvest everything at once.",
-                choiceA: "We need fuel for the next jump more than shiny dust.",
-                choiceB: "Flux is worth a fortune to the blacksmiths.",
               },
               {
                 text: "Ignorance is rampant in this cab. Siphon the volatile gases to fill our propulsion tanks, or harvest the rift crystals to line your pockets with Flux for the forge. Never leave a node without replenishing our stores.",
-                choiceA: "Starting the siphoning pumps.",
-                choiceB: "Securing the mineral harvesters.",
               },
             ],
             logSummary:
@@ -1496,13 +1649,9 @@
             beats: [
               {
                 text: "Listen to that rattling rod. If you expect this locomotive to carry us through deeper realms, you would do well to visit the Workshop.",
-                choiceA: "The Aethelgard has held together this far.",
-                choiceB: "I can hammer extra plating onto the hull.",
               },
               {
                 text: "Primitive thinking. Transmuting the Crucible engine grants you greater Energy capacity per realm, but the added bulk demands a heavier toll of fuel for every rift breach. Mutate your ballistas if you wish to survive the hunting expanses.",
-                choiceA: "I'll balance the boiler and weapons carefully.",
-                choiceB: "We will forge what we can afford.",
               },
             ],
             logSummary:
@@ -1513,13 +1662,9 @@
             beats: [
               {
                 text: "Shadows stirring beyond the glass. Voidbeasts have nested along the iron tracks. They thirst for the furnace glow.",
-                choiceA: "Man the harpoons. We fight.",
-                choiceB: "Can we douse the furnace and drift past?",
               },
               {
                 text: "Do not speak of stealth to a predator of the deep void. If you strike them down, their glowing heart-crystals will feed both your fuel tanks and your coin pouch. Hesitate, and their talons will shred the outer hull.",
-                choiceA: "Rally the stokers. Ready weapons.",
-                choiceB: "Targeting the alphas.",
               },
             ],
             logSummary:
@@ -1530,13 +1675,9 @@
             beats: [
               {
                 text: "The spires of the Sanctuary. My ticket is stamped, and my business with this soot-stained cab is concluded.",
-                choiceA: "Safe travels into the Sanctuary, Corvus.",
-                choiceB: "Good riddance to an unhelpful passenger.",
               },
               {
                 text: "Take this final counsel, Conductor, for the void beyond this hub has no mercy for the blind: visit the Yard Master and buy an Astrolabe before you depart. Without it, you cannot steer when the Ley-Rails fork, and you will drift helpless into whatever nightmare lies ahead. May the wards endure.",
-                choiceA: "I will find the Yard Master immediately.",
-                choiceB: "The Astrolabe will be mounted.",
               },
             ],
             logSummary:
@@ -1558,8 +1699,15 @@
           formatDimName: (name) => `Realm: The ${name}`,
           formatDimType: (type) => `Type: ${type}`,
           formatSectorWaypoint: (jump) => `Waypoint ${jump}`,
-          btnExploreClosed: (cost) => `Survey Realm (-${cost} EN)`,
-          btnExploreHub: (cost) => `Open Docking Bay (-${cost} EN)`,
+          exploreName: (isHub) => (isHub ? "Open Docking Bay" : "Survey Realm"),
+          btnExploreClosed: (cost) =>
+            `${GAME_DATA.text.exploreName(false)} (-${cost} EN)`,
+          btnExploreHub: (cost) =>
+            `${GAME_DATA.text.exploreName(true)} (-${cost} EN)`,
+          btnContinue: "Continue",
+          tutorialExplore: (isHub, cost) =>
+            `Next: ${GAME_DATA.text.exploreName(isHub)} · Costs ${cost} Energy`,
+          formatCutsceneProgress: (beat, total) => `Beat ${beat} of ${total}`,
           btnJump: (cost) => `Rift Jump (-${cost} Fuel)`,
           btnDesperate: (cost, yieldAmount) =>
             `Strip Plating for Fuel (-${cost}% Hull, +${yieldAmount} Fuel)`,
@@ -3058,7 +3206,8 @@
             navigator.vibrate(GAME_DATA.config.FX_VIBRATE_PATTERN);
           }
 
-          document.body.classList.add(GAME_DATA.dom.classes.screenShake);
+          DOM.gameContainer.classList.add(GAME_DATA.dom.classes.screenShake);
+          DOM.bridgeScene.classList.add(GAME_DATA.dom.classes.screenShake);
           DOM.fxCanvas.classList.add(GAME_DATA.dom.classes.fxActive);
           TransitionFX.running = true;
 
@@ -3170,8 +3319,10 @@
           setTimeout(() => {
             if (onBreach) onBreach();
             TransitionFX.applyThemeStyles(adjective);
-            document.body.classList.remove(GAME_DATA.dom.classes.screenShake);
-            document.body.classList.add(GAME_DATA.dom.classes.chromaticFlash);
+            DOM.gameContainer.classList.remove(GAME_DATA.dom.classes.screenShake);
+            DOM.bridgeScene.classList.remove(GAME_DATA.dom.classes.screenShake);
+            DOM.gameContainer.classList.add(GAME_DATA.dom.classes.chromaticFlash);
+            DOM.bridgeScene.classList.add(GAME_DATA.dom.classes.chromaticFlash);
             SoundFX.playArrivalChime();
           }, GAME_DATA.config.JUMP_CHARGE_MS);
 
@@ -3179,7 +3330,10 @@
             TransitionFX.running = false;
             cancelAnimationFrame(TransitionFX.animId);
             DOM.fxCanvas.classList.remove(GAME_DATA.dom.classes.fxActive);
-            document.body.classList.remove(
+            DOM.gameContainer.classList.remove(
+              GAME_DATA.dom.classes.chromaticFlash,
+            );
+            DOM.bridgeScene.classList.remove(
               GAME_DATA.dom.classes.chromaticFlash,
             );
             if (onComplete) onComplete();
@@ -3193,6 +3347,31 @@
       const CutsceneEngine = {
         activeCutscene: null,
         beatIndex: 0,
+        returnFocus: null,
+
+        trapFocus: (event) => {
+          if (!CutsceneEngine.activeCutscene) return;
+          if (event.type === "keydown" && event.key === "Tab") {
+            event.preventDefault();
+            DOM.cutsceneContinue.focus();
+          } else if (
+            event.type === "focusin" &&
+            !DOM.cutsceneOverlay.contains(event.target)
+          ) {
+            DOM.cutsceneContinue.focus();
+          }
+        },
+
+        showExploreHint: () => {
+          const snap = VoyageSession.getSnapshot();
+          const node = GAME_DATA.nodes[snap.dimId];
+          DOM.tutorialCue.innerText = GAME_DATA.text.tutorialExplore(
+            node.isHub,
+            node.exploreCost,
+          );
+          DOM.tutorialCue.hidden = false;
+          DOM.btnExplore.classList.add(GAME_DATA.dom.classes.tutorialHighlight);
+        },
 
         play: (cutsceneId) => {
           const cutscene = GAME_DATA.cutscenes[cutsceneId];
@@ -3200,11 +3379,14 @@
 
           CutsceneEngine.activeCutscene = cutscene;
           CutsceneEngine.beatIndex = 0;
+          CutsceneEngine.returnFocus = document.activeElement;
           VoyageSession.markCutsceneSeen(cutsceneId);
 
+          DOM.gameContainer.inert = true;
+          DOM.cutsceneOverlay.hidden = false;
           Engine.transitionTo(GAME_DATA.phases.dialogue);
-          DOM.cutsceneOverlay.style.display = "flex";
           CutsceneEngine.renderCurrentBeat();
+          DOM.cutsceneContinue.focus();
         },
 
         renderCurrentBeat: () => {
@@ -3220,10 +3402,14 @@
             pips += i <= CutsceneEngine.beatIndex ? "✦ " : "✧ ";
           }
           DOM.cutsceneProgress.innerText = pips.trim();
-          DOM.cutsceneBody.innerHTML = beat.text;
-
-          DOM.cutsceneBtnA.innerText = `[A] "${beat.choiceA}"`;
-          DOM.cutsceneBtnB.innerText = `[B] "${beat.choiceB}"`;
+          DOM.cutsceneProgress.setAttribute(
+            "aria-label",
+            GAME_DATA.text.formatCutsceneProgress(
+              CutsceneEngine.beatIndex + 1,
+              total,
+            ),
+          );
+          DOM.cutsceneBody.innerText = beat.text;
         },
 
         advance: () => {
@@ -3239,7 +3425,8 @@
 
         close: () => {
           const cutscene = CutsceneEngine.activeCutscene;
-          DOM.cutsceneOverlay.style.display = "none";
+          DOM.cutsceneOverlay.hidden = true;
+          DOM.gameContainer.inert = false;
 
           if (cutscene?.logSummary) {
             Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore);
@@ -3250,6 +3437,29 @@
 
           Engine.transitionTo(GAME_DATA.phases.idle);
           VoyageSession.evaluateSurvival();
+
+          if (cutscene?.id === "wp1") CutsceneEngine.showExploreHint();
+
+          const returnFocus = CutsceneEngine.returnFocus;
+          const canRestoreFocus =
+            returnFocus?.isConnected &&
+            returnFocus !== document.body &&
+            returnFocus !== document.documentElement &&
+            !returnFocus.disabled &&
+            returnFocus.getClientRects().length > 0;
+          let focusRestored = false;
+          if (canRestoreFocus) {
+            returnFocus.focus();
+            focusRestored = document.activeElement === returnFocus;
+          }
+          if (!focusRestored) {
+            if (!DOM.btnExplore.disabled) {
+              DOM.btnExplore.focus();
+            } else {
+              DOM.locationName.focus();
+            }
+          }
+          CutsceneEngine.returnFocus = null;
         },
       };
       /* ========================================================
@@ -3389,6 +3599,11 @@
           const success = VoyageSession.exploreNode();
           if (!success) return;
 
+          DOM.tutorialCue.hidden = true;
+          DOM.btnExplore.classList.remove(
+            GAME_DATA.dom.classes.tutorialHighlight,
+          );
+
           Engine.log(
             GAME_DATA.text.logEncounterTitle(node.label, node.desc),
             GAME_DATA.dom.classes.logEvent,
@@ -3523,24 +3738,26 @@
 
         renderSensors: () => {
           const snap = VoyageSession.getSnapshot();
-          if (!DOM.artDisplay) return;
+          if (!DOM.artDisplay || !DOM.bridgeScene) return;
+
+          if (DOM.bridgeScene.dataset.dimName !== snap.dimName) {
+            DOM.bridgeScene.innerHTML = "";
+            DOM.bridgeScene.dataset.dimName = snap.dimName;
+          }
+
+          const artworkMarkup = DioramaPipeline.render(
+            snap.dimName,
+            (asyncArtwork) => {
+              const current = VoyageSession.getSnapshot();
+              if (asyncArtwork && current.dimName === snap.dimName) {
+                DOM.bridgeScene.innerHTML = asyncArtwork;
+                if (current.isSurveyed) DOM.artDisplay.innerHTML = asyncArtwork;
+              }
+            },
+          );
+          if (artworkMarkup) DOM.bridgeScene.innerHTML = artworkMarkup;
 
           if (snap.isSurveyed) {
-            const artworkMarkup = DioramaPipeline.render(
-              snap.dimName,
-              (asyncArtwork) => {
-                const current = VoyageSession.getSnapshot();
-                if (
-                  asyncArtwork &&
-                  DOM.artDisplay &&
-                  current.isSurveyed &&
-                  current.dimName === snap.dimName
-                ) {
-                  DOM.artDisplay.innerHTML = asyncArtwork;
-                }
-              },
-            );
-
             if (artworkMarkup) {
               DOM.artDisplay.innerHTML = artworkMarkup;
             }
@@ -3717,6 +3934,7 @@
         setupStaticText: () => {
           const snap = VoyageSession.getSnapshot();
           const audioPrefs = SaveSystem.loadAudioPrefs();
+          DOM.cutsceneContinue.innerText = GAME_DATA.text.btnContinue;
           if (audioPrefs) {
             SoundFX.ambientMode = audioPrefs.mode || "rails";
             SoundFX.ambientSliderVal = audioPrefs.ambientSlider ?? 100;
@@ -3832,12 +4050,11 @@
             Engine.resetGame(true),
           );
 
-          DOM.cutsceneBtnA.addEventListener("click", () =>
+          DOM.cutsceneContinue.addEventListener("click", () =>
             CutsceneEngine.advance(),
           );
-          DOM.cutsceneBtnB.addEventListener("click", () =>
-            CutsceneEngine.advance(),
-          );
+          document.addEventListener("keydown", CutsceneEngine.trapFocus);
+          document.addEventListener("focusin", CutsceneEngine.trapFocus);
 
           DOM.selectAmbientMode.addEventListener("change", (e) => {
             SoundFX.setAmbientMode(e.target.value);
