@@ -667,33 +667,31 @@
 
       .cutscene-options {
         display: flex;
-        justify-content: flex-end;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: auto;
       }
 
-      .btn-cutscene-continue {
-        width: auto;
-        min-width: 132px;
-        min-height: 38px;
-        margin: 0;
-        padding: 7px 12px;
-        justify-content: space-between;
-        border: 1px solid var(--action);
-        border-radius: 3px;
-        background: rgba(245, 158, 11, 0.14);
-        color: #fff;
+      .btn-cutscene-choice {
+        background: rgba(245, 158, 11, 0.06);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: var(--text);
+        text-align: left;
+        padding: 9px 12px;
+        font-size: 0.82em !important;
+        font-weight: 600;
+        border-radius: 4px;
+        justify-content: flex-start;
+        transition: all 0.15s ease;
+        line-height: 1.35;
       }
 
-      .btn-cutscene-continue::after {
-        content: "»";
-        margin-left: 14px;
-        color: var(--action);
-        font-size: 1.3em;
-      }
-
-      .btn-cutscene-continue:hover,
-      .btn-cutscene-continue:focus-visible {
+      .btn-cutscene-choice:hover,
+      .btn-cutscene-choice:focus-visible {
         background: rgba(245, 158, 11, 0.16);
         border-color: var(--action);
+        color: #fff;
+        transform: translateX(2px);
         outline: 2px solid rgba(245, 158, 11, 0.45);
         outline-offset: 2px;
       }
@@ -1519,9 +1517,8 @@
           line-height: 1.45;
         }
 
-        .btn-cutscene-continue {
+        .btn-cutscene-choice {
           min-height: 36px;
-          min-width: 116px;
         }
 
         #nav-screen {
@@ -2120,14 +2117,17 @@
           <span id="cutscene-progress" class="cutscene-pips"></span>
         </div>
         <div id="cutscene-body" class="cutscene-text" aria-live="polite"></div>
-        <div class="cutscene-options">
+        <div id="cutscene-choices" class="cutscene-options">
           <button
-            class="btn-cutscene-continue"
-            id="cutscene-continue"
+            class="btn-cutscene-choice"
+            id="cutscene-btn-a"
             type="button"
-          >
-            Continue
-          </button>
+          ></button>
+          <button
+            class="btn-cutscene-choice"
+            id="cutscene-btn-b"
+            type="button"
+          ></button>
         </div>
       </section>
     </div>
@@ -2339,7 +2339,9 @@
             cutsceneOverlay: "cutscene-overlay",
             cutsceneProgress: "cutscene-progress",
             cutsceneBody: "cutscene-body",
-            cutsceneContinue: "cutscene-continue",
+            cutsceneChoices: "cutscene-choices",
+            cutsceneBtnA: "cutscene-btn-a",
+            cutsceneBtnB: "cutscene-btn-b",
             locationName: "location-name",
             locationType: "location-type",
             corvusPortrait: "corvus-portrait",
@@ -2396,12 +2398,18 @@
             beats: [
               {
                 text: "The Crucible fire drinks refined fuel, Conductor. Mind the draft gauges, or the cold between realms will breach the iron ribs before nightfall.",
+                choiceA: "I know how to tend a mystic furnace, Scholar.",
+                choiceB: "The wards will hold against the cold.",
               },
               {
                 text: "Hardly inspiring. Expend a spark of your locomotive's Energy to unlatch the station gates and survey the merchant yard. We need provisions before we breach the veil again.",
+                choiceA: "I will see what the scavengers are selling.",
+                choiceB: "Unlatching the gates now.",
               },
               {
                 text: "Do make haste. And remember: when the locomotive's local Energy runs dry, only a Rift Jump into the void will rekindle your reserves.",
+                choiceA: "Understood. The engine is primed.",
+                choiceB: "I'll keep the boiler fed.",
               },
             ],
             logSummary:
@@ -2412,9 +2420,13 @@
             beats: [
               {
                 text: "Smell that sulfurous stench? The air is thick with raw ether and condensed Flux. A novice burns out their boiler trying to harvest everything at once.",
+                choiceA: "We need fuel for the next jump more than shiny dust.",
+                choiceB: "Flux is worth a fortune to the blacksmiths.",
               },
               {
                 text: "Ignorance is rampant in this cab. Siphon the volatile gases to fill our propulsion tanks, or harvest the rift crystals to line your pockets with Flux for the forge. Never leave a node without replenishing our stores.",
+                choiceA: "Starting the siphoning pumps.",
+                choiceB: "Securing the mineral harvesters.",
               },
             ],
             logSummary:
@@ -2425,9 +2437,13 @@
             beats: [
               {
                 text: "Listen to that rattling rod. If you expect this locomotive to carry us through deeper realms, you would do well to visit the Workshop.",
+                choiceA: "The Aethelgard has held together this far.",
+                choiceB: "I can hammer extra plating onto the hull.",
               },
               {
                 text: "Primitive thinking. Transmuting the Crucible engine grants you greater Energy capacity per realm, but the added bulk demands a heavier toll of fuel for every rift breach. Mutate your ballistas if you wish to survive the hunting expanses.",
+                choiceA: "I'll balance the boiler and weapons carefully.",
+                choiceB: "We will forge what we can afford.",
               },
             ],
             logSummary:
@@ -2438,9 +2454,13 @@
             beats: [
               {
                 text: "Shadows stirring beyond the glass. Voidbeasts have nested along the iron tracks. They thirst for the furnace glow.",
+                choiceA: "Man the harpoons. We fight.",
+                choiceB: "Can we douse the furnace and drift past?",
               },
               {
                 text: "Do not speak of stealth to a predator of the deep void. If you strike them down, their glowing heart-crystals will feed both your fuel tanks and your coin pouch. Hesitate, and their talons will shred the outer hull.",
+                choiceA: "Rally the stokers. Ready weapons.",
+                choiceB: "Targeting the alphas.",
               },
             ],
             logSummary:
@@ -2451,9 +2471,13 @@
             beats: [
               {
                 text: "The spires of the Sanctuary. My ticket is stamped, and my business with this soot-stained cab is concluded.",
+                choiceA: "Safe travels into the Sanctuary, Corvus.",
+                choiceB: "Good riddance to an unhelpful passenger.",
               },
               {
                 text: "Take this final counsel, Conductor, for the void beyond this hub has no mercy for the blind: visit the Yard Master and buy an Astrolabe before you depart. Without it, you cannot steer when the Ley-Rails fork, and you will drift helpless into whatever nightmare lies ahead. May the wards endure.",
+                choiceA: "I will find the Yard Master immediately.",
+                choiceB: "The Astrolabe will be mounted.",
               },
             ],
             logSummary:
@@ -2480,7 +2504,6 @@
             `${GAME_DATA.text.exploreName(false)} (-${cost} EN)`,
           btnExploreHub: (cost) =>
             `${GAME_DATA.text.exploreName(true)} (-${cost} EN)`,
-          btnContinue: "Continue",
           tutorialExplore: (isHub, cost) =>
             `Next: ${GAME_DATA.text.exploreName(isHub)} · Costs ${cost} Energy`,
           formatCutsceneProgress: (beat, total) => `Beat ${beat} of ${total}`,
@@ -4141,12 +4164,12 @@
           if (!CutsceneEngine.activeCutscene) return;
           if (event.type === "keydown" && event.key === "Tab") {
             event.preventDefault();
-            DOM.cutsceneContinue.focus();
+            DOM.cutsceneBtnA.focus();
           } else if (
             event.type === "focusin" &&
             !DOM.cutsceneOverlay.contains(event.target)
           ) {
-            DOM.cutsceneContinue.focus();
+            DOM.cutsceneBtnA.focus();
           }
         },
 
@@ -4174,7 +4197,7 @@
           DOM.cutsceneOverlay.hidden = false;
           Engine.transitionTo(GAME_DATA.phases.dialogue);
           CutsceneEngine.renderCurrentBeat();
-          DOM.cutsceneContinue.focus();
+          DOM.cutsceneBtnA.focus();
         },
 
         renderCurrentBeat: () => {
@@ -4198,6 +4221,10 @@
             ),
           );
           DOM.cutsceneBody.innerText = beat.text;
+
+          // Corvus ignores the reply either way — the choice is pure flavour.
+          DOM.cutsceneBtnA.innerText = `[A] "${beat.choiceA}"`;
+          DOM.cutsceneBtnB.innerText = `[B] "${beat.choiceB}"`;
         },
 
         advance: () => {
@@ -4728,7 +4755,6 @@
         setupStaticText: () => {
           const snap = VoyageSession.getSnapshot();
           const audioPrefs = SaveSystem.loadAudioPrefs();
-          DOM.cutsceneContinue.innerText = GAME_DATA.text.btnContinue;
           if (audioPrefs) {
             SoundFX.ambientMode = audioPrefs.mode || "rails";
             SoundFX.ambientSliderVal = audioPrefs.ambientSlider ?? 100;
@@ -4844,7 +4870,10 @@
             Engine.resetGame(true),
           );
 
-          DOM.cutsceneContinue.addEventListener("click", () =>
+          DOM.cutsceneBtnA.addEventListener("click", () =>
+            CutsceneEngine.advance(),
+          );
+          DOM.cutsceneBtnB.addEventListener("click", () =>
             CutsceneEngine.advance(),
           );
           document.addEventListener("keydown", CutsceneEngine.trapFocus);
