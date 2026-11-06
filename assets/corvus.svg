@@ -1,14 +1,138 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520" role="img" aria-label="Master Corvus, veiled scholar">
-  <path fill="#111722" d="M30 520 42 425l43-64 32-18-30-60 6-115 42-89L196 31l60 31 49 64 26 87-15 93-36 49 47 25 34 64 16 76z"/>
-  <path fill="#394252" d="m83 361 35-18-30-60 6-115 34-69 39-33 21 80-16 101 21 78-32 60-30 79H42z"/>
-  <path fill="#707b87" d="m128 168 13-69 55-48 42 25-14 51-41 26-18 52-23 73-35 65-22 18 8-83 23-48z"/>
-  <path fill="#c2c8c7" d="m164 119 35-42 41 24 20 52-22 48-44 20-30-36z"/>
-  <path fill="#111722" d="m179 156 43-20 24 17-25 12 29 10-33 13-27-11z"/>
-  <path fill="#f5a623" d="m198 161 35-13-17 25 24 8-29 10-22-11z"/>
-  <path fill="#394252" d="m120 334 57-44 52 15 18 67-35 58-86 31-56-30 17-61z"/>
-  <path fill="#707b87" d="m177 290 52 15 18 67-35 58-43 17 17-75-27-38z"/>
-  <path fill="#c2c8c7" d="m87 361 57-19 34 35-22 52-70 36-44-40z"/>
-  <path fill="#394252" d="m267 359 42 14 36 51 18 96h-94l-33-66 6-53z"/>
-  <path fill="#707b87" d="m267 359 42 14 36 51-48-19-24 56-37-32 6-53z"/>
-  <path fill="#f5a623" d="m257 78 16 13-14 9-17-11zM91 389l23-13-5 21-20 11z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520" aria-label="Master Corvus, veiled scholar">
+  <title>Master Corvus, veiled scholar</title>
+  <desc>Faceted geometric vector portrait of Master Corvus featuring a deep shadowy hood, long curved black plague beak, intense glowing amber eyes, and transparent background.</desc>
+
+  <defs>
+    <!-- Radial Glow for Eyes -->
+    <radialGradient id="eye-glow-left" cx="37%" cy="38%" r="40%">
+      <stop offset="0%" stop-color="#FFF5D6" />
+      <stop offset="25%" stop-color="#FFC02B" />
+      <stop offset="60%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#7C2D12" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="eye-glow-right" cx="63%" cy="38%" r="40%">
+      <stop offset="0%" stop-color="#FFF5D6" />
+      <stop offset="25%" stop-color="#FFC02B" />
+      <stop offset="60%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#7C2D12" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Subtle Glint / Sparkle -->
+    <g id="sparkle">
+      <path d="M 0,-8 Q 0,0 8,0 Q 0,0 0,8 Q 0,0 -8,0 Q 0,0 0,-8 Z" fill="#FFEAA7" opacity="0.8" />
+    </g>
+  </defs>
+
+  <!-- Base / Silhouette Background intentionally transparent -->
+
+  <!-- Robe Group -->
+  <g id="robe">
+    <!-- Lower Shoulders & Chest Fold Base -->
+    <polygon id="robe-base" points="0,520 80,420 200,480 320,420 400,520" fill="#0B0F19" />
+    
+    <!-- Left Shoulder Facets -->
+    <polygon id="robe-left-1" points="0,520 0,380 70,300 120,410 80,420" fill="#181F2C" />
+    <polygon id="robe-left-2" points="0,380 50,250 110,290 70,300" fill="#222B3D" />
+    <polygon id="robe-left-3" points="70,300 110,290 150,370 120,410" fill="#1C2436" />
+    <polygon id="robe-left-4" points="120,410 150,370 200,440 140,520 80,420" fill="#131A26" />
+
+    <!-- Right Shoulder Facets -->
+    <polygon id="robe-right-1" points="400,520 400,380 330,300 280,410 320,420" fill="#121824" />
+    <polygon id="robe-right-2" points="400,380 350,250 290,290 330,300" fill="#1A2232" />
+    <polygon id="robe-right-3" points="330,300 290,290 250,370 280,410" fill="#161D2B" />
+    <polygon id="robe-right-4" points="280,410 250,370 200,440 260,520 320,420" fill="#0F141F" />
+
+    <!-- Center Chest Neck Wraps -->
+    <polygon id="robe-cowl-1" points="150,370 200,330 250,370 200,440" fill="#0D121D" />
+    <polygon id="robe-cowl-2" points="130,320 200,280 270,320 250,370 150,370" fill="#141B28" />
+    <polygon id="robe-cowl-3" points="160,260 200,230 240,260 270,320 130,320" fill="#0A0E17" />
+  </g>
+
+  <!-- Veil / Outer Hood Group -->
+  <g id="veil">
+    <!-- Hood Crown & Peak -->
+    <polygon id="veil-top-peak" points="200,48 260,70 200,105 140,70" fill="#3D4B5E" />
+    <polygon id="veil-top-left" points="200,48 140,70 90,130 150,115 200,105" fill="#4B5B72" />
+    <polygon id="veil-top-right" points="200,48 260,70 310,130 250,115 200,105" fill="#2F3B4C" />
+
+    <!-- Left Hood Drape -->
+    <polygon id="veil-side-l1" points="90,130 50,220 110,210 150,115" fill="#3A4759" />
+    <polygon id="veil-side-l2" points="50,220 0,380 70,300 110,210" fill="#2C3747" />
+    <polygon id="veil-drape-l3" points="110,210 70,300 130,320 160,260" fill="#242F3D" />
+
+    <!-- Right Hood Drape -->
+    <polygon id="veil-side-r1" points="310,130 350,220 290,210 250,115" fill="#242E3D" />
+    <polygon id="veil-side-r2" points="350,220 400,380 330,300 290,210" fill="#1A222E" />
+    <polygon id="veil-drape-r3" points="290,210 330,300 270,320 240,260" fill="#1D2634" />
+
+    <!-- Hood Arch Rim Edge -->
+    <polygon id="veil-rim-top" points="150,115 200,105 250,115 220,135 180,135" fill="#586A85" />
+    <polygon id="veil-rim-left" points="150,115 180,135 140,190 110,210" fill="#46546B" />
+    <polygon id="veil-rim-right" points="250,115 220,135 260,190 290,210" fill="#323E50" />
+  </g>
+
+  <!-- Mask / Shadowed Face Group -->
+  <g id="mask">
+    <!-- Deep Shadow Recess inside Hood -->
+    <polygon id="face-shadow-bg" points="140,190 180,135 220,135 260,190 270,320 130,320" fill="#04060A" />
+
+    <!-- Faceted Black Mask Cavity -->
+    <polygon id="mask-forehead-c" points="180,135 200,130 220,135 200,155" fill="#12151F" />
+    <polygon id="mask-brow-l" points="140,190 180,135 200,155 160,200" fill="#1A1E2B" />
+    <polygon id="mask-brow-r" points="260,190 220,135 200,155 240,200" fill="#0D0F18" />
+    
+    <polygon id="mask-cheek-l" points="160,200 200,155 200,230 150,250" fill="#151824" />
+    <polygon id="mask-cheek-r" points="240,200 200,155 200,230 250,250" fill="#090B12" />
+  </g>
+
+  <!-- Beak Group -->
+  <g id="beak">
+    <!-- Beak Upper Bridge & Ridge -->
+    <polygon id="beak-bridge-top" points="200,180 206,240 200,320 194,240" fill="#2B313E" />
+    
+    <!-- Beak Left Side (Faceted & Shadowed Dark Metallic) -->
+    <polygon id="beak-left-upper" points="200,180 194,240 160,260" fill="#202531" />
+    <polygon id="beak-left-mid" points="194,240 200,320 170,310 160,260" fill="#181D27" />
+    <polygon id="beak-left-lower" points="200,320 206,390 196,380 170,310" fill="#11151F" />
+    <polygon id="beak-left-tip" points="200,320 203,420 196,380" fill="#1D222E" />
+
+    <!-- Beak Right Side -->
+    <polygon id="beak-right-upper" points="200,180 206,240 240,260" fill="#171A24" />
+    <polygon id="beak-right-mid" points="206,240 200,320 230,310 240,260" fill="#10131B" />
+    <polygon id="beak-right-lower" points="200,320 206,390 230,310" fill="#0A0C12" />
+    <polygon id="beak-right-tip" points="200,320 203,420 206,390" fill="#0F1219" />
+
+    <!-- Beak Curved Tip Sharp Point -->
+    <polygon id="beak-point" points="200,320 208,410 203,425 197,410" fill="#3A4252" />
+  </g>
+
+  <!-- Eye Sockets Group -->
+  <g id="eye-sockets">
+    <!-- Left Angular Socket -->
+    <polygon id="socket-left" points="148,190 178,185 182,215 152,220" fill="#07090E" stroke="#1C2230" stroke-width="1.5" />
+    <!-- Right Angular Socket -->
+    <polygon id="socket-right" points="222,185 252,190 248,220 218,215" fill="#040508" stroke="#141824" stroke-width="1.5" />
+  </g>
+
+  <!-- Pupils and Glints (Glowing Amber Eyes) Group -->
+  <g id="pupils-glints">
+    <!-- Left Eye Glow & Orbs -->
+    <circle id="eye-glow-l-bg" cx="165" cy="200" r="28" fill="url(#eye-glow-left)" />
+    <polygon id="eye-socket-inner-l" points="154,193 174,189 177,211 157,214" fill="#B45309" />
+    <polygon id="pupil-left-core" points="158,196 170,193 172,208 160,210" fill="#FBBF24" />
+    <polygon id="pupil-left-center" points="161,198 167,196 168,205 162,206" fill="#FFFBEB" />
+
+    <!-- Right Eye Glow & Orbs -->
+    <circle id="eye-glow-r-bg" cx="235" cy="200" r="28" fill="url(#eye-glow-right)" />
+    <polygon id="eye-socket-inner-r" points="226,189 246,193 243,214 223,211" fill="#B45309" />
+    <polygon id="pupil-right-core" points="230,193 242,196 240,210 228,208" fill="#FBBF24" />
+    <polygon id="pupil-right-center" points="233,196 239,198 238,206 232,205" fill="#FFFBEB" />
+
+    <!-- Ambient Floating Ember Sparkles -->
+    <use href="#sparkle" x="145" y="175" transform="scale(0.7)" />
+    <use href="#sparkle" x="255" y="175" transform="scale(0.7)" />
+    <use href="#sparkle" x="175" y="225" transform="scale(0.5)" />
+    <use href="#sparkle" x="225" y="225" transform="scale(0.5)" />
+    <use href="#sparkle" x="340" y="460" transform="scale(1.2)" />
+  </g>
 </svg>
