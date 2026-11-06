@@ -334,6 +334,94 @@
         background: rgba(16, 20, 29, 0.72);
       }
 
+      /* ============ BLUEPRINT CRATE AESTHETIC ============ */
+      .panel-card,
+      .start-card,
+      #bottom-nav,
+      .cutscene-frame {
+        border-radius: 0;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      .start-card {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .panel-card::before,
+      .start-card::before,
+      .cutscene-frame::before {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        pointer-events: none;
+        z-index: 1;
+        background:
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            0 0 / 7px 7px no-repeat,
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            100% 0 / 7px 7px no-repeat,
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            0 100% / 7px 7px no-repeat,
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            100% 100% / 7px 7px no-repeat,
+          repeating-linear-gradient(
+            45deg,
+            var(--border-bright) 0 1px,
+            transparent 1px 5px
+          )
+            0 0 / 100% 4px no-repeat;
+      }
+
+      .hud-cell {
+        position: relative;
+        padding-left: 17px;
+        border-radius: 0;
+      }
+
+      .hud-cell::before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 50%;
+        width: 7px;
+        height: 7px;
+        transform: translateY(-50%);
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+      }
+
+      .hud-cell::after {
+        content: "";
+        position: absolute;
+        left: 6.5px;
+        top: 50%;
+        width: 3px;
+        height: 3px;
+        transform: translateY(-50%);
+        background: var(--text-muted);
+      }
+
       h2,
       h3,
       h4 {
@@ -5116,14 +5204,14 @@
             <g class="board-coupler" data-slot="0">
               ${
                 count === 1
-                  ? `<path class="board-leader board-leader-outer" d="M500 142V278"/>
-                     <path class="board-leader board-leader-inner" d="M500 142V278"/>
+                  ? `<path class="board-leader board-leader-outer" d="M500 142 C494 190, 506 230, 500 266"/>
+                     <path class="board-leader board-leader-inner" d="M500 142 C494 190, 506 230, 500 266"/>
                      <rect class="board-port" x="494" y="136" width="12" height="12"/>
                      <rect class="board-port-dot" x="497" y="139" width="6" height="6"/>
                      <rect class="board-port" x="494" y="272" width="12" height="12"/>
                      <rect class="board-port-dot" x="497" y="275" width="6" height="6"/>`
-                  : `<path class="board-leader board-leader-outer" d="M250 142V214H420V252H454V278"/>
-                     <path class="board-leader board-leader-inner" d="M250 142V214H420V252H454V278"/>
+                  : `<path class="board-leader board-leader-outer" d="M250 142 C250 210, 380 212, 450 266"/>
+                     <path class="board-leader board-leader-inner" d="M250 142 C250 210, 380 212, 450 266"/>
                      <rect class="board-port" x="244" y="136" width="12" height="12"/>
                      <rect class="board-port-dot" x="247" y="139" width="6" height="6"/>
                      <rect class="board-port" x="448" y="272" width="12" height="12"/>
@@ -5134,8 +5222,8 @@
               count === 1
                 ? ""
                 : `<g class="board-coupler" data-slot="1">
-                     <path class="board-leader board-leader-outer" d="M750 142V214H580V252H546V278"/>
-                     <path class="board-leader board-leader-inner" d="M750 142V214H580V252H546V278"/>
+                     <path class="board-leader board-leader-outer" d="M750 142 C750 210, 620 212, 550 266"/>
+                     <path class="board-leader board-leader-inner" d="M750 142 C750 210, 620 212, 550 266"/>
                      <rect class="board-port" x="744" y="136" width="12" height="12"/>
                      <rect class="board-port-dot" x="747" y="139" width="6" height="6"/>
                      <rect class="board-port" x="540" y="272" width="12" height="12"/>
