@@ -5441,7 +5441,11 @@
         set(angle, status) {
           if (!this.entry) this.init();
           if (status && this.statusEl) this.statusEl.textContent = status;
-          RiftMotion.set(this.entry, angle);
+          // Unwrap to the shortest rotation so the needle never sweeps
+          // through the empty lower half of the dial.
+          const current = this.entry.value;
+          const delta = ((angle - current + 540) % 360) - 180;
+          RiftMotion.set(this.entry, current + delta);
         },
 
         setSlot(index, count, armed = false) {
