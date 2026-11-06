@@ -886,7 +886,7 @@
       #nav-choices {
         position: relative;
         width: min(1000px, calc(100vw - 40px));
-        aspect-ratio: 1000 / 480;
+        aspect-ratio: 1000 / 360;
         overflow: visible;
         z-index: 1;
       }
@@ -910,14 +910,49 @@
       .board-rail-back,
       .board-rail-base,
       .board-rail-notch,
-      .board-socket,
-      .board-chain,
-      .board-cable,
+      .board-leader,
       .board-hub circle,
       .board-hub path {
         fill: none;
         stroke: var(--text);
-        stroke-linecap: round;
+        stroke-linecap: square;
+        stroke-linejoin: miter;
+      }
+
+      .board-leader {
+        shape-rendering: crispEdges;
+      }
+
+      .board-leader-outer {
+        stroke: var(--text-muted);
+        stroke-width: 4;
+      }
+
+      .board-leader-inner {
+        stroke: var(--panel-bg);
+        stroke-width: 2;
+      }
+
+      .board-port {
+        fill: var(--panel-bg);
+        stroke: var(--text-muted);
+        stroke-width: 1.5;
+        shape-rendering: crispEdges;
+      }
+
+      .board-port-dot {
+        fill: var(--text-muted);
+        stroke: none;
+        shape-rendering: crispEdges;
+      }
+
+      .board-coupler[data-active="true"] .board-leader-outer,
+      .board-coupler[data-active="true"] .board-port {
+        stroke: var(--action);
+      }
+
+      .board-coupler[data-active="true"] .board-port-dot {
+        fill: var(--action);
       }
 
       .board-frame path {
@@ -940,49 +975,43 @@
         opacity: 0.45;
       }
 
-      .board-socket {
-        stroke-width: 6;
-      }
-
-      .board-chain {
+      .board-hub circle:nth-child(1) {
+        fill: var(--panel-sub-bg);
         stroke-width: 3;
       }
 
-      .board-cable {
-        stroke-width: 2;
-        opacity: 0.7;
+      .board-hub circle:nth-child(2) {
+        fill: transparent;
+        stroke-width: 1.5;
       }
 
-      .board-hub circle:first-child {
-        fill: var(--panel-sub-bg);
-        stroke-width: 4;
-      }
-
-      .board-hub circle:last-child {
+      .board-hub circle:nth-child(3) {
         fill: var(--panel-bg);
-        stroke-width: 2;
+        stroke-width: 1.5;
       }
 
       .board-hub path {
-        stroke-width: 3;
+        stroke-width: 2;
       }
 
       #nav-choices .nav-carriage {
         position: absolute;
         width: 42%;
-        min-height: 96px;
-        padding: 14px 16px;
+        min-height: 112px;
+        padding: 0;
         border: 1px solid var(--border-bright);
-        border-radius: var(--radius);
-        background: rgba(16, 20, 29, 0.92);
+        border-radius: 0;
+        background: var(--panel-bg);
         color: var(--text);
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        align-items: flex-start;
+        justify-content: flex-start;
+        align-items: stretch;
         text-align: left;
         pointer-events: auto;
         margin: 0;
+        overflow: hidden;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
         transition:
           transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
           border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
@@ -991,72 +1020,241 @@
 
       #nav-choices .nav-carriage[data-slot="0"] {
         left: 4%;
-        top: 46%;
+        top: 8%;
       }
 
       #nav-choices .nav-carriage[data-slot="1"] {
         right: 4%;
-        top: 46%;
+        top: 8%;
       }
 
       #nav-choices .nav-carriage[data-single="true"] {
         left: 29%;
         right: auto;
-        top: 46%;
+        top: 8%;
       }
 
       #nav-choices .nav-carriage:hover,
       #nav-choices .nav-carriage:focus-visible,
       #nav-choices .nav-carriage[data-lift="true"] {
-        transform: translateY(-7px);
-        border-color: var(--action);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+        transform: translateY(-4px);
+        border-color: var(--text-muted);
+        background: var(--panel-sub-bg);
+        box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.45);
       }
 
+      #nav-choices .nav-carriage[data-arm="true"],
       #nav-choices .nav-carriage[data-lock="true"] {
-        transform: translateY(-3px);
+        transform: translateY(-4px);
         border-color: var(--action);
+        box-shadow: 4px 6px 0 rgba(245, 158, 11, 0.18);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-badge,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-badge {
+        background: var(--action);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-badge svg,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-badge svg {
+        fill: var(--panel-bg);
+      }
+
+      .nav-carriage .carriage-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel-sub-bg);
+      }
+
+      .nav-carriage .carriage-badge {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+      }
+
+      .nav-carriage .carriage-badge svg {
+        width: 12px;
+        height: 12px;
+        fill: var(--action);
+        shape-rendering: crispEdges;
+      }
+
+      .nav-carriage .carriage-tag {
+        font-family: var(--font-mono);
+        font-size: 0.6em;
+        letter-spacing: 1.2px;
+        color: var(--text-muted);
+      }
+
+      .nav-carriage .carriage-shell {
+        display: grid;
+        gap: 3px;
+        width: 100%;
+        padding: 8px 10px 10px;
       }
 
       .nav-carriage .carriage-name {
-        font-size: 1.02em;
+        display: block;
+        font-size: 1.08em;
         color: var(--text);
         font-weight: bold;
+        line-height: 1.35;
       }
 
       .nav-carriage .carriage-type {
-        font-size: 0.72em;
+        display: block;
+        font-size: 0.76em;
         color: var(--info);
         letter-spacing: 0.6px;
       }
 
       .nav-carriage .carriage-axis {
+        display: block;
         font-size: 0.62em;
         color: var(--text-muted);
-        letter-spacing: 0.4px;
+        letter-spacing: 0.8px;
+        border-top: 1px dashed var(--border);
+        padding-top: 5px;
+        margin-top: 4px;
       }
 
       #nav-screen .instrument {
         margin-top: 22px;
-        width: min(220px, 34vw);
-        aspect-ratio: 1;
+        width: min(240px, 34vw);
         display: block;
         color: var(--text-muted);
         font-size: 0.72em;
         letter-spacing: 0.5px;
         text-align: center;
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
       }
 
-      #nav-vector svg {
+      #nav-vector {
+        cursor: grab;
+        touch-action: none;
+        outline-offset: 4px;
+        position: relative;
+      }
+
+      #nav-vector:active {
+        cursor: grabbing;
+      }
+
+      #nav-vector:focus-visible {
+        outline: 2px solid var(--action);
+      }
+
+      .dial-plate-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--border-bright);
+        background: var(--panel-sub-bg);
+      }
+
+      .dial-badge {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+      }
+
+      .dial-badge svg {
+        width: 12px;
+        height: 12px;
+        fill: var(--action);
+        shape-rendering: crispEdges;
+      }
+
+      .dial-title {
+        font-family: var(--font-mono);
+        font-size: 0.62em;
+        letter-spacing: 1.2px;
+        color: var(--text);
+      }
+
+      .dial-code {
+        margin-left: auto;
+        font-family: var(--font-mono);
+        font-size: 0.58em;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+      }
+
+      .dial-face {
+        padding: 8px;
+      }
+
+      .dial-face svg {
         width: 100%;
         height: auto;
         display: block;
       }
 
+      .vector-slot {
+        fill: var(--panel-bg);
+        stroke: var(--text-muted);
+        stroke-width: 2;
+        shape-rendering: crispEdges;
+      }
+
+      .vector-slot path {
+        fill: none;
+        stroke: var(--text-muted);
+        stroke-width: 2;
+      }
+
+      .vector-slot-dot {
+        fill: var(--text-muted);
+        stroke: none;
+      }
+
+      .vector-slot[data-selected="true"] {
+        fill: var(--action);
+        stroke: var(--action);
+      }
+
+      .vector-slot[data-selected="true"] .vector-slot-dot {
+        fill: var(--panel-bg);
+      }
+
+      .vector-slot[data-selected="true"] path {
+        stroke: var(--action);
+      }
+
+      #rift-vector-needle {
+        pointer-events: none;
+      }
+
+      #rift-vector-needle path {
+        pointer-events: none;
+        stroke: var(--text);
+      }
+
+      #nav-vector[data-armed="true"] #rift-vector-needle path {
+        stroke: var(--action);
+      }
+
       #nav-vector-status {
         display: block;
         min-height: 1.25em;
-        margin-top: 8px;
+        margin: 0;
+        padding: 5px 8px;
+        border-top: 1px dashed var(--border);
+        background: var(--panel-sub-bg);
       }
 
       #corvus-portrait {
@@ -1168,12 +1366,12 @@
         #nav-choices .nav-carriage[data-slot="1"] {
           left: 12%;
           right: auto;
-          top: 56%;
+          top: 50%;
         }
 
         #nav-choices .nav-carriage[data-single="true"] {
           left: 12%;
-          top: 32%;
+          top: 35%;
         }
       }
 
@@ -1269,7 +1467,21 @@
     <div id="nav-screen">
       <h1 id="lbl-nav-title"></h1>
       <div id="nav-choices"></div>
-      <div id="nav-vector" class="instrument" role="img" aria-label="Rift vector dial">
+      <div
+        id="nav-vector"
+        class="instrument"
+        tabindex="0"
+        role="button"
+        aria-label="Rift vector dial. Drag or tap a vector once to choose it, then tap again to confirm."
+      >
+        <div class="dial-plate-head">
+          <span class="dial-badge" aria-hidden="true">
+            <svg viewBox="0 0 8 8"><path d="M0 1h8v1H0zM0 3h8v1H0zM0 5h8v1H0zM0 7h5v1H0z"/></svg>
+          </span>
+          <span class="dial-title">RIFT VECTOR</span>
+          <span class="dial-code">RV-02</span>
+        </div>
+        <div class="dial-face">
         <svg viewBox="0 0 160 160" aria-hidden="true">
           <defs>
             <pattern
@@ -1290,9 +1502,19 @@
             stroke-width="2"
           />
           <circle cx="80" cy="80" r="52" fill="url(#rift-vector-mesh)" opacity="0.24"/>
+          <g id="vector-slot-0" class="vector-slot" data-slot="0">
+            <rect x="31" y="44" width="12" height="12"/>
+            <rect class="vector-slot-dot" x="34" y="47" width="6" height="6"/>
+            <path d="M37 56L45 64"/>
+          </g>
+          <g id="vector-slot-1" class="vector-slot" data-slot="1">
+            <rect x="117" y="44" width="12" height="12"/>
+            <rect class="vector-slot-dot" x="120" y="47" width="6" height="6"/>
+            <path d="M123 56L115 64"/>
+          </g>
           <g
             id="rift-vector-needle"
-            transform="rotate(0 80 80)"
+            transform="rotate(90 80 80)"
             data-pivot="80 80"
           >
             <path d="M80 24 L80 80" stroke="var(--text)" stroke-width="3"/>
@@ -1301,6 +1523,7 @@
           <title>Rift Vector</title>
           <desc>Rift charge vector</desc>
         </svg>
+        </div>
         <span id="nav-vector-status" aria-live="polite">Vector idle</span>
       </div>
     </div>
@@ -4728,6 +4951,7 @@
       const RiftCouplingBoard = {
         choices: [],
         activeSlot: -1,
+        armedSlot: -1,
         lockSlot: -1,
 
         slotCount(choices) {
@@ -4743,7 +4967,7 @@
 
         needleAngle(slot, count) {
           if (count <= 1) return 90;
-          return slot === 0 ? 160 : 25;
+          return slot === 0 ? 305 : 55;
         },
 
         buildRailSvg(count) {
@@ -4752,38 +4976,57 @@
             "svg",
           );
           svg.setAttribute("class", "nav-board-svg");
-          svg.setAttribute("viewBox", "0 0 1000 480");
+          svg.setAttribute("viewBox", "0 0 1000 360");
           svg.setAttribute("preserveAspectRatio", "none");
           svg.setAttribute("aria-hidden", "true");
           svg.innerHTML = `
             <g class="board-frame">
-              <rect x="20" y="20" width="960" height="440"/>
-              <path d="M20 20 H980"/>
-              <path d="M20 300 H980"/>
+              <rect x="18" y="18" width="964" height="324"/>
+              <path d="M18 18 H982"/>
+              <path d="M18 278 H982"/>
             </g>
             <g class="board-rail">
-              <path class="board-rail-back" d="M40 300H960"/>
-              <path class="board-rail-base" d="M80 300H920"/>
-              <path class="board-rail-notch" d="M220 300H300"/>
-              <path class="board-rail-notch" d="M500 300H700"/>
-              <path class="board-rail-notch" d="M860 300H880"/>
+              <path class="board-rail-back" d="M40 278H960"/>
+              <path class="board-rail-base" d="M80 278H920"/>
+              <path class="board-rail-notch" d="M220 278H300"/>
+              <path class="board-rail-notch" d="M500 278H700"/>
+              <path class="board-rail-notch" d="M860 278H880"/>
             </g>
             <g class="board-coupler" data-slot="0">
-              <path class="board-socket" d="M210 300H260"/>
-              <path class="board-chain" d="M260 300C290 300, 300 292, 310 284"/>
-              <path class="board-cable" d="M310 284C340 268, 360 268, 380 282"/>
+              ${
+                count === 1
+                  ? `<path class="board-leader board-leader-outer" d="M500 142V278"/>
+                     <path class="board-leader board-leader-inner" d="M500 142V278"/>
+                     <rect class="board-port" x="494" y="136" width="12" height="12"/>
+                     <rect class="board-port-dot" x="497" y="139" width="6" height="6"/>
+                     <rect class="board-port" x="494" y="272" width="12" height="12"/>
+                     <rect class="board-port-dot" x="497" y="275" width="6" height="6"/>`
+                  : `<path class="board-leader board-leader-outer" d="M250 142V214H420V252H454V278"/>
+                     <path class="board-leader board-leader-inner" d="M250 142V214H420V252H454V278"/>
+                     <rect class="board-port" x="244" y="136" width="12" height="12"/>
+                     <rect class="board-port-dot" x="247" y="139" width="6" height="6"/>
+                     <rect class="board-port" x="448" y="272" width="12" height="12"/>
+                     <rect class="board-port-dot" x="451" y="275" width="6" height="6"/>`
+              }
             </g>
-            <g class="board-coupler" data-slot="1">
-              <path class="board-socket" d="M790 300H840"/>
-              <path class="board-chain" d="M840 300C810 300, 800 292, 790 284"/>
-              <path class="board-cable" d="M790 284C760 268, 740 268, 720 282"/>
-            </g>
+            ${
+              count === 1
+                ? ""
+                : `<g class="board-coupler" data-slot="1">
+                     <path class="board-leader board-leader-outer" d="M750 142V214H580V252H546V278"/>
+                     <path class="board-leader board-leader-inner" d="M750 142V214H580V252H546V278"/>
+                     <rect class="board-port" x="744" y="136" width="12" height="12"/>
+                     <rect class="board-port-dot" x="747" y="139" width="6" height="6"/>
+                     <rect class="board-port" x="540" y="272" width="12" height="12"/>
+                     <rect class="board-port-dot" x="543" y="275" width="6" height="6"/>
+                   </g>`
+            }
             <g class="board-hub">
-              <circle cx="500" cy="300" r="78"/>
-              <circle cx="500" cy="300" r="62"/>
-              <circle cx="500" cy="300" r="28"/>
-              <path d="M436 300H444"/>
-              <path d="M556 300H564"/>
+              <circle cx="500" cy="278" r="46"/>
+              <circle cx="500" cy="278" r="36"/>
+              <circle cx="500" cy="278" r="14"/>
+              <path d="M442 278H452"/>
+              <path d="M548 278H558"/>
             </g>
           `;
           return svg;
@@ -4793,8 +5036,9 @@
           const host = DOM.navChoices;
           if (!host || !Array.isArray(choices)) return false;
           this.choices = choices;
-          this.lockSlot = -1;
           this.activeSlot = -1;
+          this.armedSlot = -1;
+          this.lockSlot = -1;
           host.innerHTML = "";
           const count = this.slotCount(choices);
           if (!count) return false;
@@ -4804,7 +5048,20 @@
             btn.type = "button";
             btn.className = "nav-carriage";
             btn.dataset.slot = String(index);
+            btn.setAttribute("aria-pressed", "false");
             if (count === 1) btn.dataset.single = "true";
+            const head = document.createElement("span");
+            head.className = "carriage-head";
+            const badge = document.createElement("span");
+            badge.className = "carriage-badge";
+            badge.innerHTML =
+              index === 0
+                ? '<svg viewBox="0 0 8 8" aria-hidden="true"><path d="M0 0h8v3H0zM0 3h1v5H0zM7 3h1v5H7zM1 7h6v1H1z"/></svg>'
+                : '<svg viewBox="0 0 8 8" aria-hidden="true"><path d="M2 0h4v1H2zM1 1h1v1H1zM6 1h1v1H6zM0 2h1v4H0zM7 2h1v4H7zM1 6h1v1H1zM6 6h1v1H6zM2 7h4v1H2zM3 3h2v2H3z"/></svg>';
+            const tag = document.createElement("span");
+            tag.className = "carriage-tag";
+            tag.textContent = `VECTOR ${String(index + 1).padStart(2, "0")}`;
+            head.append(badge, tag);
             const shell = document.createElement("span");
             shell.className = "carriage-shell";
             const name = document.createElement("span");
@@ -4817,22 +5074,15 @@
             );
             const axis = document.createElement("span");
             axis.className = "carriage-axis";
-            axis.textContent = "VECTOR READY";
+            axis.textContent = "TAP TO ARM";
             shell.append(name, type, axis);
-            btn.appendChild(shell);
+            btn.append(head, shell);
             btn.addEventListener("click", () => {
-              RiftVectorDial.route(index, count);
-              this.lock(index);
-              const committed = ConduitDeck.commitTrajectory(choice);
-              Engine.finalizeJump(committed.dimId, committed.dimName);
-            });
-            btn.addEventListener("pointerenter", () => {
-              RiftVectorDial.route(index, count);
-              this.lift(index);
-            });
-            btn.addEventListener("focus", () => {
-              RiftVectorDial.route(index, count);
-              this.lift(index);
+              if (this.armedSlot === index) {
+                this.confirm(index, count);
+              } else {
+                this.arm(index, count);
+              }
             });
             btn.addEventListener("pointerleave", () => {
               if (this.lockSlot < 0) this.lift(-1);
@@ -4847,44 +5097,105 @@
 
         lift(index) {
           this.activeSlot = index;
-          [...DOM.navChoices.children].forEach((node, i) => {
+          [...DOM.navChoices.children].forEach((node) => {
             if (
               !(node instanceof HTMLElement) ||
               !node.classList.contains("nav-carriage")
             ) {
               return;
             }
-            node.dataset.lift = i === index ? "true" : "false";
+            node.dataset.lift =
+              Number(node.dataset.slot) === index ? "true" : "false";
           });
+          this.markCoupler(index);
+        },
+
+        markCoupler(index) {
+          DOM.navChoices
+            ?.querySelectorAll(".board-coupler")
+            .forEach((node) => {
+              node.dataset.active =
+                Number(node.dataset.slot) === index ? "true" : "false";
+            });
+        },
+
+        arm(index, count) {
+          this.armedSlot = index;
+          this.lift(index);
+          [...DOM.navChoices.children].forEach((node) => {
+            if (
+              !(node instanceof HTMLElement) ||
+              !node.classList.contains("nav-carriage")
+            ) {
+              return;
+            }
+            const selected = Number(node.dataset.slot) === index;
+            node.dataset.arm = selected ? "true" : "false";
+            node.setAttribute("aria-pressed", selected ? "true" : "false");
+            const axis = node.querySelector(".carriage-axis");
+            if (axis) {
+              axis.textContent = selected ? "TAP AGAIN TO CONFIRM" : "TAP TO ARM";
+            }
+          });
+          RiftVectorDial.arm(index, count);
+        },
+
+        confirm(index, count) {
+          if (this.armedSlot !== index) return false;
+          this.lock(index);
+          RiftVectorDial.set(
+            RiftCouplingBoard.needleAngle(index, count),
+            "Vector breaching",
+          );
+          const choice = this.choices[index];
+          const committed = ConduitDeck.commitTrajectory(choice);
+          Engine.finalizeJump(committed.dimId, committed.dimName);
+          return true;
         },
 
         reset() {
           this.choices = [];
           this.activeSlot = -1;
+          this.armedSlot = -1;
           this.lockSlot = -1;
         },
 
         lock(index) {
           this.lockSlot = index;
-          [...DOM.navChoices.children].forEach((node, i) => {
+          [...DOM.navChoices.children].forEach((node) => {
             if (
               !(node instanceof HTMLElement) ||
               !node.classList.contains("nav-carriage")
             ) {
               return;
             }
-            node.dataset.lock = i === index ? "true" : "false";
-            node.dataset.lift = i === index ? "true" : "false";
+            const selected = Number(node.dataset.slot) === index;
+            node.dataset.lock = selected ? "true" : "false";
+            node.dataset.lift = selected ? "true" : "false";
+            node.dataset.arm = selected ? "true" : "false";
+            const axis = node.querySelector(".carriage-axis");
+            if (axis) {
+              axis.textContent = selected ? "VECTOR LOCKED" : "TAP TO ARM";
+            }
           });
         },
       };
 
       const RiftVectorDial = {
+        root: null,
+        gauge: null,
         needle: null,
         statusEl: null,
         entry: null,
+        dragging: false,
+        dragMoved: false,
+        dragStartAngle: 0,
+        dragStartSlot: -1,
 
         init() {
+          if (this.entry) return;
+          this.root = document.querySelector("#nav-vector");
+          this.gauge = this.root?.querySelector("svg");
           this.needle = document.querySelector("#rift-vector-needle");
           this.statusEl = document.querySelector("#nav-vector-status");
           this.entry = {
@@ -4900,6 +5211,22 @@
               );
             },
           };
+          this.entry.update(this.entry.value);
+          this.root?.addEventListener("pointerdown", (event) =>
+            this.pointerDown(event),
+          );
+          this.root?.addEventListener("pointermove", (event) =>
+            this.pointerMove(event),
+          );
+          this.root?.addEventListener("pointerup", (event) =>
+            this.pointerUp(event),
+          );
+          this.root?.addEventListener("pointercancel", () => {
+            this.dragging = false;
+          });
+          this.root?.addEventListener("keydown", (event) =>
+            this.keyDown(event),
+          );
         },
 
         set(angle, status) {
@@ -4908,18 +5235,132 @@
           RiftMotion.set(this.entry, angle);
         },
 
-        route(index, count) {
-          const geometry = RiftCouplingBoard.slotGeometry(index, count);
-          if (!geometry) {
-            this.reset();
-            return;
+        setSlot(index, count, armed = false) {
+          this.set(
+            RiftCouplingBoard.needleAngle(index, count),
+            armed
+              ? `Vector ${index + 1} — tap again to confirm`
+              : `Vector ${index + 1}`,
+          );
+          if (this.root) {
+            this.root.dataset.armed = armed ? "true" : "false";
+            this.root.querySelectorAll(".vector-slot").forEach((node) => {
+              node.dataset.selected =
+                Number(node.dataset.slot) === index ? "true" : "false";
+            });
           }
-          const angle = RiftCouplingBoard.needleAngle(index, count);
-          this.set(angle, index === 0 ? "Vector one" : "Vector two");
+        },
+
+        route(index, count) {
+          this.setSlot(index, count, false);
+        },
+
+        arm(index, count) {
+          this.setSlot(index, count, true);
         },
 
         reset() {
+          if (!this.entry) this.init();
+          this.root?.removeAttribute("data-armed");
+          this.root?.querySelectorAll(".vector-slot").forEach((node) => {
+            node.dataset.selected = "false";
+          });
           this.set(90, "Vector idle");
+        },
+
+        angle(event) {
+          const rect = this.gauge.getBoundingClientRect();
+          const dx = event.clientX - (rect.left + rect.width / 2);
+          const dy = event.clientY - (rect.top + rect.height / 2);
+          const degrees = (Math.atan2(dx, -dy) * 180) / Math.PI;
+          return ((degrees % 360) + 360) % 360;
+        },
+
+        angularDistance(a, b) {
+          return Math.abs(((a - b + 540) % 360) - 180);
+        },
+
+        nearestSlot(angle, count) {
+          if (count <= 1) return 0;
+          let bestSlot = 0;
+          let bestDistance = Infinity;
+          for (let slot = 0; slot < count; slot++) {
+            const distance = this.angularDistance(
+              angle,
+              RiftCouplingBoard.needleAngle(slot, count),
+            );
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              bestSlot = slot;
+            }
+          }
+          return bestSlot;
+        },
+
+        pointerDown(event) {
+          const count = RiftCouplingBoard.slotCount(RiftCouplingBoard.choices);
+          if (!count || !this.entry) return;
+          this.dragging = true;
+          this.dragMoved = false;
+          this.dragStartAngle = this.angle(event);
+          this.dragStartSlot = this.nearestSlot(this.dragStartAngle, count);
+          this.root.setPointerCapture?.(event.pointerId);
+          this.set(
+            this.dragStartAngle,
+            `Vector ${this.dragStartSlot + 1}`,
+          );
+        },
+
+        pointerMove(event) {
+          if (!this.dragging) return;
+          const count = RiftCouplingBoard.slotCount(RiftCouplingBoard.choices);
+          if (!count) return;
+          const angle = this.angle(event);
+          if (this.angularDistance(angle, this.dragStartAngle) > 5) {
+            this.dragMoved = true;
+          }
+          const slot = this.nearestSlot(angle, count);
+          this.set(angle, `Vector ${slot + 1}`);
+          RiftCouplingBoard.lift(slot);
+        },
+
+        pointerUp(event) {
+          if (!this.dragging) return;
+          this.dragging = false;
+          const count = RiftCouplingBoard.slotCount(RiftCouplingBoard.choices);
+          if (!count) return;
+          const slot = this.nearestSlot(this.angle(event), count);
+          if (
+            !this.dragMoved &&
+            RiftCouplingBoard.armedSlot === slot &&
+            this.angularDistance(this.angle(event), this.dragStartAngle) <= 5
+          ) {
+            RiftCouplingBoard.confirm(slot, count);
+          } else {
+            RiftCouplingBoard.arm(slot, count);
+          }
+        },
+
+        keyDown(event) {
+          const count = RiftCouplingBoard.slotCount(RiftCouplingBoard.choices);
+          if (!count) return;
+          let slot = null;
+          if (event.key === "ArrowLeft") slot = 0;
+          if (event.key === "ArrowRight") slot = Math.min(count - 1, 1);
+          if (slot !== null) {
+            event.preventDefault();
+            RiftCouplingBoard.arm(slot, count);
+            return;
+          }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            if (RiftCouplingBoard.armedSlot >= 0) {
+              RiftCouplingBoard.confirm(RiftCouplingBoard.armedSlot, count);
+            } else {
+              const target = this.entry?.target ?? 90;
+              RiftCouplingBoard.arm(this.nearestSlot(target, count), count);
+            }
+          }
         },
       };
 
