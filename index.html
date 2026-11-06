@@ -4997,6 +4997,7 @@
             const snap = VoyageSession.getSnapshot();
             DOM.navScreen.style.display = "flex";
             RiftCouplingBoard.render(snap.navChoices);
+            RiftVectorDial.reset();
           },
           onExit: () => {
             DOM.navScreen.style.display = "none";
@@ -5008,7 +5009,8 @@
             const snap = VoyageSession.getSnapshot();
             const targetDimId = snap.targetDimId;
             const targetDimName = snap.targetDimName;
-            RiftVectorDial.set(150, "Vector breaching");
+            // Needle already sits on the committed slot angle from
+            // RiftCouplingBoard.confirm(); do not override it here.
 
             DOM.artDisplay.innerHTML = `
                     <div id="art-glyph"></div>
@@ -5398,7 +5400,8 @@
         entry: null,
         dragging: false,
         dragMoved: false,
-        dragStartAngle: 0,
+        downX: 0,
+        downY: 0,
         dragStartSlot: -1,
 
         init() {
@@ -5476,6 +5479,7 @@
         reset() {
           if (!this.entry) this.init();
           this.root?.removeAttribute("data-armed");
+          this.root?.removeAttribute("data-solo");
           this.root?.querySelectorAll(".vector-slot").forEach((node) => {
             node.dataset.selected = "false";
           });
@@ -5516,11 +5520,13 @@
           if (!count || !this.entry) return;
           this.dragging = true;
           this.dragMoved = false;
-          this.dragStartAngle = this.angle(event);
-          this.dragStartSlot = this.nearestSlot(this.dragStartAngle, count);
+          this.downX = event.clientX;
+          this.downY = event.clientY;
+          const startAngle = this.angle(event);
+          this.dragStartSlot = this.nearestSlot(startAngle, count);
           this.root.setPointerCapture?.(event.pointerId);
           this.set(
-            this.dragStartAngle,
+            startAngle,
             `Vector ${this.dragStartSlot + 1}`,
           );
         },
@@ -5529,10 +5535,15 @@
           if (!this.dragging) return;
           const count = RiftCouplingBoard.slotCount(RiftCouplingBoard.choices);
           if (!count) return;
-          const angle = this.angle(event);
-          if (this.angularDistance(angle, this.dragStartAngle) > 5) {
+          // Any real pointer travel cancels tap-to-confirm; only a
+          // stationary press-and-release (<= 4px) counts as a tap.
+          if (
+            Math.hypot(event.clientX - this.downX, event.clientY - this.downY) >
+            4
+          ) {
             this.dragMoved = true;
           }
+          const angle = this.angle(event);
           const slot = this.nearestSlot(angle, count);
           this.set(angle, `Vector ${slot + 1}`);
           RiftCouplingBoard.lift(slot);
@@ -5544,11 +5555,7 @@
           const count = RiftCouplingBoard.slotCount(RiftCouplingBoard.choices);
           if (!count) return;
           const slot = this.nearestSlot(this.angle(event), count);
-          if (
-            !this.dragMoved &&
-            RiftCouplingBoard.armedSlot === slot &&
-            this.angularDistance(this.angle(event), this.dragStartAngle) <= 5
-          ) {
+          if (!this.dragMoved && RiftCouplingBoard.armedSlot === slot) {
             RiftCouplingBoard.confirm(slot, count);
           } else {
             RiftCouplingBoard.arm(slot, count);
