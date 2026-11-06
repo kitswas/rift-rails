@@ -1466,9 +1466,8 @@
         transform: translate(var(--corvus-eye-x, 0), var(--corvus-eye-y, 0));
       }
 
-      #corvus-portrait .corvus-eye-glint {
-        transform: translate(var(--corvus-glint-x, 0), var(--corvus-glint-y, 0));
-      }
+      /* Glint rides inside the pupil group: one transform source per eye,
+         so layers can never separate (DEVELOPER NOTES 4). */
 
       .locked-ui,
       .locked-ui * {
@@ -2213,6 +2212,8 @@
 
           JUMP_CHARGE_MS: 900,
           JUMP_TOTAL_MS: 1250,
+          // Waypoint cutscene after which Master Corvus has disembarked.
+          CORVUS_FINAL_CUTSCENE: "wp5",
           FX_STAR_COUNT: 220,
           FX_VIBRATE_PATTERN: [35, 45, 100],
         },
@@ -2341,6 +2342,7 @@
             cutsceneContinue: "cutscene-continue",
             locationName: "location-name",
             locationType: "location-type",
+            corvusPortrait: "corvus-portrait",
             encounterChoices: "encounter-choices",
             statHull: "stat-hull",
             statFuel: "stat-fuel",
@@ -3617,6 +3619,11 @@
               _state.energy = VoyageSession.getMaxEnergy();
           },
 
+          hasObserverDeparted: () =>
+            (_state.seenCutscenes || []).includes(
+              GAME_DATA.config.CORVUS_FINAL_CUTSCENE,
+            ),
+
           assertInvariants: () => {
             if (_state.hull > GAME_DATA.config.MAX_HULL)
               console.error("INVARIANT BREACH: Hull > Max");
@@ -3631,6 +3638,13 @@
               console.error(
                 `INVARIANT BREACH: No permissions defined for phase '${_state.phase}'`,
               );
+            if (DOM.corvusPortrait) {
+              const departed = VoyageSession.hasObserverDeparted();
+              if (!!DOM.corvusPortrait.hidden !== departed)
+                console.error(
+                  "INVARIANT BREACH: Observer presence out of sync with save state",
+                );
+            }
           },
 
           exploreNode: () => {
@@ -4586,6 +4600,12 @@
               : "var(--action)";
           DOM.statEnergy.style.color =
             snap.energy === 0 ? "var(--warning)" : "var(--energy)";
+
+          // Observer presence derives solely from save state, never from
+          // ad-hoc DOM writes (DEVELOPER NOTES 4: single source of truth).
+          if (DOM.corvusPortrait) {
+            DOM.corvusPortrait.hidden = VoyageSession.hasObserverDeparted();
+          }
         },
 
         renderInteractiveControls: () => {
@@ -5354,10 +5374,7 @@
         confirm(index, count) {
           if (this.armedSlot !== index) return false;
           this.lock(index);
-          RiftVectorDial.set(
-            RiftCouplingBoard.needleAngle(index, count),
-            "Vector breaching",
-          );
+          RiftVectorDial.breach(index, count);
           const choice = this.choices[index];
           const committed = ConduitDeck.commitTrajectory(choice);
           Engine.finalizeJump(committed.dimId, committed.dimName);
@@ -5392,6 +5409,9 @@
         },
       };
 
+      // Needle rest angle: straight up, between both vector slots.
+      const VECTOR_IDLE_ANGLE = 0;
+
       const RiftVectorDial = {
         root: null,
         gauge: null,
@@ -5411,8 +5431,8 @@
           this.needle = document.querySelector("#rift-vector-needle");
           this.statusEl = document.querySelector("#nav-vector-status");
           this.entry = {
-            value: 0,
-            target: 0,
+            value: VECTOR_IDLE_ANGLE,
+            target: VECTOR_IDLE_ANGLE,
             velocity: 0,
             stiffness: 210,
             damping: 20,
@@ -5468,8 +5488,20 @@
           }
         },
 
-        route(index, count) {
-          this.setSlot(index, count, false);
+        breach(index, count) {
+          if (!this.entry) this.init();
+          if (this.root) {
+            this.root.dataset.armed = "true";
+            this.root.dataset.solo = count <= 1 ? "true" : "false";
+            this.root.querySelectorAll(".vector-slot").forEach((node) => {
+              node.dataset.selected =
+                Number(node.dataset.slot) === index ? "true" : "false";
+            });
+          }
+          this.set(
+            RiftCouplingBoard.needleAngle(index, count),
+            "Vector breaching",
+          );
         },
 
         arm(index, count) {
@@ -5483,7 +5515,7 @@
           this.root?.querySelectorAll(".vector-slot").forEach((node) => {
             node.dataset.selected = "false";
           });
-          this.set(0, "Vector idle");
+          this.set(VECTOR_IDLE_ANGLE, "Vector idle");
         },
 
         angle(event) {
@@ -5578,7 +5610,7 @@
             if (RiftCouplingBoard.armedSlot >= 0) {
               RiftCouplingBoard.confirm(RiftCouplingBoard.armedSlot, count);
             } else {
-              const target = this.entry?.target ?? 90;
+              const target = this.entry?.target ?? VECTOR_IDLE_ANGLE;
               RiftCouplingBoard.arm(this.nearestSlot(target, count), count);
             }
           }
@@ -5640,14 +5672,6 @@
           const y = Math.max(-6, Math.min(6, dy * 0.07));
           RiftMotion.set(RiftEyes.x, x);
           RiftMotion.set(RiftEyes.y, y);
-          RiftEyes.portrait.style.setProperty(
-            "--corvus-glint-x",
-            `${x.toFixed(2)}px`,
-          );
-          RiftEyes.portrait.style.setProperty(
-            "--corvus-glint-y",
-            `${y.toFixed(2)}px`,
-          );
         },
 
         center() {
@@ -5660,8 +5684,6 @@
             RiftMotion.springs.delete(entry);
             entry.active = false;
           });
-          RiftEyes.portrait.style.setProperty("--corvus-glint-x", "0px");
-          RiftEyes.portrait.style.setProperty("--corvus-glint-y", "0px");
         },
       };
 
