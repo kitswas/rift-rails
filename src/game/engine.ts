@@ -10,6 +10,7 @@ import { VoyageSession } from "./session";
 import { syncUI, ui } from "../stores/ui.svelte";
 import { addMenuItem, clearMenu, syncActiveMenu } from "../stores/menu.svelte";
 import { syncSensors } from "../stores/sensors.svelte";
+import { syncSettings } from "../stores/settings.svelte";
 import { PhaseMachine } from "./phaseMachine";
 import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem } from "./types";
 
@@ -269,6 +270,36 @@ export class EngineService {
     VoyageSession.assertInvariants();
   }
 
+  ignite(): void {
+    SoundFX.init();
+    const startEl = document.getElementById("start-screen");
+    if (startEl) startEl.style.display = "none";
+    const gameEl = document.getElementById("game-container");
+    if (gameEl) gameEl.style.display = "flex";
+    const saved = SaveSystem.load();
+    if (saved) {
+      VoyageSession.loadState(saved);
+      const snap = VoyageSession.getSnapshot();
+      TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
+      this.log(
+        `[CONDUIT] Resumed trajectory at ${snap.dimName} (Waypoint ${snap.jumpCount}).`,
+        GAME_DATA.dom.classes.logSystem!,
+      );
+    } else {
+      ConduitDeck.init();
+    }
+    this.transitionTo(GAME_DATA.phases.idle!);
+    setTimeout(() => {
+      this.scrollToPane(2);
+    }, 50);
+    const snap = VoyageSession.getSnapshot();
+    if (snap.jumpCount === 1 && !snap.seenCutscenes?.includes("wp1")) {
+      setTimeout(() => {
+        CutsceneEngine.play("wp1");
+      }, 120);
+    }
+  }
+
   cacheDOM(): void {
     Object.entries(GAME_DATA.dom.ids).forEach(([domKey, elementId]) => {
       const el = document.getElementById(elementId);
@@ -279,57 +310,35 @@ export class EngineService {
   }
 
   setupStaticText(): void {
+    syncSettings();
     const snap = VoyageSession.getSnapshot();
-    const audioPrefs = SaveSystem.loadAudioPrefs();
-    if (audioPrefs) {
-      SoundFX.ambientMode = audioPrefs.mode ?? "rails";
-      SoundFX.ambientSliderVal = audioPrefs.ambientSlider ?? 100;
-      SoundFX.sfxSliderVal = audioPrefs.sfxSlider ?? 100;
-      SoundFX.ambientVolume = SoundFX.sliderToGain(SoundFX.ambientSliderVal);
-      SoundFX.sfxVolume = SoundFX.sliderToGain(SoundFX.sfxSliderVal);
-      SoundFX.isMuted = !!audioPrefs.muted;
-
-      if (DOM.selectAmbientMode) DOM.selectAmbientMode.value = SoundFX.ambientMode;
-      if (DOM.sliderAmbientVol) DOM.sliderAmbientVol.value = String(SoundFX.ambientSliderVal);
-      if (DOM.lblAmbientVol) DOM.lblAmbientVol.innerText = `${SoundFX.ambientSliderVal}%`;
-      if (DOM.sliderSfxVol) DOM.sliderSfxVol.value = String(SoundFX.sfxSliderVal);
-      if (DOM.lblSfxVol) DOM.lblSfxVol.innerText = `${SoundFX.sfxSliderVal}%`;
-      if (DOM.btnToggleMute) {
-        DOM.btnToggleMute.innerText = `Mute Audio: ${SoundFX.isMuted ? "ON" : "OFF"}`;
-      }
-    }
-
-    if (SaveSystem.hasSave()) {
-      const saved = SaveSystem.load();
-      DOM.btnIgnite.innerText = `Resume Journey (Waypoint ${saved ? saved.jumpCount : 1})`;
-      if (DOM.btnStartFresh) {
-        DOM.btnStartFresh.innerText = GAME_DATA.text.btnNewGame;
-        DOM.btnStartFresh.style.display = "flex";
-      }
-    } else {
-      DOM.btnIgnite.innerText = GAME_DATA.text.btnIgnite;
-      if (DOM.btnStartFresh) {
-        DOM.btnStartFresh.style.display = "none";
-      }
-    }
-    if (DOM.btnResetSave) {
-      DOM.btnResetSave.innerText = GAME_DATA.text.btnNewGame;
-    }
-    DOM.lblForge.innerText = GAME_DATA.text.lblForge;
-    DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
     TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
     this.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem!);
   }
 
   syncTabsWithScroll(): void {
-    const container = DOM.snapSlider;
-    if (!container || !DOM.panes) return;
+    const container = document.getElementById("snap-slider");
+    if (!container) return;
+    const panes = [
+      document.getElementById("pane-settings"),
+      document.getElementById("pane-sensors"),
+      document.getElementById("pane-bridge"),
+      document.getElementById("pane-forge"),
+      document.getElementById("pane-manual"),
+    ];
+    const tabs = [
+      document.getElementById("tab-settings"),
+      document.getElementById("tab-sensors"),
+      document.getElementById("tab-bridge"),
+      document.getElementById("tab-forge"),
+      document.getElementById("tab-manual"),
+    ];
 
     const containerCenter = container.scrollLeft + container.clientWidth / 2;
     let closestIdx = 0;
     let minDiff = Infinity;
 
-    DOM.panes.forEach((pane, idx) => {
+    panes.forEach((pane, idx) => {
       if (!pane) return;
       const paneCenter = pane.offsetLeft - container.offsetLeft + pane.offsetWidth / 2;
       const diff = Math.abs(containerCenter - paneCenter);
@@ -339,14 +348,21 @@ export class EngineService {
       }
     });
 
-    DOM.tabs.forEach((tab, i) => {
+    tabs.forEach((tab, i) => {
       if (tab) tab.classList.toggle("active", i === closestIdx);
     });
   }
 
   scrollToPane(index: number): void {
-    const container = DOM.snapSlider;
-    const target = DOM.panes?.[index];
+    const container = document.getElementById("snap-slider");
+    const panes = [
+      document.getElementById("pane-settings"),
+      document.getElementById("pane-sensors"),
+      document.getElementById("pane-bridge"),
+      document.getElementById("pane-forge"),
+      document.getElementById("pane-manual"),
+    ];
+    const target = panes[index];
     if (!target || !container) return;
 
     if (window.innerWidth >= 900) {
@@ -364,100 +380,8 @@ export class EngineService {
   }
 
   bindEvents(): void {
-    DOM.btnExplore.addEventListener("click", () => this.exploreNode());
-    DOM.btnTravel.addEventListener("click", () => this.initiateTravel());
-    DOM.btnDesperate.addEventListener("click", () => this.desperateScavenge());
-
-    DOM.btnForgeEng.addEventListener("click", () => {
-      VoyageSession.forgeUpgrade("engineTier");
-      this.updateUI();
-      VoyageSession.evaluateSurvival();
-    });
-
-    DOM.btnForgeWpn.addEventListener("click", () => {
-      VoyageSession.forgeUpgrade("weaponTier");
-      this.updateUI();
-      VoyageSession.evaluateSurvival();
-    });
-
-    DOM.btnResetSave.addEventListener("click", () => this.resetGame(true));
-
-    DOM.btnStartFresh.addEventListener("click", () => this.resetGame(true));
-
-    DOM.cutsceneBtnA.addEventListener("click", () => CutsceneEngine.advance());
-    DOM.cutsceneBtnB.addEventListener("click", () => CutsceneEngine.advance());
-    document.addEventListener("keydown", CutsceneEngine.trapFocus);
-    document.addEventListener("focusin", CutsceneEngine.trapFocus);
-
-    DOM.selectAmbientMode.addEventListener("change", (e) => {
-      const target = e.target as HTMLSelectElement;
-      SoundFX.setAmbientMode(target.value as "rails" | "telemetry" | "none");
-      this.log(
-        `[ACOUSTICS] Soundscape shifted to: ${target.options[target.selectedIndex]?.text ?? target.value}`,
-        GAME_DATA.dom.classes.logSystem!,
-      );
-    });
-
-    DOM.sliderAmbientVol.addEventListener("input", (e) => {
-      const val = parseInt((e.target as HTMLInputElement).value, 10);
-      DOM.lblAmbientVol.innerText = `${val}%`;
-      SoundFX.setAmbientVolume(val);
-    });
-
-    DOM.sliderSfxVol.addEventListener("input", (e) => {
-      const val = parseInt((e.target as HTMLInputElement).value, 10);
-      DOM.lblSfxVol.innerText = `${val}%`;
-      SoundFX.setSfxVolume(val);
-    });
-
-    DOM.btnToggleMute.addEventListener("click", () => {
-      const isMuted = SoundFX.toggleMute();
-      DOM.btnToggleMute.innerText = `Mute Audio: ${isMuted ? "ON" : "OFF"}`;
-      DOM.btnToggleMute.style.borderColor = isMuted ? "var(--danger)" : "var(--border-bright)";
-      DOM.btnToggleMute.style.color = isMuted ? "var(--danger)" : "var(--text)";
-    });
-
-    DOM.btnIgnite.addEventListener("click", () => {
-      SoundFX.init();
-      DOM.startScreen.style.display = "none";
-      DOM.gameContainer.style.display = "flex";
-
-      const saved = SaveSystem.load();
-      if (saved) {
-        VoyageSession.loadState(saved);
-        const snap = VoyageSession.getSnapshot();
-        TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
-        this.log(
-          `[CONDUIT] Resumed trajectory at ${snap.dimName} (Waypoint ${snap.jumpCount}).`,
-          GAME_DATA.dom.classes.logSystem!,
-        );
-      } else {
-        ConduitDeck.init();
-      }
-
-      this.transitionTo(GAME_DATA.phases.idle!);
-
-      setTimeout(() => {
-        this.scrollToPane(2);
-      }, 50);
-
-      const snap = VoyageSession.getSnapshot();
-      if (snap.jumpCount === 1 && !snap.seenCutscenes?.includes("wp1")) {
-        setTimeout(() => {
-          CutsceneEngine.play("wp1");
-        }, 120);
-      }
-    });
-
-    DOM.tabs.forEach((tab, idx) => {
-      if (tab) {
-        tab.addEventListener("click", () => this.scrollToPane(idx));
-      }
-    });
-
-    DOM.snapSlider.addEventListener("scroll", () => this.syncTabsWithScroll(), {
-      passive: true,
-    });
+    // Svelte components own button wiring (Start/Panels/Log/Forge/Cutscene).
+    // Kept as init hook for focus-trap parity; no DOM lookups here.
   }
 
   init(): void {

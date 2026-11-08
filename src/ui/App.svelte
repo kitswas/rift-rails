@@ -47,7 +47,7 @@ onMount(() => {
 <div id="game-container">
   <Vitals />
 
-  <div id="snap-slider">
+  <div id="snap-slider" onscroll={() => Engine.syncTabsWithScroll()}>
     <Panels />
 
     <Bridge />
@@ -60,11 +60,11 @@ onMount(() => {
   </div>
 
   <div id="bottom-nav">
-    <button class="nav-tab" id="tab-settings">Settings</button>
-    <button class="nav-tab" id="tab-sensors">Sensors</button>
-    <button class="nav-tab active" id="tab-bridge">Bridge</button>
-    <button class="nav-tab" id="tab-forge">Workshop</button>
-    <button class="nav-tab" id="tab-manual">Manual</button>
+    <button class="nav-tab" id="tab-settings" onclick={() => Engine.scrollToPane(0)}>Settings</button>
+    <button class="nav-tab" id="tab-sensors" onclick={() => Engine.scrollToPane(1)}>Sensors</button>
+    <button class="nav-tab active" id="tab-bridge" onclick={() => Engine.scrollToPane(2)}>Bridge</button>
+    <button class="nav-tab" id="tab-forge" onclick={() => Engine.scrollToPane(3)}>Workshop</button>
+    <button class="nav-tab" id="tab-manual" onclick={() => Engine.scrollToPane(4)}>Manual</button>
   </div>
 </div>
 

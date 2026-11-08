@@ -28,6 +28,18 @@
     </div>
   </div>
   <h4 style="margin: 6px 0" id="lbl-forge"></h4>
-  <button id="btn-forge-engine" disabled={ui.forgeEngineDisabled}>{ui.forgeEngineLabel}</button>
-  <button id="btn-forge-weapon" disabled={ui.forgeWeaponDisabled}>{ui.forgeWeaponLabel}</button>
+  <button
+    id="btn-forge-engine"
+    disabled={ui.forgeEngineDisabled}
+    onclick={() => Engine.forgeUpgrade("engineTier")}
+  >
+    {ui.forgeEngineLabel}
+  </button>
+  <button
+    id="btn-forge-weapon"
+    disabled={ui.forgeWeaponDisabled}
+    onclick={() => Engine.forgeUpgrade("weaponTier")}
+  >
+    {ui.forgeWeaponLabel}
+  </button>
 </div>

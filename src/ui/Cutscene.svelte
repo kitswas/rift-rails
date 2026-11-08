@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { CutsceneEngine } from "../game/cutscene";
+</script>
+
 <div
   id="cutscene-overlay"
   role="dialog"
@@ -5,6 +9,8 @@
   aria-labelledby="cutscene-speaker"
   aria-describedby="cutscene-body"
   hidden
+  onkeydown={(e) => CutsceneEngine.trapFocus(e as unknown as KeyboardEvent)}
+  onfocusin={(e) => CutsceneEngine.trapFocus(e as unknown as Event)}
 >
   <section class="cutscene-frame">
     <img class="cutscene-portrait" src="assets/corvus.svg" alt="" aria-hidden="true" />
@@ -16,8 +22,18 @@
     </div>
     <div id="cutscene-body" class="cutscene-text" aria-live="polite"></div>
     <div id="cutscene-choices" class="cutscene-options">
-      <button class="btn-cutscene-choice" id="cutscene-btn-a" type="button"></button>
-      <button class="btn-cutscene-choice" id="cutscene-btn-b" type="button"></button>
+      <button
+        class="btn-cutscene-choice"
+        id="cutscene-btn-a"
+        type="button"
+        onclick={() => CutsceneEngine.advance()}
+      ></button>
+      <button
+        class="btn-cutscene-choice"
+        id="cutscene-btn-b"
+        type="button"
+        onclick={() => CutsceneEngine.advance()}
+      ></button>
     </div>
   </section>
 </div>

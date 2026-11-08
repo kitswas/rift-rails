@@ -1,17 +1,33 @@
 <script lang="ts">
   import { ui } from "../stores/ui.svelte";
   import { menu, invokeMenuItem } from "../stores/menu.svelte";
+  import { Engine } from "../game/engine";
 </script>
 
 <div id="story-log"></div>
 <div id="action-buttons">
-  <button id="btn-explore" class="btn-energy" disabled={ui.exploreDisabled}>{ui.exploreLabel}</button>
-  <button id="btn-travel" class="btn-travel" disabled={ui.travelDisabled}>{ui.travelLabel}</button>
+  <button
+    id="btn-explore"
+    class="btn-energy"
+    disabled={ui.exploreDisabled}
+    onclick={() => Engine.exploreNode()}
+  >
+    {ui.exploreLabel}
+  </button>
+  <button
+    id="btn-travel"
+    class="btn-travel"
+    disabled={ui.travelDisabled}
+    onclick={() => Engine.initiateTravel()}
+  >
+    {ui.travelLabel}
+  </button>
 </div>
 <button
   id="btn-desperate"
   class="btn-desperate"
   style="display: {ui.desperateVisible ? "block" : "none"}"
+  onclick={() => Engine.desperateScavenge()}
 >
   {ui.desperateLabel}
 </button>

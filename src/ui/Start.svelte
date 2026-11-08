@@ -1,3 +1,8 @@
+<script lang="ts">
+  import { Engine } from "../game/engine";
+  import { settings } from "../stores/settings.svelte";
+</script>
+
 <div id="start-screen">
   <div class="start-card">
     <h1>RIFT RAILS</h1>
@@ -15,7 +20,14 @@
     <p style="font-size: 0.82em; color: var(--text-muted)">
       Select a HUD stat for help. Progress auto-saves after each Rift Jump.
     </p>
-    <button class="btn-start" id="btn-ignite"></button>
-    <button id="btn-start-fresh" class="btn-new-game" style="display: none"></button>
+    <button class="btn-start" id="btn-ignite" onclick={() => Engine.ignite()}>{settings.igniteLabel}</button>
+    <button
+      id="btn-start-fresh"
+      class="btn-new-game"
+      style="display: {settings.hasSave ? "flex" : "none"}"
+      onclick={() => Engine.resetGame(true)}
+    >
+      {settings.freshLabel}
+    </button>
   </div>
 </div>
