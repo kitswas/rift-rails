@@ -8,6 +8,7 @@ import { TransitionFX } from "./fx";
 import { SaveSystem } from "./save";
 import { VoyageSession } from "./session";
 import { resetNav, setChoices } from "../stores/nav.svelte";
+import { syncUI, ui } from "../stores/ui.svelte";
 import type {
   ActionId,
   GameAction,
@@ -294,87 +295,22 @@ export const Engine = {
   },
 
   renderVitals(): void {
-    const snap = VoyageSession.getSnapshot();
-    DOM.locationName.innerText = GAME_DATA.text.formatDimName(snap.dimName);
-
-    DOM.statHull.innerText = GAME_DATA.text.formatPct(Math.floor(snap.hull));
-    DOM.statFuel.innerText = String(Math.floor(snap.fuel));
-    DOM.statEnergy.innerText = GAME_DATA.text.formatStatPair(
-      snap.energy,
-      VoyageSession.getMaxEnergy(),
-    );
-    DOM.statFlux.innerText = String(Math.floor(snap.flux));
-    DOM.statRep.innerText = String(snap.rep);
-    DOM.statSector.innerText = GAME_DATA.text.formatSectorWaypoint(snap.jumpCount);
-
-    DOM.eqEngine.innerText = GAME_DATA.text.formatTier(snap.engineTier);
-    DOM.eqWeapon.innerText = GAME_DATA.text.formatTier(snap.weaponTier);
-    DOM.eqModule.innerText = snap.module;
-    DOM.eqCarriage.innerText = snap.carriage;
-    DOM.eqCrew.innerText = snap.crew;
-    DOM.locationType.innerText = GAME_DATA.text.formatDimType(GAME_DATA.nodes[snap.dimId].label);
-    DOM.dimTypeCodex.innerText = GAME_DATA.nodes[snap.dimId].label;
-
-    DOM.statHull.style.color =
-      snap.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD ? "var(--danger)" : "var(--success)";
-    DOM.statFuel.style.color =
-      snap.fuel < VoyageSession.getTravelCost() ? "var(--danger)" : "var(--action)";
-    DOM.statEnergy.style.color = snap.energy === 0 ? "var(--warning)" : "var(--energy)";
-
+    syncUI();
+    if (DOM.locationName) DOM.locationName.innerText = ui.locationName;
+    if (DOM.locationType) DOM.locationType.innerText = ui.locationType;
+    if (DOM.dimTypeCodex) DOM.dimTypeCodex.innerText = ui.dimTypeCodex;
+    if (DOM.statRep) DOM.statRep.innerText = ui.rep;
     if (DOM.corvusPortrait) {
       DOM.corvusPortrait.hidden = VoyageSession.hasObserverDeparted();
     }
   },
 
   renderInteractiveControls(): void {
-    const snap = VoyageSession.getSnapshot();
-    const travelCost = VoyageSession.getTravelCost();
-    const node = GAME_DATA.nodes[snap.dimId];
-    const perms = GAME_DATA.permissions[snap.phase]!;
-
-    DOM.btnExplore.innerText = node.isHub
-      ? GAME_DATA.text.btnExploreHub(node.exploreCost)
-      : GAME_DATA.text.btnExploreClosed(node.exploreCost);
-    DOM.btnExplore.disabled = !perms.explore || snap.energy < node.exploreCost;
-
-    DOM.btnTravel.innerText = GAME_DATA.text.btnJump(travelCost);
-    DOM.btnTravel.disabled = !perms.travel || snap.fuel < travelCost;
-
-    DOM.btnDesperate.innerText = GAME_DATA.text.btnDesperate(
-      GAME_DATA.config.DESPERATE_HULL_COST,
-      GAME_DATA.config.DESPERATE_FUEL_YIELD,
-    );
-    DOM.btnDesperate.style.display =
-      snap.fuel < travelCost && snap.hull > GAME_DATA.config.DESPERATE_HULL_COST && perms.travel
-        ? "block"
-        : "none";
+    syncUI();
   },
 
   renderForge(): void {
-    const snap = VoyageSession.getSnapshot();
-    const fEngCost = VoyageSession.getForgeCost(snap.engineTier);
-    const perms = GAME_DATA.permissions[snap.phase]!;
-    const nextJumpCost = VoyageSession.getNextTierTravelCost();
-
-    DOM.btnForgeEng.innerText =
-      snap.engineTier >= GAME_DATA.config.MAX_TIER
-        ? GAME_DATA.text.btnApexEngine
-        : GAME_DATA.text.btnForgeEngine(
-            fEngCost,
-            GAME_DATA.config.TRAVEL_TIER_MULT,
-            nextJumpCost,
-            snap.fuel,
-          );
-    DOM.btnForgeEng.disabled =
-      !perms.forge || snap.flux < fEngCost || snap.engineTier >= GAME_DATA.config.MAX_TIER;
-
-    const fWpnCost = VoyageSession.getForgeCost(snap.weaponTier);
-    DOM.btnForgeWpn.innerText =
-      snap.weaponTier >= GAME_DATA.config.MAX_TIER
-        ? GAME_DATA.text.btnApexWeapon
-        : GAME_DATA.text.btnForgeWeapon(fWpnCost);
-    DOM.btnForgeWpn.disabled =
-      !perms.forge || snap.flux < fWpnCost || snap.weaponTier >= GAME_DATA.config.MAX_TIER;
+    syncUI();
   },
 
   forgeUpgrade(tierKey: TierKey, onUpgrade?: () => void): void {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Engine } from "../game/engine";
+  import { ui } from "../stores/ui.svelte";
 </script>
 
 <div class="panel-card" id="right-panel">
@@ -7,26 +8,26 @@
   <div class="train-setup-grid">
     <div class="hud-cell" onclick={() => Engine.inspect("engine")}>
       <span>Engine</span>
-      <span id="equip-engine"></span>
+      <span id="equip-engine">{ui.engineTier}</span>
     </div>
     <div class="hud-cell" onclick={() => Engine.inspect("weapon")}>
       <span>Weapon</span>
-      <span id="equip-weapon"></span>
+      <span id="equip-weapon">{ui.weaponTier}</span>
     </div>
     <div class="hud-cell" onclick={() => Engine.inspect("module")}>
       <span>Module</span>
-      <span id="equip-module"></span>
+      <span id="equip-module">{ui.module}</span>
     </div>
     <div class="hud-cell" onclick={() => Engine.inspect("carriage")}>
       <span>Carriage</span>
-      <span id="equip-carriage"></span>
+      <span id="equip-carriage">{ui.carriage}</span>
     </div>
     <div class="hud-cell" style="grid-column: span 2" onclick={() => Engine.inspect("crew")}>
       <span>Crew Member</span>
-      <span id="equip-crew"></span>
+      <span id="equip-crew">{ui.crew}</span>
     </div>
   </div>
   <h4 style="margin: 6px 0" id="lbl-forge"></h4>
-  <button id="btn-forge-engine"></button>
-  <button id="btn-forge-weapon"></button>
+  <button id="btn-forge-engine" disabled={ui.forgeEngineDisabled}>{ui.forgeEngineLabel}</button>
+  <button id="btn-forge-weapon" disabled={ui.forgeWeaponDisabled}>{ui.forgeWeaponLabel}</button>
 </div>
