@@ -9,7 +9,7 @@ import { EngineService } from "./game/engine";
 import type { EngineDeps } from "./game/engine";
 import { PhaseMachine } from "./game/phaseMachine";
 import { SoundFXService } from "./game/audio";
-import type { AmbientMode, Trajectory } from "./game/types";
+import type { AmbientMode, MotionEntry, Trajectory } from "./game/types";
 import { DioramaPipelineService } from "./game/art";
 import type { ArtBridgeHandle } from "./game/art";
 import { TransitionFXService } from "./game/fx";
@@ -204,9 +204,131 @@ function needleAngle(slot: number, count: number): number {
   if (count <= 1) return 90;
   return slot === 0 ? 305 : 55;
 }
+
+let needleEntry: MotionEntry | null = null;
+function getNeedleEntry(): MotionEntry {
+  if (!needleEntry) {
+    needleEntry = {
+      value: 0,
+      target: 0,
+      velocity: 0,
+      stiffness: 210,
+      damping: 20,
+      update: (value) => {
+        el("rift-vector-needle")?.setAttribute("transform", `rotate(${value.toFixed(2)} 80 80)`);
+      },
+    };
+    needleEntry.update?.(0);
+  }
+  return needleEntry;
+}
 function setNeedle(angle: number): void {
-  const needle = el("rift-vector-needle");
-  if (needle) needle.setAttribute("transform", `rotate(${angle.toFixed(2)} 80 80)`);
+  const entry = getNeedleEntry();
+  // Unwrap to the shortest rotation so the needle never sweeps
+  // through the empty lower half of the dial.
+  const delta = ((angle - entry.value + 540) % 360) - 180;
+  motion.set(entry, entry.value + delta);
+}
+
+function slotGeometry(index: number, count: number): { left: number; top: number; width: number } {
+  if (count === 1) return { left: 29, top: 46, width: 42 };
+  return index === 0 ? { left: 4, top: 46, width: 42 } : { left: 54, top: 46, width: 42 };
+}
+void slotGeometry;
+
+function buildRailSvg(count: number): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "nav-board-svg");
+  svg.setAttribute("viewBox", "0 0 1000 360");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = `
+            <g class="board-frame">
+              <rect x="18" y="18" width="964" height="324"/>
+              <path d="M18 18 H982"/>
+              <path d="M18 278 H982"/>
+            </g>
+            <g class="board-rail">
+              <path class="board-rail-back" d="M40 278H960"/>
+              <path class="board-rail-base" d="M80 278H920"/>
+              <g class="board-sleepers">${Array.from(
+                { length: 22 },
+                (_, i) => `<path d="M${90 + i * 38} 271V285"/>`,
+              ).join("")}</g>
+              <path class="board-rail-notch" d="M220 278H300"/>
+              <path class="board-rail-notch" d="M500 278H700"/>
+              <path class="board-rail-notch" d="M860 278H880"/>
+            </g>
+            <g class="board-coupler" data-slot="0">
+              ${
+                count === 1
+                  ? `<path class="board-leader board-leader-outer" d="M500 142 C494 190, 506 230, 500 266"/>
+                     <path class="board-leader board-leader-inner" d="M500 142 C494 190, 506 230, 500 266"/>
+                     <rect class="board-port" x="494" y="136" width="12" height="12"/>
+                     <rect class="board-port-dot" x="497" y="139" width="6" height="6"/>
+                     <rect class="board-port" x="494" y="272" width="12" height="12"/>
+                     <rect class="board-port-dot" x="497" y="275" width="6" height="6"/>`
+                  : `<path class="board-leader board-leader-outer" d="M250 142 C250 210, 380 212, 450 266"/>
+                     <path class="board-leader board-leader-inner" d="M250 142 C250 210, 380 212, 450 266"/>
+                     <rect class="board-port" x="244" y="136" width="12" height="12"/>
+                     <rect class="board-port-dot" x="247" y="139" width="6" height="6"/>
+                     <rect class="board-port" x="448" y="272" width="12" height="12"/>
+                     <rect class="board-port-dot" x="451" y="275" width="6" height="6"/>`
+              }
+            </g>
+            ${
+              count === 1
+                ? ""
+                : `<g class="board-coupler" data-slot="1">
+                     <path class="board-leader board-leader-outer" d="M750 142 C750 210, 620 212, 550 266"/>
+                     <path class="board-leader board-leader-inner" d="M750 142 C750 210, 620 212, 550 266"/>
+                     <rect class="board-port" x="744" y="136" width="12" height="12"/>
+                     <rect class="board-port-dot" x="747" y="139" width="6" height="6"/>
+                     <rect class="board-port" x="540" y="272" width="12" height="12"/>
+                     <rect class="board-port-dot" x="543" y="275" width="6" height="6"/>
+                   </g>`
+            }
+            <g class="board-hub">
+              <circle cx="500" cy="278" r="46"/>
+              <circle cx="500" cy="278" r="36"/>
+              <circle cx="500" cy="278" r="14"/>
+              <path d="M442 278H452"/>
+              <path d="M548 278H558"/>
+            </g>
+          `;
+  return svg;
+}
+
+function lift(index: number): void {
+  const hostEl = el("nav-choices");
+  if (hostEl) {
+    for (const node of Array.from(hostEl.children)) {
+      if (!(node instanceof HTMLElement) || !node.classList.contains("nav-carriage")) continue;
+      node.dataset.lift = Number(node.dataset.slot) === index ? "true" : "false";
+    }
+  }
+  markCoupler(index);
+}
+
+function markCoupler(index: number): void {
+  el("nav-choices")?.querySelectorAll(".board-coupler").forEach((node) => {
+    node.setAttribute("data-active", Number(node.getAttribute("data-slot")) === index ? "true" : "false");
+  });
+}
+
+function lockNavSlot(index: number): void {
+  const hostEl = el("nav-choices");
+  if (hostEl) {
+    for (const node of Array.from(hostEl.children)) {
+      if (!(node instanceof HTMLElement) || !node.classList.contains("nav-carriage")) continue;
+      const selected = Number(node.dataset.slot) === index;
+      node.dataset.lock = selected ? "true" : "false";
+      node.dataset.lift = selected ? "true" : "false";
+      node.dataset.arm = selected ? "true" : "false";
+      const axis = node.querySelector(".carriage-axis");
+      if (axis) axis.textContent = selected ? "VECTOR LOCKED" : "TAP TO ARM";
+    }
+  }
 }
 function updateNavButtons(): void {
   const hostEl = el("nav-choices");
@@ -240,6 +362,7 @@ function updateNavButtons(): void {
 }
 function armNavSlot(index: number): void {
   armedSlot = index;
+  lift(index);
   updateNavButtons();
 }
 function confirmNavSlot(index: number): boolean {
@@ -247,6 +370,7 @@ function confirmNavSlot(index: number): boolean {
   const choice = navChoices[index];
   if (!choice) return false;
   lockSlot = index;
+  lockNavSlot(index);
   setNeedle(needleAngle(index, navChoices.length));
   const status = el("nav-vector-status");
   if (status) status.textContent = "Vector breaching";
@@ -294,6 +418,7 @@ const setChoices = (choices: Trajectory[]): void => {
   if (hostEl) {
     hostEl.innerHTML = "";
     const count = choices.length;
+    if (count) hostEl.appendChild(buildRailSvg(count));
     choices.forEach((choice, index) => {
       const b = document.createElement("button");
       b.type = "button";
@@ -327,6 +452,12 @@ const setChoices = (choices: Trajectory[]): void => {
       shell.append(name, type, axis);
       b.append(head, shell);
       b.addEventListener("click", () => handleNavSlot(index));
+      b.addEventListener("pointerleave", () => {
+        if (lockSlot < 0) lift(-1);
+      });
+      b.addEventListener("blur", () => {
+        if (lockSlot < 0) lift(-1);
+      });
       hostEl.appendChild(b);
     });
   }
@@ -773,7 +904,11 @@ function bind(): void {
     muteBtn.style.color = isMuted ? "var(--danger)" : "";
   });
 
-  btn("btn-ignite")?.addEventListener("click", () => engine.ignite());
+  btn("btn-ignite")?.addEventListener("click", () => {
+    // SoundFXService.init(): void — creates context, calls startActiveSoundscape().
+    sound.init();
+    engine.ignite();
+  });
 
   const topics: [string, string][] = [
     ["stat-hull", "hull"],
@@ -828,6 +963,7 @@ function bind(): void {
       const angle = vectorAngle(pe);
       const slot = nearestSlot(angle, count);
       setNeedle(angle);
+      lift(slot);
       const status = el("nav-vector-status");
       if (status) status.textContent = `Vector ${slot + 1}`;
     });

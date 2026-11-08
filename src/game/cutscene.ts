@@ -140,7 +140,7 @@ export class CutsceneEngine {
     const total = cutscene.beats.length;
     let pips = "";
     for (let i = 0; i < total; i++) {
-      pips += i <= this.beatIndex ? "? " : "? ";
+      pips += i <= this.beatIndex ? "✦ " : "✧ ";
     }
     this.el("cutsceneProgress")?.setAttribute(
       "aria-label",

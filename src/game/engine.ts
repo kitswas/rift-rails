@@ -49,6 +49,7 @@ export interface EngineDeps {
   schedule?: (fn: () => void, ms: number) => void;
   onSyncTabs?: () => void;
   onScrollToPane?: (index: number) => void;
+  readPaletteVar?: (logType: string, varName: string) => string | null;
 }
 
 export interface LogClasses {
@@ -183,6 +184,51 @@ export class EngineService {
           );
         }
       });
+    }
+  }
+
+  verifyPaletteIntegrity(): void {
+    const reader = this.deps.readPaletteVar;
+    if (!reader) return;
+    const MIN_DELTA_E = 0.08;
+    const types = [
+      "damage",
+      "lore",
+      "success",
+      "system",
+      "event",
+      "help",
+    ];
+    const colorNodes: { name: string; L: number; a: number; b: number }[] = [];
+
+    for (const type of types) {
+      const l = parseFloat(reader(type, "--base-l") ?? "") || 0.48;
+      const c = parseFloat(reader(type, "--c") ?? "");
+      const h = parseFloat(reader(type, "--h") ?? "");
+
+      if (!isNaN(c) && !isNaN(h)) {
+        const rad = (h * Math.PI) / 180;
+        colorNodes.push({
+          name: type,
+          L: l,
+          a: c * Math.cos(rad),
+          b: c * Math.sin(rad),
+        });
+      }
+    }
+
+    for (let i = 0; i < colorNodes.length; i++) {
+      for (let j = i + 1; j < colorNodes.length; j++) {
+        const c1 = colorNodes[i];
+        const c2 = colorNodes[j];
+        if (!c1 || !c2) continue;
+        const deltaE = Math.hypot(c1.L - c2.L, c1.a - c2.a, c1.b - c2.b);
+        if (deltaE < MIN_DELTA_E) {
+          this.report(
+            `PALETTE INVARIANT BREACH: Log types '${c1.name}' and '${c2.name}' are visually indistinguishable (ΔE_ok = ${deltaE.toFixed(4)} < ${MIN_DELTA_E}).`,
+          );
+        }
+      }
     }
   }
 
@@ -400,6 +446,7 @@ export class EngineService {
 
   init(): void {
     this.verifyGraphIntegrity();
+    this.verifyPaletteIntegrity();
     this.art?.init();
     this.fx?.init();
     this.deps.syncSettings();

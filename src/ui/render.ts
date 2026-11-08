@@ -43,17 +43,30 @@ export function renderVitals(s: SaveState): void {
   set("eqModule", s.module);
   set("eqCarriage", s.carriage);
   set("eqCrew", s.crew);
+  const nodeLabel = GAME_DATA.nodes[s.dimId]?.label ?? s.dimId;
+  const travelCost = GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
   const lt = el("locationType");
-  if (lt) lt.textContent = GAME_DATA.text.formatDimType(s.dimId);
+  if (lt) lt.textContent = GAME_DATA.text.formatDimType(nodeLabel);
   const codex = el("dimTypeCodex");
-  if (codex) codex.textContent = s.dimId;
+  if (codex) codex.textContent = nodeLabel;
+  const hullEl = el("statHull");
+  if (hullEl) hullEl.style.color = s.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD ? "var(--danger)" : "var(--success)";
+  const fuelEl = el("statFuel");
+  if (fuelEl) fuelEl.style.color = s.fuel < travelCost ? "var(--danger)" : "var(--action)";
+  const energyEl = el("statEnergy");
+  if (energyEl) energyEl.style.color = s.energy === 0 ? "var(--warning)" : "var(--energy)";
+  const corvus = el("corvusPortrait");
+  if (corvus) (corvus as HTMLElement & { hidden: boolean }).hidden = (s.seenCutscenes ?? []).includes(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
 }
 
 export function renderActionButtons(s: SaveState, perms: { explore: boolean; travel: boolean }): void {
+  const node = GAME_DATA.nodes[s.dimId];
+  const exploreCost = node?.exploreCost ?? 1;
+  const isHub = node?.isHub ?? (s.dimId === "hub");
   const ex = el("btnExplore");
   if (ex) {
-    ex.textContent = GAME_DATA.text.exploreName(s.dimId === "hub");
-    (ex as HTMLButtonElement).disabled = !(perms.explore && s.energy > 0);
+    ex.textContent = isHub ? GAME_DATA.text.btnExploreHub(exploreCost) : GAME_DATA.text.btnExploreClosed(exploreCost);
+    (ex as HTMLButtonElement).disabled = !(perms.explore && s.energy >= exploreCost);
   }
   const cost = GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
   const tr = el("btnTravel");
@@ -63,25 +76,28 @@ export function renderActionButtons(s: SaveState, perms: { explore: boolean; tra
   }
   const dp = el("btnDesperate");
   if (dp) {
-    dp.style.display = s.fuel < cost && s.hull > GAME_DATA.config.DESPERATE_HULL_COST ? "block" : "none";
+    dp.style.display = s.fuel < cost && s.hull > GAME_DATA.config.DESPERATE_HULL_COST && perms.travel ? "block" : "none";
     dp.textContent = GAME_DATA.text.btnDesperate(GAME_DATA.config.DESPERATE_HULL_COST, GAME_DATA.config.DESPERATE_FUEL_YIELD);
   }
 }
 
 export function renderForge(s: SaveState, canForge: boolean): void {
+  const FORGE_BASE = GAME_DATA.config.FORGE_BASE_FLUX_COST;
   const fe = el("btnForgeEng") as HTMLButtonElement | null;
   if (fe) {
+    const fEngCost = (s.engineTier + 1) * FORGE_BASE;
     fe.textContent = s.engineTier >= GAME_DATA.config.MAX_TIER
       ? GAME_DATA.text.btnApexEngine
-      : GAME_DATA.text.btnForgeEngine((s.engineTier + 1) * 75, GAME_DATA.config.TRAVEL_TIER_MULT, GAME_DATA.config.TRAVEL_BASE_FUEL_COST + (s.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT, s.fuel);
-    fe.disabled = !canForge || s.flux < (s.engineTier + 1) * 75 || s.engineTier >= GAME_DATA.config.MAX_TIER;
+      : GAME_DATA.text.btnForgeEngine(fEngCost, GAME_DATA.config.TRAVEL_TIER_MULT, GAME_DATA.config.TRAVEL_BASE_FUEL_COST + (s.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT, s.fuel);
+    fe.disabled = !canForge || s.flux < fEngCost || s.engineTier >= GAME_DATA.config.MAX_TIER;
   }
   const fw = el("btnForgeWpn") as HTMLButtonElement | null;
   if (fw) {
+    const fWpnCost = (s.weaponTier + 1) * FORGE_BASE;
     fw.textContent = s.weaponTier >= GAME_DATA.config.MAX_TIER
       ? GAME_DATA.text.btnApexWeapon
-      : GAME_DATA.text.btnForgeWeapon((s.weaponTier + 1) * 75);
-    fw.disabled = !canForge || s.flux < (s.weaponTier + 1) * 75 || s.weaponTier >= GAME_DATA.config.MAX_TIER;
+      : GAME_DATA.text.btnForgeWeapon(fWpnCost);
+    fw.disabled = !canForge || s.flux < fWpnCost || s.weaponTier >= GAME_DATA.config.MAX_TIER;
   }
   const lbl = el("lblForge");
   if (lbl) lbl.textContent = GAME_DATA.text.lblForge;
@@ -150,24 +166,32 @@ export function hideNavScreen(): void {
 
 export function renderCutscene(cut: Cutscene, beatIdx: number): void {
   const overlay = el("cutsceneOverlay");
-  if (overlay) overlay.style.display = "flex";
+  if (overlay) (overlay as HTMLElement & { hidden: boolean }).hidden = false;
   const beat = cut.beats[beatIdx];
   if (!beat) return;
+  const total = cut.beats.length;
+  let pips = "";
+  for (let i = 0; i < total; i++) {
+    pips += i <= beatIdx ? "✦ " : "✧ ";
+  }
+  const prog = el("cutsceneProgress");
+  if (prog) {
+    prog.textContent = pips.trim();
+    prog.setAttribute("aria-label", GAME_DATA.text.formatCutsceneProgress(beatIdx + 1, total));
+  }
   const body = el("cutsceneBody");
   if (body) body.textContent = beat.text;
-  const prog = el("cutsceneProgress");
-  if (prog) prog.textContent = GAME_DATA.text.formatCutsceneProgress(beatIdx + 1, cut.beats.length);
   const a = el("cutsceneBtnA") as HTMLButtonElement | null;
-  if (a) a.textContent = beat.choiceA;
+  if (a) a.textContent = `[A] "${beat.choiceA}"`;
   const b = el("cutsceneBtnB") as HTMLButtonElement | null;
-  if (b) b.textContent = beat.choiceB;
+  if (b) b.textContent = `[B] "${beat.choiceB}"`;
   const choices = el("cutsceneChoices");
   if (choices) choices.innerHTML = "";
 }
 
 export function hideCutscene(): void {
   const overlay = el("cutsceneOverlay");
-  if (overlay) overlay.style.display = "none";
+  if (overlay) (overlay as HTMLElement & { hidden: boolean }).hidden = true;
 }
 
 export function renderPanels(phase: string): void {
