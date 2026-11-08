@@ -7,6 +7,10 @@ import { syncVoyage } from "../stores/voyage.svelte";
 import { resetNav } from "../stores/nav.svelte";
 import Dial from "./Dial.svelte";
 import Board from "./Board.svelte";
+import Vitals from "./Vitals.svelte";
+import Forge from "./Forge.svelte";
+import Log from "./Log.svelte";
+import Cutscene from "./Cutscene.svelte";
 
 onMount(() => {
   const onChange = () => {
@@ -55,28 +59,7 @@ onMount(() => {
 </div>
 
 <div id="game-container">
-  <div id="hud-bar">
-    <div class="hud-cell" onclick={() => Engine.inspect('hull')}>
-      <span>Hull [HP]</span>
-      <span id="stat-hull"></span>
-    </div>
-    <div class="hud-cell" onclick={() => Engine.inspect('fuel')}>
-      <span>Fuel [Jump]</span>
-      <span id="stat-fuel"></span>
-    </div>
-    <div class="hud-cell" onclick={() => Engine.inspect('energy')}>
-      <span>Energy [Turn]</span>
-      <span id="stat-energy"></span>
-    </div>
-    <div class="hud-cell" onclick={() => Engine.inspect('flux')}>
-      <span>Flux [Cred]</span>
-      <span id="stat-flux"></span>
-    </div>
-    <div class="hud-cell" onclick={() => Engine.inspect('sector')}>
-      <span>Sector</span>
-      <span id="stat-sector"></span>
-    </div>
-  </div>
+  <Vitals />
 
   <div id="snap-slider">
     <div class="pane" id="pane-settings">
@@ -238,45 +221,12 @@ onMount(() => {
             </g>
           </svg>
         </figure>
-        <div id="story-log"></div>
-        <div id="action-buttons">
-          <button id="btn-explore" class="btn-energy"></button>
-          <button id="btn-travel" class="btn-travel"></button>
-        </div>
-        <button id="btn-desperate" class="btn-desperate" style="display: none"></button>
-        <div id="encounter-choices"></div>
+        <Log />
       </div>
     </div>
 
     <div class="pane" id="pane-forge">
-      <div class="panel-card" id="right-panel">
-        <h2>Train Configuration</h2>
-        <div class="train-setup-grid">
-          <div class="hud-cell" onclick={() => Engine.inspect('engine')}>
-            <span>Engine</span>
-            <span id="equip-engine"></span>
-          </div>
-          <div class="hud-cell" onclick={() => Engine.inspect('weapon')}>
-            <span>Weapon</span>
-            <span id="equip-weapon"></span>
-          </div>
-          <div class="hud-cell" onclick={() => Engine.inspect('module')}>
-            <span>Module</span>
-            <span id="equip-module"></span>
-          </div>
-          <div class="hud-cell" onclick={() => Engine.inspect('carriage')}>
-            <span>Carriage</span>
-            <span id="equip-carriage"></span>
-          </div>
-          <div class="hud-cell" style="grid-column: span 2" onclick={() => Engine.inspect('crew')}>
-            <span>Crew Member</span>
-            <span id="equip-crew"></span>
-          </div>
-        </div>
-        <h4 style="margin: 6px 0" id="lbl-forge"></h4>
-        <button id="btn-forge-engine"></button>
-        <button id="btn-forge-weapon"></button>
-      </div>
+      <Forge />
     </div>
 
     <div class="pane" id="pane-manual">
@@ -320,27 +270,4 @@ onMount(() => {
   </div>
 </div>
 
-<div
-  id="cutscene-overlay"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="cutscene-speaker"
-  aria-describedby="cutscene-body"
-  hidden
->
-  <section class="cutscene-frame">
-    <img class="cutscene-portrait" src="assets/corvus.svg" alt="" aria-hidden="true" />
-    <div class="cutscene-header">
-      <span class="cutscene-speaker" id="cutscene-speaker">
-        <span aria-hidden="true">✦</span> MASTER CORVUS // VEILED SCHOLAR
-      </span>
-      <span id="cutscene-progress" class="cutscene-pips"></span>
-    </div>
-    <div id="cutscene-body" class="cutscene-text" aria-live="polite"></div>
-    <div id="cutscene-choices" class="cutscene-options">
-      <button class="btn-cutscene-choice" id="cutscene-btn-a" type="button"></button>
-      <button class="btn-cutscene-choice" id="cutscene-btn-b" type="button"></button>
-    </div>
-  </section>
-</div>
-<div id="tutorial-cue" role="status" hidden></div>
+<Cutscene />
