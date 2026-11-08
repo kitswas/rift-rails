@@ -1,9 +1,12 @@
-import { DOM } from "../ui/dom";
 import { SoundFX } from "./audio";
 import { GAME_DATA } from "./data";
 import { Engine } from "./engine";
 import { VoyageSession } from "./session";
 import type { Cutscene, CutsceneId } from "./types";
+function el(key: string): HTMLElement {
+  const id = (GAME_DATA.dom.ids as Record<string, string>)[key];
+  return document.getElementById(id!)!;
+}
 
 export const CutsceneEngine = {
   activeCutscene: null as Cutscene | null,
@@ -14,18 +17,18 @@ export const CutsceneEngine = {
     if (!CutsceneEngine.activeCutscene) return;
     if (event instanceof KeyboardEvent && event.key === "Tab") {
       event.preventDefault();
-      DOM.cutsceneBtnA.focus();
-    } else if (event instanceof FocusEvent && !DOM.cutsceneOverlay.contains(event.target as Node)) {
-      DOM.cutsceneBtnA.focus();
+      el("cutsceneBtnA").focus();
+    } else if (event instanceof FocusEvent && !el("cutsceneOverlay").contains(event.target as Node)) {
+      el("cutsceneBtnA").focus();
     }
   },
 
   showExploreHint(): void {
     const snap = VoyageSession.getSnapshot();
     const node = GAME_DATA.nodes[snap.dimId];
-    DOM.tutorialCue.innerText = GAME_DATA.text.tutorialExplore(node.isHub, node.exploreCost);
-    DOM.tutorialCue.hidden = false;
-    DOM.btnExplore.classList.add(GAME_DATA.dom.classes.tutorialHighlight!);
+    el("tutorialCue").innerText = GAME_DATA.text.tutorialExplore(node.isHub, node.exploreCost);
+    el("tutorialCue").hidden = false;
+    el("btnExplore").classList.add(GAME_DATA.dom.classes.tutorialHighlight!);
   },
 
   play(cutsceneId: string): void {
@@ -37,11 +40,11 @@ export const CutsceneEngine = {
     CutsceneEngine.returnFocus = document.activeElement;
     VoyageSession.markCutsceneSeen(cutsceneId);
 
-    DOM.gameContainer.inert = true;
-    DOM.cutsceneOverlay.hidden = false;
+    el("gameContainer").inert = true;
+    el("cutsceneOverlay").hidden = false;
     Engine.transitionTo(GAME_DATA.phases.dialogue!);
     CutsceneEngine.renderCurrentBeat();
-    DOM.cutsceneBtnA.focus();
+    el("cutsceneBtnA").focus();
   },
 
   renderCurrentBeat(): void {
@@ -57,15 +60,15 @@ export const CutsceneEngine = {
     for (let i = 0; i < total; i++) {
       pips += i <= CutsceneEngine.beatIndex ? "✦ " : "✧ ";
     }
-    DOM.cutsceneProgress.innerText = pips.trim();
-    DOM.cutsceneProgress.setAttribute(
+    el("cutsceneProgress").innerText = pips.trim();
+    el("cutsceneProgress").setAttribute(
       "aria-label",
       GAME_DATA.text.formatCutsceneProgress(CutsceneEngine.beatIndex + 1, total),
     );
-    DOM.cutsceneBody.innerText = beat.text;
+    el("cutsceneBody").innerText = beat.text;
 
-    DOM.cutsceneBtnA.innerText = `[A] "${beat.choiceA}"`;
-    DOM.cutsceneBtnB.innerText = `[B] "${beat.choiceB}"`;
+    el("cutsceneBtnA").innerText = `[A] "${beat.choiceA}"`;
+    el("cutsceneBtnB").innerText = `[B] "${beat.choiceB}"`;
   },
 
   advance(): void {
@@ -82,8 +85,8 @@ export const CutsceneEngine = {
 
   close(): void {
     const cutscene = CutsceneEngine.activeCutscene;
-    DOM.cutsceneOverlay.hidden = true;
-    DOM.gameContainer.inert = false;
+    el("cutsceneOverlay").hidden = true;
+    el("gameContainer").inert = false;
 
     if (cutscene?.logSummary) {
       Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore!);
@@ -112,10 +115,10 @@ export const CutsceneEngine = {
       focusRestored = document.activeElement === returnFocus;
     }
     if (!focusRestored) {
-      if (!DOM.btnExplore.disabled) {
-        DOM.btnExplore.focus();
+      if (!(el("btnExplore") as HTMLButtonElement).disabled) {
+        el("btnExplore").focus();
       } else {
-        DOM.locationName.focus();
+        el("locationName").focus();
       }
     }
     CutsceneEngine.returnFocus = null;
