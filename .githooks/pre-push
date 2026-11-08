@@ -1,0 +1,10 @@
+#!/bin/sh
+# Hard gate before code leaves the machine: tests, build, and browser verify.
+set -eu
+
+if [ -d node_modules ]; then
+    pnpm format:check
+    pnpm test
+    pnpm build
+    pnpm verify
+fi

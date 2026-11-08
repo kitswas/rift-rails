@@ -1,0 +1,8 @@
+#!/bin/sh
+# Fast gate: typecheck and lint. Skips when dependencies are not installed.
+set -eu
+
+if [ -d node_modules ]; then
+    pnpm typecheck
+    pnpm lint
+fi

@@ -38,17 +38,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare build directory
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install and build
         run: |
-          mkdir -p dist
-          cp index.html dist/
-          cp artwork-browser.html dist/
-          if [ -d "assets" ]; then
-            cp -r assets dist/
-          fi
-          if [ -f "LICENSE" ]; then
-            cp LICENSE dist/
-          fi
+          pnpm install --frozen-lockfile
+          pnpm build
           echo "Listing dist package contents:"
           ls -la dist/
 
