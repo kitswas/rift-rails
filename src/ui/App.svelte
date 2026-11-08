@@ -3,9 +3,12 @@ import { onMount } from "svelte";
 import { Engine } from "../game/engine";
 import { RiftEyes } from "../game/eyes";
 import { RiftReducedMotion } from "../game/motion";
+import { TransitionFX } from "../game/fx";
 import { syncVoyage } from "../stores/voyage.svelte";
 import { sensors } from "../stores/sensors.svelte";
 import { resetNav } from "../stores/nav.svelte";
+import { bindRefs } from "../stores/refs.svelte";
+import { GAME_DATA } from "../game/data";
 import Dial from "./Dial.svelte";
 import Board from "./Board.svelte";
 import Vitals from "./Vitals.svelte";
@@ -16,7 +19,26 @@ import Manual from "./Manual.svelte";
 import Start from "./Start.svelte";
 import Panels from "./Panels.svelte";
 
+function collectRefs(): Record<string, HTMLElement | null> {
+  const map: Record<string, HTMLElement | null> = {};
+  for (const id of Object.values(GAME_DATA.dom.ids)) {
+    map[id] = document.getElementById(id);
+  }
+  return map;
+}
+
 onMount(() => {
+  bindRefs(collectRefs());
+  RiftEyes.bindPortrait(document.getElementById(GAME_DATA.dom.ids.corvusPortrait!));
+  RiftEyes.bindRig(document.getElementById(GAME_DATA.dom.ids.gameContainer!));
+  TransitionFX.bindCanvas(
+    document.getElementById(GAME_DATA.dom.ids.fxCanvas!) as HTMLCanvasElement | null,
+  );
+  TransitionFX.bindArtGlyph(document.getElementById(GAME_DATA.dom.ids.artGlyph!));
+  TransitionFX.bindChrome(
+    document.getElementById(GAME_DATA.dom.ids.gameContainer!),
+    document.getElementById(GAME_DATA.dom.ids.bridgeScene!),
+  );
   const onChange = () => {
     RiftEyes.center();
     resetNav();

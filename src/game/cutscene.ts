@@ -3,9 +3,10 @@ import { GAME_DATA } from "./data";
 import { Engine } from "./engine";
 import { VoyageSession } from "./session";
 import type { Cutscene, CutsceneId } from "./types";
-function el(key: string): HTMLElement {
+import { ref } from "../stores/refs.svelte";
+function el(key: string): HTMLElement | null {
   const id = (GAME_DATA.dom.ids as Record<string, string>)[key];
-  return document.getElementById(id!)!;
+  return ref(id!) as HTMLElement | null;
 }
 
 export const CutsceneEngine = {
@@ -17,21 +18,24 @@ export const CutsceneEngine = {
     if (!CutsceneEngine.activeCutscene) return;
     if (event instanceof KeyboardEvent && event.key === "Tab") {
       event.preventDefault();
-      el("cutsceneBtnA").focus();
+      el("cutsceneBtnA")?.focus();
     } else if (
       event instanceof FocusEvent &&
-      !el("cutsceneOverlay").contains(event.target as Node)
+      !el("cutsceneOverlay")?.contains(event.target as Node)
     ) {
-      el("cutsceneBtnA").focus();
+      el("cutsceneBtnA")?.focus();
     }
   },
 
   showExploreHint(): void {
     const snap = VoyageSession.getSnapshot();
     const node = GAME_DATA.nodes[snap.dimId];
-    el("tutorialCue").innerText = GAME_DATA.text.tutorialExplore(node.isHub, node.exploreCost);
-    el("tutorialCue").hidden = false;
-    el("btnExplore").classList.add(GAME_DATA.dom.classes.tutorialHighlight!);
+    const cue = el("tutorialCue");
+    if (cue) {
+      cue.innerText = GAME_DATA.text.tutorialExplore(node.isHub, node.exploreCost);
+      cue.hidden = false;
+    }
+    el("btnExplore")?.classList.add(GAME_DATA.dom.classes.tutorialHighlight!);
   },
 
   play(cutsceneId: string): void {
@@ -43,11 +47,17 @@ export const CutsceneEngine = {
     CutsceneEngine.returnFocus = document.activeElement;
     VoyageSession.markCutsceneSeen(cutsceneId);
 
-    el("gameContainer").inert = true;
-    el("cutsceneOverlay").hidden = false;
+    {
+      const game = el("gameContainer");
+      if (game) (game as HTMLElement & { inert: boolean }).inert = true;
+    }
+    {
+      const overlay = el("cutsceneOverlay");
+      if (overlay) overlay.hidden = false;
+    }
     Engine.transitionTo(GAME_DATA.phases.dialogue!);
     CutsceneEngine.renderCurrentBeat();
-    el("cutsceneBtnA").focus();
+    el("cutsceneBtnA")?.focus();
   },
 
   renderCurrentBeat(): void {
@@ -63,15 +73,26 @@ export const CutsceneEngine = {
     for (let i = 0; i < total; i++) {
       pips += i <= CutsceneEngine.beatIndex ? "✦ " : "✧ ";
     }
-    el("cutsceneProgress").innerText = pips.trim();
-    el("cutsceneProgress").setAttribute(
+    el("cutsceneProgress")?.setAttribute(
       "aria-label",
       GAME_DATA.text.formatCutsceneProgress(CutsceneEngine.beatIndex + 1, total),
     );
-    el("cutsceneBody").innerText = beat.text;
-
-    el("cutsceneBtnA").innerText = `[A] "${beat.choiceA}"`;
-    el("cutsceneBtnB").innerText = `[B] "${beat.choiceB}"`;
+    {
+      const p = el("cutsceneProgress");
+      if (p) p.innerText = pips.trim();
+    }
+    {
+      const b = el("cutsceneBody");
+      if (b) b.innerText = beat.text;
+    }
+    {
+      const a = el("cutsceneBtnA");
+      if (a) a.innerText = `[A] "${beat.choiceA}"`;
+    }
+    {
+      const bb = el("cutsceneBtnB");
+      if (bb) bb.innerText = `[B] "${beat.choiceB}"`;
+    }
   },
 
   advance(): void {
@@ -88,8 +109,14 @@ export const CutsceneEngine = {
 
   close(): void {
     const cutscene = CutsceneEngine.activeCutscene;
-    el("cutsceneOverlay").hidden = true;
-    el("gameContainer").inert = false;
+    {
+      const overlay = el("cutsceneOverlay");
+      if (overlay) overlay.hidden = true;
+    }
+    {
+      const game = el("gameContainer");
+      if (game) (game as HTMLElement & { inert: boolean }).inert = false;
+    }
 
     if (cutscene?.logSummary) {
       Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore!);
@@ -118,10 +145,10 @@ export const CutsceneEngine = {
       focusRestored = document.activeElement === returnFocus;
     }
     if (!focusRestored) {
-      if (!(el("btnExplore") as HTMLButtonElement).disabled) {
-        el("btnExplore").focus();
+      if ((el("btnExplore") as HTMLButtonElement | null)?.disabled !== true) {
+        el("btnExplore")?.focus();
       } else {
-        el("locationName").focus();
+        el("locationName")?.focus();
       }
     }
     CutsceneEngine.returnFocus = null;

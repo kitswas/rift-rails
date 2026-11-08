@@ -11,6 +11,7 @@ import { addMenuItem, clearMenu, syncActiveMenu } from "../stores/menu.svelte";
 import { syncSensors } from "../stores/sensors.svelte";
 import { syncSettings } from "../stores/settings.svelte";
 import { setChoices, resetNav } from "../stores/nav.svelte";
+import { ref } from "../stores/refs.svelte";
 import { PhaseMachine } from "./phaseMachine";
 import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem } from "./types";
 
@@ -27,6 +28,7 @@ export interface EngineDeps {
   syncActiveMenu: () => void;
   syncSensors: () => void;
   syncSettings: () => void;
+  disableAllButtons: () => void;
 }
 
 export const defaultEngineDeps: EngineDeps = {
@@ -37,6 +39,9 @@ export const defaultEngineDeps: EngineDeps = {
   syncActiveMenu,
   syncSensors,
   syncSettings,
+  disableAllButtons: () => {
+    document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  },
 };
 
 export class EngineService {
@@ -114,7 +119,8 @@ export class EngineService {
     const div = document.createElement("div");
     div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
     div.innerHTML = msg;
-    const storyLog = document.getElementById(GAME_DATA.dom.ids.storyLog!)!;
+    const storyLog = ref(GAME_DATA.dom.ids.storyLog!);
+    if (!storyLog) return;
     storyLog.appendChild(div);
     storyLog.scrollTop = storyLog.scrollHeight;
   }
@@ -174,10 +180,10 @@ export class EngineService {
     const success = VoyageSession.exploreNode();
     if (!success) return;
 
-    const tutorialCue = document.getElementById(GAME_DATA.dom.ids.tutorialCue!)!;
-    tutorialCue.hidden = true;
-    const btnExplore = document.getElementById(GAME_DATA.dom.ids.btnExplore!)!;
-    btnExplore.classList.remove(GAME_DATA.dom.classes.tutorialHighlight!);
+    const tutorialCue = ref(GAME_DATA.dom.ids.tutorialCue!);
+    if (tutorialCue) tutorialCue.hidden = true;
+    const btnExplore = ref(GAME_DATA.dom.ids.btnExplore!);
+    btnExplore?.classList.remove(GAME_DATA.dom.classes.tutorialHighlight!);
 
     this.log(
       GAME_DATA.text.logEncounterTitle(node.label, node.desc),
@@ -187,7 +193,7 @@ export class EngineService {
     this.transitionTo(GAME_DATA.phases.encounter!);
     VoyageSession.evaluateSurvival();
 
-    document.getElementById(GAME_DATA.dom.ids.encounterChoices!)!.scrollIntoView({
+    ref(GAME_DATA.dom.ids.encounterChoices!)?.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
     });
@@ -255,17 +261,15 @@ export class EngineService {
 
   renderVitals(): void {
     this.deps.syncUI();
-    const loc = document.getElementById(GAME_DATA.dom.ids.locationName!) as HTMLElement | null;
+    const loc = ref(GAME_DATA.dom.ids.locationName!) as HTMLElement | null;
     if (loc) loc.innerText = this.deps.ui.locationName;
-    const locType = document.getElementById(GAME_DATA.dom.ids.locationType!) as HTMLElement | null;
+    const locType = ref(GAME_DATA.dom.ids.locationType!) as HTMLElement | null;
     if (locType) locType.innerText = this.deps.ui.locationType;
-    const codex = document.getElementById(GAME_DATA.dom.ids.dimTypeCodex!) as HTMLElement | null;
+    const codex = ref(GAME_DATA.dom.ids.dimTypeCodex!) as HTMLElement | null;
     if (codex) codex.innerText = this.deps.ui.dimTypeCodex;
-    const rep = document.getElementById(GAME_DATA.dom.ids.statRep!) as HTMLElement | null;
+    const rep = ref(GAME_DATA.dom.ids.statRep!) as HTMLElement | null;
     if (rep) rep.innerText = this.deps.ui.rep;
-    const portrait = document.getElementById(
-      GAME_DATA.dom.ids.corvusPortrait!,
-    ) as HTMLElement | null;
+    const portrait = ref(GAME_DATA.dom.ids.corvusPortrait!) as HTMLElement | null;
     if (portrait) {
       portrait.hidden = VoyageSession.hasObserverDeparted();
     }
@@ -298,10 +302,8 @@ export class EngineService {
   lockdownGameOver(logMessage: string): void {
     SaveSystem.clear();
     SoundFX.silenceOnDeath();
-    document.querySelectorAll("button").forEach((b) => (b.disabled = true));
-    document
-      .getElementById(GAME_DATA.dom.ids.rightPanel!)!
-      .classList.add(GAME_DATA.dom.classes.lockedUI!);
+    this.deps.disableAllButtons();
+    ref(GAME_DATA.dom.ids.rightPanel!)?.classList.add(GAME_DATA.dom.classes.lockedUI!);
     this.log(logMessage, GAME_DATA.dom.classes.logDamage!);
   }
 
@@ -317,9 +319,9 @@ export class EngineService {
 
   ignite(): void {
     SoundFX.init();
-    const startEl = document.getElementById("start-screen");
+    const startEl = ref("start-screen");
     if (startEl) startEl.style.display = "none";
-    const gameEl = document.getElementById("game-container");
+    const gameEl = ref("game-container");
     if (gameEl) gameEl.style.display = "flex";
     const saved = SaveSystem.load();
     if (saved) {
@@ -357,21 +359,21 @@ export class EngineService {
   }
 
   syncTabsWithScroll(): void {
-    const container = document.getElementById("snap-slider");
+    const container = ref("snap-slider");
     if (!container) return;
     const panes = [
-      document.getElementById("pane-settings"),
-      document.getElementById("pane-sensors"),
-      document.getElementById("pane-bridge"),
-      document.getElementById("pane-forge"),
-      document.getElementById("pane-manual"),
+      ref("pane-settings"),
+      ref("pane-sensors"),
+      ref("pane-bridge"),
+      ref("pane-forge"),
+      ref("pane-manual"),
     ];
     const tabs = [
-      document.getElementById("tab-settings"),
-      document.getElementById("tab-sensors"),
-      document.getElementById("tab-bridge"),
-      document.getElementById("tab-forge"),
-      document.getElementById("tab-manual"),
+      ref("tab-settings"),
+      ref("tab-sensors"),
+      ref("tab-bridge"),
+      ref("tab-forge"),
+      ref("tab-manual"),
     ];
 
     const containerCenter = container.scrollLeft + container.clientWidth / 2;
@@ -394,13 +396,13 @@ export class EngineService {
   }
 
   scrollToPane(index: number): void {
-    const container = document.getElementById("snap-slider");
+    const container = ref("snap-slider");
     const panes = [
-      document.getElementById("pane-settings"),
-      document.getElementById("pane-sensors"),
-      document.getElementById("pane-bridge"),
-      document.getElementById("pane-forge"),
-      document.getElementById("pane-manual"),
+      ref("pane-settings"),
+      ref("pane-sensors"),
+      ref("pane-bridge"),
+      ref("pane-forge"),
+      ref("pane-manual"),
     ];
     const target = panes[index];
     if (!target || !container) return;

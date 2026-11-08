@@ -16,15 +16,21 @@ export class RiftEyesService {
   portrait: HTMLElement | null = null;
   x: MotionEntry | null = null;
   y: MotionEntry | null = null;
+  private rig: HTMLElement | null = null;
+
+  bindPortrait(el: HTMLElement | null): void {
+    this.portrait = el;
+  }
+
+  bindRig(el: HTMLElement | null): void {
+    this.rig = el;
+  }
 
   start(): void {
-    if (!this.portrait) {
-      this.portrait = document.querySelector("#corvus-portrait") as HTMLElement | null;
-    }
     if (!this.portrait) return;
     this.x = motionEntry(this.portrait, "--corvus-eye-x");
     this.y = motionEntry(this.portrait, "--corvus-eye-y");
-    const rig = document.getElementById("game-container");
+    const rig = this.rig;
     if (rig) {
       rig.addEventListener("pointermove", (e) => this.aim(e), { passive: true });
       rig.addEventListener("pointerleave", () => this.center());

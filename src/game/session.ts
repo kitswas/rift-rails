@@ -1,5 +1,6 @@
 import { GAME_DATA } from "./data";
 import { SoundFX } from "./audio";
+import { ref } from "../stores/refs.svelte";
 import { Engine } from "./engine";
 import { SaveSystem } from "./save";
 import { Voyage } from "./voyage";
@@ -78,10 +79,10 @@ export const VoyageSession = {
     for (const breach of inner.assertInvariants()) {
       console.error(`INVARIANT BREACH: ${breach}`);
     }
-    const portrait = document.getElementById(GAME_DATA.dom.ids.corvusPortrait!);
+    const portrait = ref(GAME_DATA.dom.ids.corvusPortrait!);
     if (portrait) {
       const departed = inner.hasObserverDeparted();
-      if (!!(portrait as HTMLElement).hidden !== departed)
+      if (!!portrait.hidden !== departed)
         console.error("INVARIANT BREACH: Observer presence out of sync with save state");
     }
   },

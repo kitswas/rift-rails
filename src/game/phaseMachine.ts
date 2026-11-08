@@ -3,6 +3,7 @@ import { GAME_DATA } from "./data";
 import { TransitionFX } from "./fx";
 import { SoundFX } from "./audio";
 import { VoyageSession } from "./session";
+import { ref } from "../stores/refs.svelte";
 import type { ActionId, Phase, StateHook, Trajectory, YardKey } from "./types";
 
 export interface PhaseMachineDeps {
@@ -100,11 +101,11 @@ export class PhaseMachine {
       NAVIGATING: {
         onEnter: () => {
           const snap = VoyageSession.getSnapshot();
-          document.getElementById(GAME_DATA.dom.ids.navScreen!)!.style.display = "flex";
+          ref(GAME_DATA.dom.ids.navScreen!)!.style.display = "flex";
           this.deps.setChoices(snap.navChoices);
         },
         onExit: () => {
-          document.getElementById(GAME_DATA.dom.ids.navScreen!)!.style.display = "none";
+          ref(GAME_DATA.dom.ids.navScreen!)!.style.display = "none";
           this.deps.resetNav();
         },
       },
