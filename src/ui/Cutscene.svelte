@@ -8,6 +8,7 @@
   aria-modal="true"
   aria-labelledby="cutscene-speaker"
   aria-describedby="cutscene-body"
+  tabindex="-1"
   hidden
   onkeydown={(e) => CutsceneEngine.trapFocus(e as unknown as KeyboardEvent)}
   onfocusin={(e) => CutsceneEngine.trapFocus(e as unknown as Event)}
@@ -26,12 +27,14 @@
         class="btn-cutscene-choice"
         id="cutscene-btn-a"
         type="button"
+        aria-label="Cutscene choice A"
         onclick={() => CutsceneEngine.advance()}
       ></button>
       <button
         class="btn-cutscene-choice"
         id="cutscene-btn-b"
         type="button"
+        aria-label="Cutscene choice B"
         onclick={() => CutsceneEngine.advance()}
       ></button>
     </div>

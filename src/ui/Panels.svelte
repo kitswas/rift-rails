@@ -4,6 +4,7 @@
   import { SoundFX } from "../game/audio";
   import { GAME_DATA } from "../game/data";
   import { settings } from "../stores/settings.svelte";
+  import { ui } from "../stores/ui.svelte";
 
   function onAmbient(e: Event): void {
     const target = e.target as HTMLSelectElement;
@@ -105,13 +106,13 @@
     </div>
     <h2>Atmospheric Reading</h2>
     <div class="telemetry-grid">
-      <div class="hud-cell" onclick={() => Engine.inspect("rep")}>
+      <div class="hud-cell" role="button" tabindex="0" onclick={() => Engine.inspect("rep")} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); Engine.inspect("rep"); } }}>
         <span>Reputation</span>
-        <span id="stat-rep"></span>
+        <span id="stat-rep">{ui.rep}</span>
       </div>
-      <div class="hud-cell" onclick={() => Engine.inspect("node")}>
+      <div class="hud-cell" role="button" tabindex="0" onclick={() => Engine.inspect("node")} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); Engine.inspect("node"); } }}>
         <span>Sector Node</span>
-        <span id="dim-type-codex"></span>
+        <span id="dim-type-codex">{ui.dimTypeCodex}</span>
       </div>
     </div>
   </div>

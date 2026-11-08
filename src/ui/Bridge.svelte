@@ -1,11 +1,12 @@
 <script lang="ts">
   import Log from "./Log.svelte";
+  import { ui } from "../stores/ui.svelte";
 </script>
 
 <div class="pane" id="pane-bridge">
   <div class="panel-card">
-    <h2 id="location-name" tabindex="-1"></h2>
-    <h3 id="location-type"></h3>
+    <h2 id="location-name" tabindex="-1">{ui.locationName}</h2>
+    <h3 id="location-type">{ui.locationType}</h3>
     <figure id="corvus-portrait" aria-label="Master Corvus, veiled scholar">
       <svg viewBox="0 0 400 520" aria-hidden="true">
         <defs>

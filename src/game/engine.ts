@@ -261,14 +261,8 @@ export class EngineService {
 
   renderVitals(): void {
     this.deps.syncUI();
-    const loc = ref(GAME_DATA.dom.ids.locationName!) as HTMLElement | null;
-    if (loc) loc.innerText = this.deps.ui.locationName;
-    const locType = ref(GAME_DATA.dom.ids.locationType!) as HTMLElement | null;
-    if (locType) locType.innerText = this.deps.ui.locationType;
-    const codex = ref(GAME_DATA.dom.ids.dimTypeCodex!) as HTMLElement | null;
-    if (codex) codex.innerText = this.deps.ui.dimTypeCodex;
-    const rep = ref(GAME_DATA.dom.ids.statRep!) as HTMLElement | null;
-    if (rep) rep.innerText = this.deps.ui.rep;
+    // Svelte components render ui fields (locationName/locationType/dimTypeCodex/rep);
+    // only Corvus presence (hidden flag) stays here because it derives from save state.
     const portrait = ref(GAME_DATA.dom.ids.corvusPortrait!) as HTMLElement | null;
     if (portrait) {
       portrait.hidden = VoyageSession.hasObserverDeparted();

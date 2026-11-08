@@ -8,6 +8,7 @@ import { syncVoyage } from "../stores/voyage.svelte";
 import { sensors } from "../stores/sensors.svelte";
 import { resetNav } from "../stores/nav.svelte";
 import { bindRefs } from "../stores/refs.svelte";
+import { settings } from "../stores/settings.svelte";
 import { GAME_DATA } from "../game/data";
 import Dial from "./Dial.svelte";
 import Board from "./Board.svelte";
@@ -61,7 +62,7 @@ onMount(() => {
 <Start />
 
 <div id="nav-screen">
-  <h1 id="lbl-nav-title"></h1>
+  <h1 id="lbl-nav-title">{settings.lblNavTitle}</h1>
   <Board />
   <Dial />
 </div>
