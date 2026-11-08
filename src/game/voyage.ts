@@ -25,6 +25,15 @@ function clampNum(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/** Resources an action rule may consume/produce. Mirrors ADJUSTABLE_RESOURCES. */
+const ADJUSTABLE_RESOURCES: ReadonlySet<string> = new Set([
+  "hull",
+  "fuel",
+  "energy",
+  "flux",
+  "rep",
+]);
+
 export function createInitialState(config: GameConfig): SaveState {
   return {
     phase: "START",
@@ -228,6 +237,35 @@ export class Voyage {
     const act = this.registry.getAction(actId);
     if (!act) return { isMenu: false, success: false };
     if (act.isMenu) return { isMenu: true, menuTarget: act.menuTarget ?? "IDLE" };
+    // Guard: reject unknown resources and negative/non-finite amounts.
+    const invalid = (msg: string): ExecuteActionResult => {
+      // eslint-disable-next-line no-console
+      console.error(`[voyage] executeAction rejected: ${msg}`);
+      return { isMenu: false, success: false, logText: `Action failed: ${msg}` };
+    };
+    const checkRules = (rules: { res: string; amount: unknown }[] | undefined): string | null => {
+      if (!rules) return null;
+      for (const rule of rules) {
+        if (!ADJUSTABLE_RESOURCES.has(rule.res)) return `unknown resource ${rule.res}`;
+        const cost = this.getActualCost(rule as Parameters<Voyage["getActualCost"]>[0]);
+        if (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0)
+          return `invalid amount for ${rule.res}`;
+      }
+      return null;
+    };
+    const bad =
+      checkRules(act.consumes) ??
+      checkRules(act.produces) ??
+      checkRules(act.failConsumes) ??
+      (() => {
+        for (const [k, v] of Object.entries(act.requires ?? {})) {
+          if (!ADJUSTABLE_RESOURCES.has(k)) return `unknown resource ${k}`;
+          if (typeof v === "number" && (!Number.isFinite(v) || v < 0))
+            return `invalid amount for ${k}`;
+        }
+        return null;
+      })();
+    if (bad) return invalid(`${actId}: ${bad}`);
     if (!this.canAffordAction(act)) return { isMenu: false, success: false };
 
     for (const rule of act.consumes) {

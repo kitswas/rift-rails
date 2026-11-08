@@ -24,6 +24,8 @@ export interface SaveDeps {
   voyage: Voyage;
   getEnabledPlugins?: () => string[];
   getHostStorage?: () => Record<string, Record<string, unknown>>;
+  restoreHostStorage?: (storage: Record<string, Record<string, unknown>>) => void;
+  setTimeoutFn?: (cb: () => void, ms: number) => void;
   sound?: Pick<SoundFXService, "prefsSnapshot">;
   log?: (msg: string) => void;
   warn?: (msg: string, err?: unknown) => void;
@@ -104,15 +106,20 @@ export class SaveSystem {
   private readonly voyage: Voyage;
   private readonly getEnabledPlugins: (() => string[]) | undefined;
   private readonly getHostStorage: (() => Record<string, Record<string, unknown>>) | undefined;
+  private readonly restoreHostStorage: ((storage: Record<string, Record<string, unknown>>) => void) | undefined;
+  private readonly setTimeoutFn: ((cb: () => void, ms: number) => void) | undefined;
   private readonly sound: Pick<SoundFXService, "prefsSnapshot"> | undefined;
   private readonly log: ((msg: string) => void) | undefined;
   private readonly warn: ((msg: string, err?: unknown) => void) | undefined;
+  private saveQueue: Promise<void> | null = null;
 
   constructor(deps: SaveDeps) {
     this.storage = deps.storage;
     this.voyage = deps.voyage;
     this.getEnabledPlugins = deps.getEnabledPlugins;
     this.getHostStorage = deps.getHostStorage;
+    this.restoreHostStorage = deps.restoreHostStorage;
+    this.setTimeoutFn = deps.setTimeoutFn;
     this.sound = deps.sound;
     this.log = deps.log;
     this.warn = deps.warn;
@@ -135,6 +142,41 @@ export class SaveSystem {
     }
   }
 
+  /** Restore plugin host storage persisted via getHostStorage on save. */
+  applyHostStorage(storage?: Record<string, Record<string, unknown>> | null): void {
+    if (!storage || !isRecord(storage)) return;
+    const restore = this.restoreHostStorage;
+    if (!restore) return;
+    const cloned = deepClonePayload(storage) as Record<string, Record<string, unknown>>;
+    const out: Record<string, Record<string, unknown>> = {};
+    let count = 0;
+    for (const [pluginId, bag] of Object.entries(cloned)) {
+      if (count >= MAX_PLUGIN_KEYS) break;
+      if (typeof pluginId !== "string" || pluginId.length === 0 || !isRecord(bag)) continue;
+      out[pluginId] = { ...bag };
+      count += 1;
+    }
+    restore(out);
+  }
+
+  /** Async-aware save: defers the write so onSave plugin handlers can settle first. */
+  saveAsync(): Promise<void> {
+    if (this.saveQueue) return this.saveQueue;
+    this.saveQueue = new Promise<void>((resolve) => {
+      const done = (): void => {
+        try {
+          this.save();
+        } finally {
+          this.saveQueue = null;
+          resolve();
+        }
+      };
+      if (this.setTimeoutFn) this.setTimeoutFn(done, 0);
+      else setTimeout(done, 0);
+    });
+    return this.saveQueue;
+  }
+
   load(): PersistedPayload | null {
     try {
       const raw = this.storage.getItem(SaveSystem.STORAGE_KEY);
@@ -144,6 +186,11 @@ export class SaveSystem {
       if (!migrated) {
         this.warn?.("Auto-save payload has an unsupported shape");
         return null;
+      }
+      try {
+        this.applyHostStorage(migrated.hostStorage);
+      } catch (e) {
+        this.warn?.("Failed to restore host storage:", e);
       }
       return migrated;
     } catch (e) {

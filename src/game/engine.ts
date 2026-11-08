@@ -272,11 +272,11 @@ export class EngineService {
     if (next) this.transitionTo(next);
   }
 
-  executeAction(actId: ActionId): void {
+  executeAction(actId: ActionId): boolean {
     const res = this.voyage.executeAction(actId);
     if (res.isMenu) {
       if (res.menuTarget) this.transitionTo(res.menuTarget);
-      return;
+      return false;
     }
     this.log(res.logText ?? "", res.logClass ?? "");
     const snap = this.voyage.getSnapshot();
@@ -286,6 +286,7 @@ export class EngineService {
       this.transitionTo(this.phaseOf("idle", "IDLE"));
       this.evaluateSurvival();
     }
+    return res.success;
   }
 
   exploreNode(): void {
@@ -416,6 +417,7 @@ export class EngineService {
     const saved = this.save?.load() ?? null;
     if (saved) {
       this.voyage.loadState(saved);
+      this.save?.applyHostStorage(saved.hostStorage);
       const snap = this.voyage.getSnapshot();
       this.fx?.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
       this.log(

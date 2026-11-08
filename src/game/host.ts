@@ -48,10 +48,28 @@ export const MAX_GRANTS_PER_PLUGIN_PER_EVENT = 50;
 
 const WORKER_BOOTSTRAP = `
 "use strict";
+// Sandbox: plugin workers run with network globals blocked by default.
+// fetch / WebSocket / XMLHttpRequest / EventSource are shadowed with
+// throwing stubs unless the plugin manifest grants "net:fetch" (or "*").
+// The host sends the granted permission list on "init"; we capture it in
+// __permissions and re-apply the block at init. Globals are then frozen
+// so plugin code cannot un-shadow, delete, or reassign them.
 const pluginApi = (() => {
 const __pending = new Map();
 let __reqId = 0;
 let __snapshot = null;
+let __permissions = [];
+function __netStub(name) {
+  return function () { throw new Error(name + " blocked: missing net:fetch permission"); };
+}
+function __applySandbox() {
+  if (__permissions.indexOf("net:fetch") !== -1 || __permissions.indexOf("*") !== -1) return;
+  try { self.fetch = __netStub("fetch"); } catch (e) {}
+  try { self.WebSocket = __netStub("WebSocket"); } catch (e) {}
+  try { self.XMLHttpRequest = __netStub("XMLHttpRequest"); } catch (e) {}
+  try { self.EventSource = __netStub("EventSource"); } catch (e) {}
+  try { Object.freeze(self); } catch (e) {}
+}
 const __listeners = new Map();
 function __post(m) { self.postMessage(m); }
 function __call(m) {
@@ -80,6 +98,8 @@ self.onmessage = function (e) {
   if (!m || typeof m.type !== "string") return;
   if (m.type === "init") {
     __snapshot = m.snapshot || null;
+    __permissions = Array.isArray(m.permissions) ? m.permissions : [];
+    __applySandbox();
   } else if (m.type === "event") {
     if (m.snapshot) __snapshot = m.snapshot;
     const fns = __listeners.get(m.event) || [];
@@ -193,12 +213,22 @@ function parseRuleList(raw: unknown): SerializableRule[] | null {
   if (raw === undefined) return [];
   if (!Array.isArray(raw) || raw.length > MAX_RULES) return null;
   const out: SerializableRule[] = [];
+  let total = 0;
   for (const rule of raw) {
     if (!isRecord(rule)) return null;
-    if (typeof rule.res !== "string" || rule.res.length === 0 || rule.res.length > 32) {
+    // Whitelist only: reject phase/dimId/engineTier/etc.
+    if (typeof rule.res !== "string" || !ADJUSTABLE_RESOURCES.has(rule.res)) return null;
+    // Amounts must be finite, >= 0, within the per-grant cap.
+    if (
+      typeof rule.amount !== "number" ||
+      !Number.isFinite(rule.amount) ||
+      rule.amount < 0 ||
+      rule.amount > MAX_GRANT_AMOUNT
+    ) {
       return null;
     }
-    if (typeof rule.amount !== "number" || !Number.isFinite(rule.amount)) return null;
+    total += rule.amount;
+    if (total > MAX_GRANT_AMOUNT) return null; // total grant cap
     out.push({ res: rule.res, amount: rule.amount });
   }
   return out;
@@ -212,9 +242,11 @@ function parseRequires(raw: unknown): Record<string, number | string> | null {
   const out: Record<string, number | string> = {};
   for (const key of keys) {
     if (key.length === 0 || key.length > 32) return null;
+    // Requires keys must be adjustable resources only (no phase/dimId/etc.).
+    if (!ADJUSTABLE_RESOURCES.has(key)) return null;
     const value = raw[key];
     if (typeof value === "number") {
-      if (!Number.isFinite(value)) return null;
+      if (!Number.isFinite(value) || value < 0 || value > MAX_GRANT_AMOUNT) return null;
       out[key] = value;
     } else if (typeof value === "string") {
       if (value.length > 128) return null;
@@ -245,6 +277,18 @@ function parseActionDef(def: unknown): RegisteredAction | null {
     if (parsed === null) return null;
     produces = parsed;
   }
+  let failConsumes: SerializableRule[] = [];
+  if (def.failConsumes !== undefined) {
+    const parsed = parseRuleList(def.failConsumes);
+    if (parsed === null) return null;
+    failConsumes = parsed;
+  }
+  // Combined consumes + produces total must not exceed the grant cap.
+  const combined =
+    consumes.reduce((s, r) => s + r.amount, 0) +
+    produces.reduce((s, r) => s + r.amount, 0) +
+    failConsumes.reduce((s, r) => s + r.amount, 0);
+  if (combined > MAX_GRANT_AMOUNT) return null;
   const requires = parseRequires(def.requires);
   if (requires === null) return null;
   for (const field of ["logSuccess", "logFail"] as const) {
@@ -265,6 +309,7 @@ function parseActionDef(def: unknown): RegisteredAction | null {
     label: def.label as string,
     consumes,
     produces,
+    failConsumes,
     requires,
   };
   return normalized as unknown as RegisteredAction;

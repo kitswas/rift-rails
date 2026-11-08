@@ -82,6 +82,39 @@ const save = new SaveSystem({
   voyage,
   getEnabledPlugins: () => readEnabled(),
   getHostStorage: () => host.serializeAllStorage(),
+  restoreHostStorage: (storage) => {
+    if (!storage || typeof storage !== "object") return;
+    const hostAny = host as unknown as {
+      restoreHostStorage?: (s: Record<string, Record<string, unknown>>) => void;
+      deserialize?: (s: Record<string, Record<string, unknown>>) => void;
+      storage?: Map<string, Map<string, unknown>>;
+    };
+    if (typeof hostAny.restoreHostStorage === "function") {
+      hostAny.restoreHostStorage(storage);
+      return;
+    }
+    if (typeof hostAny.deserialize === "function") {
+      hostAny.deserialize(storage);
+      return;
+    }
+    const internal = hostAny.storage;
+    if (!internal) return;
+    for (const [id, bag] of Object.entries(storage)) {
+      if (!bag || typeof bag !== "object" || Array.isArray(bag)) continue;
+      let map = internal.get(id);
+      if (!map) {
+        map = new Map();
+        internal.set(id, map);
+      }
+      for (const [k, v] of Object.entries(bag)) {
+        if (k.length === 0 || k.length > 128) continue;
+        map.set(k, v === undefined ? undefined : (JSON.parse(JSON.stringify(v)) as unknown));
+      }
+    }
+  },
+  setTimeoutFn: (cb, ms) => {
+    window.setTimeout(cb, ms);
+  },
 });
 
 const sound = new SoundFXService({
@@ -830,11 +863,13 @@ engine.attachHooks(phaseMachine.hooks);
       bus.emit("onExit", { phase: lastPhase });
       lastPhase = phase;
       bus.emit("onEnter", { phase });
+      bus.emit(`onEnter:${phase}`, { phase });
       if (phase === (GAME_DATA.phases.dead ?? "DEAD") || phase === (GAME_DATA.phases.stranded ?? "STRANDED")) {
         bus.emit("onDeath", { phase });
       }
     } else {
       bus.emit("onEnter", { phase });
+      bus.emit(`onEnter:${phase}`, { phase });
     }
   };
   voyage.hooks.onSound = (kind) => {
@@ -842,15 +877,16 @@ engine.attachHooks(phaseMachine.hooks);
     else sound.playActionDamage();
   };
   voyage.hooks.onSave = () => {
-    save.save();
     bus.emit("onSave", { storage: host.serializeAllStorage() });
     bus.emit("afterJump", { jumpCount: voyage.getSnapshot().jumpCount });
+    void save.saveAsync();
   };
   const origExecuteAction = engine.executeAction.bind(engine);
   engine.executeAction = (actId) => {
     bus.emit("beforeAction", { actionId: actId });
-    origExecuteAction(actId);
-    bus.emit("afterAction", { actionId: actId, success: true });
+    const success = origExecuteAction(actId);
+    bus.emit("afterAction", { actionId: actId, success });
+    return success;
   };
 }
 
@@ -910,27 +946,8 @@ function bind(): void {
     engine.ignite();
   });
 
-  const topics: [string, string][] = [
-    ["stat-hull", "hull"],
-    ["stat-fuel", "fuel"],
-    ["stat-energy", "energy"],
-    ["stat-flux", "flux"],
-    ["stat-rep", "rep"],
-    ["stat-sector", "sector"],
-    ["equip-engine", "engine"],
-    ["equip-weapon", "weapon"],
-    ["equip-module", "module"],
-    ["equip-carriage", "carriage"],
-    ["equip-crew", "crew"],
-    ["location-name", "node"],
-    ["location-type", "node"],
-    ["dim-type-codex", "node"],
-  ];
-  for (const [id, topic] of topics) el(id)?.addEventListener("click", () => engine.inspect(topic));
-  document.querySelectorAll(".hud-cell").forEach((cell) => {
-    const t = cell.getAttribute("data-topic");
-    if (t) cell.addEventListener("click", () => engine.inspect(t));
-  });
+  // Inspect is bound once via inline onclick attrs on .hud-cell (index.html).
+  // Do not add duplicate listeners here.
 
   tabIds.forEach((id, idx) => {
     el(id)?.addEventListener("click", () => engine.scrollToPane(idx));

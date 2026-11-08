@@ -2,11 +2,18 @@ import type { DimId, Trajectory } from "./types";
 
 export interface ConduitOptions {
   runway: DimId[];
+  // Plugin node ids may be keys here too (DimId is an open string).
   sectorPoolCounts: Partial<Record<DimId, number>>;
   waypointHubInterval: number;
   adjectives: string[];
   nouns: Record<DimId, string[]>;
   random?: () => number;
+  /** Extra (plugin) node ids included in the sector pool at low weight. */
+  extraNodes?: string[];
+  /** Dynamic callback for plugin node ids registered after construction. */
+  getExtraNodeIds?: () => string[];
+  /** Copies per extra node in each bag (default 1, vs baseline pool counts). */
+  extraNodeWeight?: number;
 }
 
 export interface DimensionName {
@@ -23,6 +30,10 @@ export class ConduitDeck {
   private readonly adjectives: string[];
   private readonly nouns: Record<DimId, string[]>;
   private readonly random: () => number;
+  private extraNodes: string[];
+  private readonly getExtraNodeIdsCb?: () => string[];
+  private readonly extraNodeWeight: number;
+  private injectedExtras = new Set<string>();
 
   constructor(options: ConduitOptions) {
     this.runway = [...options.runway];
@@ -33,9 +44,39 @@ export class ConduitDeck {
       Object.entries(options.nouns).map(([k, v]) => [k, [...v]]),
     );
     this.random = options.random ?? (() => 0.5);
+    this.extraNodes = [...(options.extraNodes ?? [])];
+    this.getExtraNodeIdsCb = options.getExtraNodeIds;
+    this.extraNodeWeight = Math.max(1, Math.floor(options.extraNodeWeight ?? 1));
+  }
+
+  /** Replace static extra node list (e.g. after plugin registration). */
+  setExtraNodes(ids: string[]): void {
+    this.extraNodes = [...ids];
+  }
+
+  private resolveExtraIds(): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const id of [...this.extraNodes, ...(this.getExtraNodeIdsCb?.() ?? [])]) {
+      if (typeof id !== "string" || !id || seen.has(id)) continue;
+      seen.add(id);
+      out.push(id);
+    }
+    return out;
+  }
+
+  /** Inject extras registered after the current bag was shuffled (once per bag). */
+  private injectMissingExtras(): void {
+    for (const id of this.resolveExtraIds()) {
+      if (this.injectedExtras.has(id) || this.sectorBag.includes(id)) continue;
+      const pos = Math.floor(this.random() * (this.sectorBag.length + 1));
+      this.sectorBag.splice(pos, 0, id);
+      this.injectedExtras.add(id);
+    }
   }
 
   init(savedBag: string[] | null = null): void {
+    this.injectedExtras.clear();
     if (savedBag !== null && Array.isArray(savedBag) && savedBag.length > 0) {
       this.sectorBag = [...savedBag];
     } else {
@@ -59,6 +100,16 @@ export class ConduitDeck {
     for (const [nodeType, count] of Object.entries(this.sectorPoolCounts)) {
       for (let i = 0; i < (count ?? 0); i++) bag.push(nodeType);
     }
+    // Plugin nodes: low weight (1 per bag) unless already in sectorPoolCounts.
+    this.injectedExtras.clear();
+    for (const id of this.resolveExtraIds()) {
+      if (bag.includes(id)) {
+        this.injectedExtras.add(id);
+        continue;
+      }
+      for (let i = 0; i < this.extraNodeWeight; i++) bag.push(id);
+      this.injectedExtras.add(id);
+    }
     return this.shuffleArray(bag);
   }
 
@@ -73,6 +124,8 @@ export class ConduitDeck {
     }
     if (this.sectorBag.length === 0) {
       this.sectorBag = this.createShuffledSectorBag();
+    } else {
+      this.injectMissingExtras();
     }
     const next = pop
       ? this.sectorBag.pop()
@@ -81,12 +134,15 @@ export class ConduitDeck {
   }
 
   generateDimensionForId(chosenId: DimId): DimensionName {
+    const nouns = this.nouns[chosenId] ?? [];
+    // Unknown/plugin dimId: fallback name is the id itself, never a crash.
+    if (nouns.length === 0) return { id: chosenId, name: chosenId };
     const adj = this.adjectives[
       Math.floor(this.random() * this.adjectives.length)
     ] ?? "";
-    const nouns = this.nouns[chosenId] ?? [];
     const noun = nouns[Math.floor(this.random() * nouns.length)] ?? "";
-    return { id: chosenId, name: `${adj} ${noun}`.trim() };
+    const name = `${adj} ${noun}`.trim();
+    return { id: chosenId, name: name || chosenId };
   }
 
   getTrajectories(jumpCount: number, hasAstrolabe: boolean): Trajectory[] {

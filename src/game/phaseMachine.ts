@@ -117,8 +117,16 @@ export class PhaseMachine {
       [phases.encounter]: {
         onEnter: () => {
           const snap = voyage.getSnapshot();
+          // Dynamic: plugin nodes registered after startup resolve here too.
           const node = registry.getNode(snap.dimId);
-          node?.actions.forEach((actId) => {
+          if (!node) {
+            deps.log(
+              text?.logEncounterTitle(snap.dimId, snap.dimId) ??
+                `<b>${snap.dimId}:</b> ${snap.dimId}`,
+            );
+            return;
+          }
+          node.actions.forEach((actId) => {
             const act = registry.getAction(actId);
             if (!act) return;
             deps.addMenuItem(
@@ -225,7 +233,7 @@ export class PhaseMachine {
                   classes.logSuccess,
                 );
               }
-              const nodeLabel = registry.getNode(targetDimId)?.label ?? "";
+              const nodeLabel = registry.getNode(targetDimId)?.label ?? targetDimId;
               deps.log(
                 text?.logLocEnter(targetDimName, nodeLabel, jumpResult.jumpCount) ??
                   `Rift Jump #${jumpResult.jumpCount} complete. Arrived at The ${targetDimName}: ${nodeLabel}`,
@@ -246,7 +254,6 @@ export class PhaseMachine {
               }
             },
           );
-          deps.sound?.playJumpCharge(0.9);
         },
       },
       [phases.dead]: {
