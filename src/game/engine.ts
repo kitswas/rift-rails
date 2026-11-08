@@ -1,14 +1,13 @@
 import { DOM } from "../ui/dom";
 import { DioramaPipeline } from "./art";
 import { SoundFX } from "./audio";
-import { RiftCouplingBoard } from "./board";
 import { ConduitDeck } from "./conduit";
 import { CutsceneEngine } from "./cutscene";
 import { GAME_DATA } from "./data";
-import { RiftVectorDial } from "./dial";
 import { TransitionFX } from "./fx";
 import { SaveSystem } from "./save";
 import { VoyageSession } from "./session";
+import { resetNav, setChoices } from "../stores/nav.svelte";
 import type {
   ActionId,
   GameAction,
@@ -697,12 +696,11 @@ export const StateHooks: Record<string, StateHook> = {
     onEnter: () => {
       const snap = VoyageSession.getSnapshot();
       DOM.navScreen.style.display = "flex";
-      RiftCouplingBoard.render(snap.navChoices);
-      RiftVectorDial.reset();
+      setChoices(snap.navChoices);
     },
     onExit: () => {
       DOM.navScreen.style.display = "none";
-      RiftCouplingBoard.reset();
+      resetNav();
     },
   },
   JUMPING: {

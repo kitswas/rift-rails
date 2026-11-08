@@ -2,19 +2,18 @@
 import { onMount } from "svelte";
 import { Engine } from "../game/engine";
 import { RiftEyes } from "../game/eyes";
-import { RiftVectorDial } from "../game/dial";
 import { RiftReducedMotion } from "../game/motion";
 import { syncVoyage } from "../stores/voyage.svelte";
+import { resetNav } from "../stores/nav.svelte";
 import Dial from "./Dial.svelte";
 import Board from "./Board.svelte";
 
 onMount(() => {
   const onChange = () => {
     RiftEyes.center();
-    RiftVectorDial.reset();
+    resetNav();
   };
   RiftReducedMotion.addEventListener("change", onChange);
-  RiftVectorDial.init();
   RiftEyes.start();
   Engine.init();
   syncVoyage();
