@@ -1555,4 +1555,39 @@
           animation-duration: 0.01ms !important;
         }
       }
+
+      /* Plugins panel (mounted inside .settings-content) */
+      #plugins-panel .audio-control-row {
+        flex-wrap: wrap;
+      }
+
+      #plugins-panel input[type="file"] {
+        max-width: 60%;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+
+      #plugins-panel #plugin-error {
+        color: var(--danger);
+        min-height: 1em;
+        overflow-wrap: anywhere;
+      }
+
+      .plugin-row {
+        border-top: 1px dashed var(--border);
+        padding-top: 6px;
+      }
+
+      .plugin-row span {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .plugin-row input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--action);
+        flex-shrink: 0;
+      }
     

@@ -145,18 +145,18 @@ export interface PanelsHooks {
  */
 export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refresh: () => void } {
   const pane = document.getElementById("pane-settings");
-  const parent: HTMLElement | null = pane ?? document.body;
+  const parent: HTMLElement | null =
+    (pane?.querySelector(".settings-content") as HTMLElement | null) ?? pane ?? document.body;
 
   const section = document.createElement("section");
+  section.className = "settings-section";
   section.id = "plugins-panel";
-  section.innerHTML = `<h3>Plugins</h3>
-    <input type="file" id="plugin-file" accept=".zip" />
-    <div id="plugin-error" role="alert" style="color: var(--danger, #ef4444); min-height: 1em;"></div>
-    <div id="plugin-list"></div>`;
+  section.innerHTML = `<h3 style="color: var(--info); letter-spacing: 1px">[ PLUGINS // LEYRIG ]</h3><p id="plugin-status"></p><div class="audio-control-row"><label for="plugin-file">Install .zip</label><input id="plugin-file" type="file" class="audio-select" accept=".zip" /></div><p id="plugin-error" role="alert"></p><div id="plugin-list"></div>`;
 
   parent.appendChild(section);
 
-  const errorEl = section.querySelector<HTMLDivElement>("#plugin-error");
+  const errorEl = section.querySelector<HTMLParagraphElement>("#plugin-error");
+  const statusEl = section.querySelector<HTMLParagraphElement>("#plugin-status");
   const listEl = section.querySelector<HTMLDivElement>("#plugin-list");
   const fileInput = section.querySelector<HTMLInputElement>("#plugin-file");
 
@@ -171,10 +171,13 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
     if (!listEl) return;
     enabledSet.clear();
     for (const id of readEnabled()) enabledSet.add(id); // reflect bundled first-run enable
-    listEl.innerHTML = "";
-    for (const p of host.listPlugins()) {
+    const plugins = host.listPlugins();
+    const activeCount = plugins.filter((p) => p.active).length;
+    if (statusEl) statusEl.textContent = `${activeCount} active`;
+    listEl.replaceChildren();
+    for (const p of plugins) {
       const row = document.createElement("div");
-      row.className = "plugin-row";
+      row.className = "audio-control-row plugin-row";
       const label = document.createElement("span");
       label.textContent = `${p.name} v${p.version}${p.active ? "" : " (disabled)"}`;
       const toggle = document.createElement("input");
