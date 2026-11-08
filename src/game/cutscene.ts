@@ -28,13 +28,7 @@ export const CutsceneEngine = {
   },
 
   showExploreHint(): void {
-    const snap = VoyageSession.getSnapshot();
-    const node = GAME_DATA.nodes[snap.dimId];
-    const cue = el("tutorialCue");
-    if (cue) {
-      cue.innerText = GAME_DATA.text.tutorialExplore(node.isHub, node.exploreCost);
-      cue.hidden = false;
-    }
+    // Tutorial pill removed per UI request; Explore highlight retained.
     el("btnExplore")?.classList.add(GAME_DATA.dom.classes.tutorialHighlight!);
   },
 

@@ -40,4 +40,4 @@
     </div>
   </section>
 </div>
-<div id="tutorial-cue" role="status" hidden></div>
+

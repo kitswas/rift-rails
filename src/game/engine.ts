@@ -180,8 +180,6 @@ export class EngineService {
     const success = VoyageSession.exploreNode();
     if (!success) return;
 
-    const tutorialCue = ref(GAME_DATA.dom.ids.tutorialCue!);
-    if (tutorialCue) tutorialCue.hidden = true;
     const btnExplore = ref(GAME_DATA.dom.ids.btnExplore!);
     btnExplore?.classList.remove(GAME_DATA.dom.classes.tutorialHighlight!);
 
