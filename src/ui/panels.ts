@@ -97,6 +97,43 @@ export async function rehydratePlugins(host: PluginHost): Promise<string[]> {
   return loaded;
 }
 
+// Vite copies public/ to dist/; keep bundled zips in public/plugins/ (not dist/plugins/).
+const BUNDLED_PLUGINS: readonly { id: string; url: string }[] = [
+  { id: "black-market", url: "./plugins/black-market.zip" },
+  { id: "rift-storm", url: "./plugins/rift-storm.zip" },
+  { id: "contract-board", url: "./plugins/contract-board.zip" },
+  { id: "salvage-scanner", url: "./plugins/salvage-scanner.zip" },
+  { id: "warp-overcharge", url: "./plugins/warp-overcharge.zip" },
+];
+
+export async function loadBundledPlugins(host: PluginHost, hooks: PanelsHooks): Promise<string[]> {
+  const enabled = readEnabled();
+  const firstRun = enabled.length === 0; // first run: enable all bundled by default
+  const targets = BUNDLED_PLUGINS.filter((p) => firstRun || enabled.includes(p.id));
+  const results = await Promise.allSettled(
+    targets.map(async (p) => {
+      if (host.isPluginActive(p.id)) return p.id;
+      const res = await fetch(p.url);
+      if (res.status === 404) return null; // missing zip: ignore silently
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const manifest = await host.loadZip(await res.arrayBuffer());
+      return manifest.id;
+    }),
+  );
+  const loaded: string[] = [];
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      if (r.value) loaded.push(r.value);
+    } else {
+      hooks.onLog(
+        `bundled plugin failed: ${targets[i]?.id ?? "?"}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`,
+      );
+    }
+  });
+  if (firstRun && loaded.length) writeEnabled([...new Set([...enabled, ...loaded])]);
+  return loaded;
+}
+
 export interface PanelsHooks {
   onLog: (msg: string) => void;
 }
@@ -132,6 +169,8 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
 
   const refresh = (): void => {
     if (!listEl) return;
+    enabledSet.clear();
+    for (const id of readEnabled()) enabledSet.add(id); // reflect bundled first-run enable
     listEl.innerHTML = "";
     for (const p of host.listPlugins()) {
       const row = document.createElement("div");

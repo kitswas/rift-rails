@@ -1,0 +1,8 @@
+{
+  "id": "black-market",
+  "name": "Black Market",
+  "version": "1.0.0",
+  "minApi": 1,
+  "entry": "main.js",
+  "permissions": []
+}

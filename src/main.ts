@@ -18,7 +18,7 @@ import {
   renderPanels,
   renderVitals,
 } from "./ui/render";
-import { mountPluginsPanel, readEnabled, rehydratePlugins } from "./ui/panels";
+import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins } from "./ui/panels";
 
 const bus = {
   listeners: new Map<string, Set<(payload: unknown) => void>>(),
@@ -341,8 +341,13 @@ function bind(eng: Engine): void {
 }
 
 bind(engine);
-mountPluginsPanel(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem) });
+const panel = mountPluginsPanel(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem) });
 void rehydratePlugins(host);
+void loadBundledPlugins(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem) }).then(
+  (ids) => {
+    if (ids.length) panel.refresh();
+  },
+);
 
 if (typeof location !== "undefined" && new URLSearchParams(location.search).has("debug")) {
   (globalThis as unknown as { __rift?: unknown }).__rift = app;
