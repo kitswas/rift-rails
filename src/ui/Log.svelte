@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ui } from "../stores/ui.svelte";
+  import { menu, invokeMenuItem } from "../stores/menu.svelte";
 </script>
 
 <div id="story-log"></div>
@@ -14,4 +15,16 @@
 >
   {ui.desperateLabel}
 </button>
-<div id="encounter-choices"></div>
+<div id="encounter-choices">
+  {#each menu.items as item (item.id)}
+    <button
+      class={item.uiClass}
+      data-act-id={item.actId}
+      data-yard-id={item.yardId}
+      disabled={item.disabled}
+      onclick={() => invokeMenuItem(item.id)}
+    >
+      {item.label}
+    </button>
+  {/each}
+</div>

@@ -9,16 +9,8 @@ import { SaveSystem } from "./save";
 import { VoyageSession } from "./session";
 import { resetNav, setChoices } from "../stores/nav.svelte";
 import { syncUI, ui } from "../stores/ui.svelte";
-import type {
-  ActionId,
-  GameAction,
-  Phase,
-  ResourceKey,
-  StateHook,
-  TierKey,
-  YardItem,
-  YardKey,
-} from "./types";
+import { addMenuItem, clearMenu, syncActiveMenu } from "../stores/menu.svelte";
+import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem, YardKey } from "./types";
 
 export const Engine = {
   verifyGraphIntegrity(): void {
@@ -193,72 +185,25 @@ export const Engine = {
     uiClass?: string,
     dataActId?: string,
   ): HTMLButtonElement {
+    const id = addMenuItem(label, onClick, uiClass, dataActId as ActionId | undefined);
     const btn = document.createElement("button");
+    btn.dataset.menuId = id;
     btn.innerText = label;
     if (uiClass) btn.className = uiClass;
     if (dataActId) btn.dataset.actId = dataActId;
-    btn.addEventListener("click", onClick);
-    DOM.encounterChoices.appendChild(btn);
     return btn;
   },
 
-  updateActionBtnData(btn: HTMLButtonElement, act: GameAction): void {
-    const snap = VoyageSession.getSnapshot();
-    const meetsReqsAndAffords = VoyageSession.canAffordAction(act);
-    const reqStrs: string[] = [];
-    for (const [rKey, rVal] of Object.entries(act.requires || {})) {
-      const key = rKey as ResourceKey;
-      const label = GAME_DATA.resources[key];
-      reqStrs.push(typeof rVal === "number" ? `Req: ${rVal} ${label}` : `Req: ${String(rVal)}`);
-    }
-    const costStrs = act.consumes.map((rule) =>
-      GAME_DATA.text.formatResVal(VoyageSession.getActualCost(rule), GAME_DATA.resources[rule.res]),
-    );
-    if (act.probability) {
-      costStrs.push(
-        GAME_DATA.text.formatChance(Math.floor(act.probability(snap!, GAME_DATA.config) * 100)),
-      );
-    }
-    const prodStrs = (act.produces || []).map((rule) =>
-      GAME_DATA.text.formatResVal(
-        rule.amount(snap!, GAME_DATA.config),
-        GAME_DATA.resources[rule.res],
-      ),
-    );
-
-    btn.innerText = GAME_DATA.text.formatActionBtn(act.label, costStrs, prodStrs, reqStrs);
-    btn.disabled = !meetsReqsAndAffords;
+  updateActionBtnData(_btn: HTMLButtonElement, _act: GameAction): void {
+    syncActiveMenu();
   },
 
-  updateYardBtnData(btn: HTMLButtonElement, item: YardItem): void {
-    const snap = VoyageSession.getSnapshot();
-    let label = GAME_DATA.text.yardItemLabelMenu(item.name, item.desc, item.cost);
-    const currentEq = String(snap[item.type] ?? "");
-
-    if (currentEq === item.name) {
-      label += `\n${GAME_DATA.text.yardOwned}`;
-      btn.disabled = true;
-    } else {
-      if (currentEq !== GAME_DATA.text.noneState)
-        label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
-      if (snap.flux < item.cost) btn.disabled = true;
-    }
-    btn.innerText = label;
+  updateYardBtnData(_btn: HTMLButtonElement, _item: YardItem): void {
+    syncActiveMenu();
   },
 
   refreshActiveMenu(): void {
-    const snap = VoyageSession.getSnapshot();
-    if (snap.phase === GAME_DATA.phases.encounter) {
-      Array.from(DOM.encounterChoices.children).forEach((btn) => {
-        const actId = (btn as HTMLElement).dataset.actId as ActionId | undefined;
-        if (actId) Engine.updateActionBtnData(btn as HTMLButtonElement, GAME_DATA.actions[actId]!);
-      });
-    } else if (snap.phase === GAME_DATA.phases.yard_category) {
-      Array.from(DOM.encounterChoices.children).forEach((btn) => {
-        const yardId = (btn as HTMLElement).dataset.yardId as YardKey | undefined;
-        if (yardId) Engine.updateYardBtnData(btn as HTMLButtonElement, GAME_DATA.yard[yardId]!);
-      });
-    }
+    syncActiveMenu();
   },
 
   renderSensors(): void {
@@ -550,7 +495,7 @@ export const Engine = {
 };
 
 export function clearEncounterChoices(): void {
-  DOM.encounterChoices.innerHTML = "";
+  clearMenu();
 }
 
 export const StateHooks: Record<string, StateHook> = {
