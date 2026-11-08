@@ -10,6 +10,7 @@ import { VoyageSession } from "./session";
 import { resetNav, setChoices } from "../stores/nav.svelte";
 import { syncUI, ui } from "../stores/ui.svelte";
 import { addMenuItem, clearMenu, syncActiveMenu } from "../stores/menu.svelte";
+import { syncSensors } from "../stores/sensors.svelte";
 import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem, YardKey } from "./types";
 
 export const Engine = {
@@ -207,34 +208,9 @@ export const Engine = {
   },
 
   renderSensors(): void {
+    syncSensors();
     const snap = VoyageSession.getSnapshot();
-    if (!DOM.artDisplay || !DOM.bridgeScene) return;
-
-    if (DOM.bridgeScene.dataset.dimName !== snap.dimName) {
-      DOM.bridgeScene.innerHTML = "";
-      DOM.bridgeScene.dataset.dimName = snap.dimName;
-    }
-
-    const artworkMarkup = DioramaPipeline.render(snap.dimName, (asyncArtwork) => {
-      const current = VoyageSession.getSnapshot();
-      if (asyncArtwork && current.dimName === snap.dimName) {
-        DOM.bridgeScene.innerHTML = asyncArtwork;
-        if (current.isSurveyed) DOM.artDisplay.innerHTML = asyncArtwork;
-      }
-    });
-    if (artworkMarkup) DOM.bridgeScene.innerHTML = artworkMarkup;
-
-    if (snap.isSurveyed) {
-      if (artworkMarkup) {
-        DOM.artDisplay.innerHTML = artworkMarkup;
-      }
-    } else {
-      DOM.artDisplay.innerHTML = `
-              <div id="art-glyph"></div>
-              <span id="art-label">SIGNAL LOCKED</span>
-            `;
-      DOM.artLabel = document.getElementById("art-label") as HTMLElement;
-      DOM.artGlyph = document.getElementById("art-glyph") as HTMLElement;
+    if (!snap.isSurveyed) {
       TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
     }
   },

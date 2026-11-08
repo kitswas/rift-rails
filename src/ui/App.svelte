@@ -4,6 +4,7 @@ import { Engine } from "../game/engine";
 import { RiftEyes } from "../game/eyes";
 import { RiftReducedMotion } from "../game/motion";
 import { syncVoyage } from "../stores/voyage.svelte";
+import { sensors } from "../stores/sensors.svelte";
 import { resetNav } from "../stores/nav.svelte";
 import Dial from "./Dial.svelte";
 import Board from "./Board.svelte";
@@ -31,7 +32,9 @@ onMount(() => {
 </script>
 
 <canvas id="fx-canvas"></canvas>
-<div id="bridge-scene" aria-hidden="true"></div>
+<div id="bridge-scene" aria-hidden="true">
+  {#if sensors.bridgeArtwork}{@html sensors.bridgeArtwork}{/if}
+</div>
 
 <Start />
 

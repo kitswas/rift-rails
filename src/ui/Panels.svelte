@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Engine } from "../game/engine";
+  import { sensors } from "../stores/sensors.svelte";
 </script>
 
 <div class="pane" id="pane-settings">
@@ -55,8 +56,12 @@
   <div class="panel-card">
     <h2>Sensors & Telemetry</h2>
     <div id="art-display">
-      <div id="art-glyph">:: SCANNING ::</div>
-      <span id="art-label">SIGNAL LOCKED</span>
+      {#if sensors.artDisplay}
+        {@html sensors.artDisplay}
+      {:else}
+        <div id="art-glyph">:: SCANNING ::</div>
+        <span id="art-label">SIGNAL LOCKED</span>
+      {/if}
     </div>
     <h2>Atmospheric Reading</h2>
     <div class="telemetry-grid">
