@@ -3,9 +3,7 @@ import { GAME_DATA } from "./data";
 import { TransitionFX } from "./fx";
 import { SoundFX } from "./audio";
 import { VoyageSession } from "./session";
-import { setChoices, resetNav } from "../stores/nav.svelte";
-import { addMenuItem, clearMenu } from "../stores/menu.svelte";
-import type { Phase, StateHook } from "./types";
+import type { ActionId, Phase, StateHook, Trajectory, YardKey } from "./types";
 
 export interface PhaseMachineDeps {
   transitionTo: (phase: Phase) => boolean;
@@ -13,6 +11,16 @@ export interface PhaseMachineDeps {
   log: (text: string, cls?: string) => void;
   updateUI: () => void;
   lockdownGameOver: (msg: string) => void;
+  setChoices: (choices: Trajectory[]) => void;
+  resetNav: () => void;
+  addMenuItem: (
+    label: string,
+    onClick: () => void,
+    uiClass?: string,
+    actId?: ActionId,
+    yardId?: YardKey,
+  ) => string;
+  clearMenu: () => void;
 }
 
 export class PhaseMachine {
@@ -25,7 +33,7 @@ export class PhaseMachine {
           const snap = VoyageSession.getSnapshot();
           GAME_DATA.nodes[snap.dimId].actions.forEach((actId) => {
             const act = GAME_DATA.actions[actId]!;
-            addMenuItem(
+            this.deps.addMenuItem(
               act.isMenu ? act.label : "",
               () => this.deps.executeAction(actId as never),
               act.uiClass,
@@ -33,7 +41,7 @@ export class PhaseMachine {
             );
           });
         },
-        onExit: () => clearMenu(),
+        onExit: () => this.deps.clearMenu(),
       },
       YARD_ROOT: {
         onEnter: () => {
@@ -43,12 +51,12 @@ export class PhaseMachine {
             { label: GAME_DATA.text.btnYardCrew, cat: GAME_DATA.resources.crew },
           ];
           categories.forEach(({ label, cat }) => {
-            addMenuItem(label, () => {
+            this.deps.addMenuItem(label, () => {
               VoyageSession.setYardCategory(cat);
               this.deps.transitionTo(GAME_DATA.phases.yard_category!);
             });
           });
-          addMenuItem(
+          this.deps.addMenuItem(
             GAME_DATA.text.btnYardLeave,
             () => {
               this.deps.transitionTo(GAME_DATA.phases.encounter!);
@@ -57,7 +65,7 @@ export class PhaseMachine {
             GAME_DATA.dom.classes.btnDesperate,
           );
         },
-        onExit: () => clearMenu(),
+        onExit: () => this.deps.clearMenu(),
       },
       YARD_CATEGORY: {
         onEnter: () => {
@@ -65,7 +73,7 @@ export class PhaseMachine {
           Object.entries(GAME_DATA.yard)
             .filter(([, i]) => i.type === snap.yardCat)
             .forEach(([k, item]) => {
-              addMenuItem(
+              this.deps.addMenuItem(
                 "",
                 () => {
                   if (VoyageSession.buyYardItem(k as never)) {
@@ -78,26 +86,26 @@ export class PhaseMachine {
                 },
                 undefined,
                 undefined,
-                k as never,
+                k as YardKey,
               );
             });
-          addMenuItem(
+          this.deps.addMenuItem(
             GAME_DATA.text.btnYardBack,
             () => this.deps.transitionTo(GAME_DATA.phases.yard_root!),
             GAME_DATA.dom.classes.btnTravel,
           );
         },
-        onExit: () => clearMenu(),
+        onExit: () => this.deps.clearMenu(),
       },
       NAVIGATING: {
         onEnter: () => {
           const snap = VoyageSession.getSnapshot();
           document.getElementById(GAME_DATA.dom.ids.navScreen!)!.style.display = "flex";
-          setChoices(snap.navChoices);
+          this.deps.setChoices(snap.navChoices);
         },
         onExit: () => {
           document.getElementById(GAME_DATA.dom.ids.navScreen!)!.style.display = "none";
-          resetNav();
+          this.deps.resetNav();
         },
       },
       JUMPING: {

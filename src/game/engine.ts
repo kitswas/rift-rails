@@ -10,10 +10,44 @@ import { syncUI, ui } from "../stores/ui.svelte";
 import { addMenuItem, clearMenu, syncActiveMenu } from "../stores/menu.svelte";
 import { syncSensors } from "../stores/sensors.svelte";
 import { syncSettings } from "../stores/settings.svelte";
+import { setChoices, resetNav } from "../stores/nav.svelte";
 import { PhaseMachine } from "./phaseMachine";
 import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem } from "./types";
 
+export interface EngineDeps {
+  syncUI: () => void;
+  ui: {
+    locationName: string;
+    locationType: string;
+    dimTypeCodex: string;
+    rep: string;
+  };
+  addMenuItem: typeof addMenuItem;
+  clearMenu: () => void;
+  syncActiveMenu: () => void;
+  syncSensors: () => void;
+  syncSettings: () => void;
+}
+
+export const defaultEngineDeps: EngineDeps = {
+  syncUI,
+  ui,
+  addMenuItem,
+  clearMenu,
+  syncActiveMenu,
+  syncSensors,
+  syncSettings,
+};
+
 export class EngineService {
+  hooks: Record<string, StateHook> = {};
+  constructor(private readonly deps: EngineDeps) {}
+  depsClearMenu(): void {
+    this.deps.clearMenu();
+  }
+  attachHooks(hooks: Record<string, StateHook>): void {
+    this.hooks = hooks;
+  }
   verifyGraphIntegrity(): void {
     const phases = Object.values(GAME_DATA.phases) as Phase[];
     const terminal = [GAME_DATA.phases.dead, GAME_DATA.phases.stranded];
@@ -105,7 +139,7 @@ export class EngineService {
       return false;
     }
 
-    const hooks = phaseMachine.hooks;
+    const hooks = this.hooks;
     if (hooks[currentPhase]?.onExit) hooks[currentPhase].onExit!();
     VoyageSession.setPhase(newPhase);
     if (hooks[newPhase]?.onEnter) hooks[newPhase].onEnter!();
@@ -190,7 +224,7 @@ export class EngineService {
     uiClass?: string,
     dataActId?: string,
   ): HTMLButtonElement {
-    const id = addMenuItem(label, onClick, uiClass, dataActId as ActionId | undefined);
+    const id = this.deps.addMenuItem(label, onClick, uiClass, dataActId as ActionId | undefined);
     const btn = document.createElement("button");
     btn.dataset.menuId = id;
     btn.innerText = label;
@@ -200,19 +234,19 @@ export class EngineService {
   }
 
   updateActionBtnData(_btn: HTMLButtonElement, _act: GameAction): void {
-    syncActiveMenu();
+    this.deps.syncActiveMenu();
   }
 
   updateYardBtnData(_btn: HTMLButtonElement, _item: YardItem): void {
-    syncActiveMenu();
+    this.deps.syncActiveMenu();
   }
 
   refreshActiveMenu(): void {
-    syncActiveMenu();
+    this.deps.syncActiveMenu();
   }
 
   renderSensors(): void {
-    syncSensors();
+    this.deps.syncSensors();
     const snap = VoyageSession.getSnapshot();
     if (!snap.isSurveyed) {
       TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
@@ -220,15 +254,15 @@ export class EngineService {
   }
 
   renderVitals(): void {
-    syncUI();
+    this.deps.syncUI();
     const loc = document.getElementById(GAME_DATA.dom.ids.locationName!) as HTMLElement | null;
-    if (loc) loc.innerText = ui.locationName;
+    if (loc) loc.innerText = this.deps.ui.locationName;
     const locType = document.getElementById(GAME_DATA.dom.ids.locationType!) as HTMLElement | null;
-    if (locType) locType.innerText = ui.locationType;
+    if (locType) locType.innerText = this.deps.ui.locationType;
     const codex = document.getElementById(GAME_DATA.dom.ids.dimTypeCodex!) as HTMLElement | null;
-    if (codex) codex.innerText = ui.dimTypeCodex;
+    if (codex) codex.innerText = this.deps.ui.dimTypeCodex;
     const rep = document.getElementById(GAME_DATA.dom.ids.statRep!) as HTMLElement | null;
-    if (rep) rep.innerText = ui.rep;
+    if (rep) rep.innerText = this.deps.ui.rep;
     const portrait = document.getElementById(
       GAME_DATA.dom.ids.corvusPortrait!,
     ) as HTMLElement | null;
@@ -238,11 +272,11 @@ export class EngineService {
   }
 
   renderInteractiveControls(): void {
-    syncUI();
+    this.deps.syncUI();
   }
 
   renderForge(): void {
-    syncUI();
+    this.deps.syncUI();
   }
 
   forgeUpgrade(tierKey: TierKey, onUpgrade?: () => void): void {
@@ -311,12 +345,12 @@ export class EngineService {
     }
   }
 
-  cacheDOM(): void {
-    // Svelte owns the DOM; lookups are direct via getElementById.
-  }
-
-  setupStaticText(): void {
-    syncSettings();
+  init(): void {
+    this.verifyGraphIntegrity();
+    this.verifyPaletteIntegrity();
+    DioramaPipeline.init();
+    TransitionFX.init();
+    this.deps.syncSettings();
     const snap = VoyageSession.getSnapshot();
     TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
     this.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem!);
@@ -384,35 +418,39 @@ export class EngineService {
       });
     }
   }
-
-  bindEvents(): void {
-    // Svelte components own button wiring (Start/Panels/Log/Forge/Cutscene).
-    // Kept as init hook for focus-trap parity; no DOM lookups here.
-  }
-
-  init(): void {
-    this.verifyGraphIntegrity();
-    this.verifyPaletteIntegrity();
-    this.cacheDOM();
-    DioramaPipeline.init();
-    TransitionFX.init();
-    this.setupStaticText();
-    this.bindEvents();
-  }
 }
 
-export const Engine = new EngineService();
+export function createEngine(deps: EngineDeps = defaultEngineDeps): EngineService {
+  const engine = new EngineService(deps);
+  const phaseMachine = new PhaseMachine({
+    transitionTo: (phase) => engine.transitionTo(phase),
+    executeAction: (actId) => engine.executeAction(actId as never),
+    log: (text, cls) => engine.log(text, cls ?? GAME_DATA.dom.classes.logSystem!),
+    updateUI: () => engine.updateUI(),
+    lockdownGameOver: (msg) => engine.lockdownGameOver(msg),
+    setChoices,
+    resetNav,
+    addMenuItem: deps.addMenuItem,
+    clearMenu: deps.clearMenu,
+  });
+  engine.attachHooks(phaseMachine.hooks);
+  return engine;
+}
+
+export const Engine = createEngine();
 
 export function clearEncounterChoices(): void {
-  clearMenu();
+  Engine.depsClearMenu();
 }
 
-const phaseMachine = new PhaseMachine({
-  transitionTo: (phase) => Engine.transitionTo(phase),
-  executeAction: (actId) => Engine.executeAction(actId),
-  log: (text, cls) => Engine.log(text, cls ?? GAME_DATA.dom.classes.logSystem!),
-  updateUI: () => Engine.updateUI(),
-  lockdownGameOver: (msg) => Engine.lockdownGameOver(msg),
+export const StateHooks: Record<string, StateHook> = new Proxy({} as Record<string, StateHook>, {
+  get(_t, prop) {
+    return (Engine.hooks as Record<string, unknown>)[prop as string] as StateHook;
+  },
+  ownKeys() {
+    return Object.keys(Engine.hooks);
+  },
+  getOwnPropertyDescriptor(_t, prop) {
+    return Object.getOwnPropertyDescriptor(Engine.hooks, prop);
+  },
 });
-
-export const StateHooks: Record<string, StateHook> = phaseMachine.hooks;

@@ -12,10 +12,10 @@ function motionEntry(portrait: HTMLElement, property: string): MotionEntry {
   };
 }
 
-export const RiftEyes = {
-  portrait: null as HTMLElement | null,
-  x: null as MotionEntry | null,
-  y: null as MotionEntry | null,
+export class RiftEyesService {
+  portrait: HTMLElement | null = null;
+  x: MotionEntry | null = null;
+  y: MotionEntry | null = null;
 
   start(): void {
     if (!this.portrait) {
@@ -26,33 +26,33 @@ export const RiftEyes = {
     this.y = motionEntry(this.portrait, "--corvus-eye-y");
     const rig = document.getElementById("game-container");
     if (rig) {
-      rig.addEventListener("pointermove", this.aim, { passive: true });
-      rig.addEventListener("pointerleave", this.center);
-      rig.addEventListener("pointercancel", this.center);
-      rig.addEventListener("pointerdown", this.aim, { passive: true });
+      rig.addEventListener("pointermove", (e) => this.aim(e), { passive: true });
+      rig.addEventListener("pointerleave", () => this.center());
+      rig.addEventListener("pointercancel", () => this.center());
+      rig.addEventListener("pointerdown", (e) => this.aim(e), { passive: true });
     }
     this.center();
-  },
+  }
 
-  aim(this: void, event: PointerEvent): void {
-    if (!RiftEyes.portrait || !RiftEyes.x || !RiftEyes.y) return;
+  aim(event: PointerEvent): void {
+    if (!this.portrait || !this.x || !this.y) return;
     if (RiftMotion.reduced()) {
-      RiftEyes.center();
+      this.center();
       return;
     }
-    const rect = RiftEyes.portrait.getBoundingClientRect();
+    const rect = this.portrait.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const dx = event.clientX - rect.left - rect.width / 2;
     const dy = event.clientY - rect.top - rect.height / 2;
     const x = Math.max(-10, Math.min(10, dx * 0.1));
     const y = Math.max(-6, Math.min(6, dy * 0.07));
-    RiftMotion.set(RiftEyes.x, x);
-    RiftMotion.set(RiftEyes.y, y);
-  },
+    RiftMotion.set(this.x, x);
+    RiftMotion.set(this.y, y);
+  }
 
-  center(this: void): void {
-    if (!RiftEyes.portrait || !RiftEyes.x || !RiftEyes.y) return;
-    [RiftEyes.x, RiftEyes.y].forEach((entry) => {
+  center(): void {
+    if (!this.portrait || !this.x || !this.y) return;
+    [this.x, this.y].forEach((entry) => {
       entry.target = 0;
       entry.value = 0;
       entry.velocity = 0;
@@ -60,5 +60,10 @@ export const RiftEyes = {
       RiftMotion.springs.delete(entry);
       entry.active = false;
     });
-  },
-};
+  }
+}
+
+export const RiftEyes = new RiftEyesService();
+export function createEyes(): RiftEyesService {
+  return new RiftEyesService();
+}
