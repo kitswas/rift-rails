@@ -13,11 +13,14 @@ function motionEntry(portrait: HTMLElement, property: string): MotionEntry {
 }
 
 export const RiftEyes = {
-  portrait: document.querySelector("#corvus-portrait") as HTMLElement | null,
+  portrait: null as HTMLElement | null,
   x: null as MotionEntry | null,
   y: null as MotionEntry | null,
 
   start(): void {
+    if (!this.portrait) {
+      this.portrait = document.querySelector("#corvus-portrait") as HTMLElement | null;
+    }
     if (!this.portrait) return;
     this.x = motionEntry(this.portrait, "--corvus-eye-x");
     this.y = motionEntry(this.portrait, "--corvus-eye-y");

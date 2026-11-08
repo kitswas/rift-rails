@@ -1,18 +1,22 @@
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vitest/config";
-import { viteSingleFile } from "vite-plugin-singlefile";
 
 export default defineConfig({
-  plugins: [viteSingleFile()],
+  plugins: [svelte()],
   build: {
-    cssCodeSplit: false,
-    assetsInlineLimit: Number.MAX_SAFE_INTEGER,
+    chunkSizeWarningLimit: 600,
   },
   server: {
+    host: "127.0.0.1",
+    port: 8000,
+  },
+  preview: {
     host: "127.0.0.1",
     port: 8000,
   },
   test: {
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
+    include: ["tests/**/*.test.ts"],
   },
 });

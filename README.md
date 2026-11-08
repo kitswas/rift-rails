@@ -18,21 +18,22 @@ This project is licensed under a dual-licensing scheme (see [LICENSE](LICENSE) f
 
 ## Development
 
-TypeScript + Vite source lives in `src/`; `dist/index.html` is built as a single file.
+TypeScript + Vite + Svelte source lives in `src/`; `dist/` is multi-file output (`index.html` + `assets/*`).
 
 ```sh
 pnpm install
-pnpm dev        # http://127.0.0.1:8000
-pnpm build      # dist/index.html
+pnpm dev        # http://127.0.0.1:8000 (HMR)
+pnpm build      # dist/index.html + assets/
 pnpm test
-pnpm typecheck
+pnpm typecheck  # svelte-check + tsc
 pnpm lint
 pnpm format:check
 pnpm verify     # builds, serves dist on 8100, runs headless Edge harness
+pnpm test:e2e   # Playwright against preview on 8100
 git config core.hooksPath .githooks
 ```
 
-`src/game/*.ts` is strict TypeScript: game data, voyage state, UI orchestration, and navigation live in typed modules (`types.ts` holds the domain model, `config.ts` mirrors jump timing from `GAME_DATA`). There are no `@ts-nocheck` escapes and no `any` types. Keep gameplay, save format, RNG, and procedural art behavior unchanged when editing.
+`src/game/*.ts` is strict TypeScript: game data, voyage state, UI orchestration, and navigation live in typed modules (`types.ts` holds the domain model, `config.ts` mirrors jump timing from `GAME_DATA`). There are no `@ts-nocheck` escapes and no `any` types. `src/ui/App.svelte` is the Svelte shell mounting the existing game modules; `src/stores/voyage.svelte.ts` mirrors `VoyageSession` for reactivity; `src/ui/Dial.svelte` and `src/ui/Board.svelte` are the new declarative dial/board components. Keep gameplay, save format, RNG, and procedural art behavior unchanged when editing.
 
 ## Contributing
 

@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 import "./style.css";
+import { mount } from "svelte";
+import App from "./ui/App.svelte";
 import { GAME_DATA, calcEffectiveWeaponTier } from "./game/data";
 import { DioramaPipeline } from "./game/art";
 import { ConduitDeck } from "./game/conduit";
@@ -40,6 +42,9 @@ declare global {
   }
 }
 
+// Compatibility shims for the legacy verify harness and inline onclick
+// handlers in the shell markup. New Svelte components should import
+// directly instead of relying on window globals.
 window.GAME_DATA = GAME_DATA;
 window.calcEffectiveWeaponTier = calcEffectiveWeaponTier;
 window.DioramaPipeline = DioramaPipeline;
@@ -61,10 +66,7 @@ window.RiftVectorDial = RiftVectorDial;
 window.RiftEyes = RiftEyes;
 window.DOM = DOM;
 
-RiftReducedMotion.addEventListener("change", () => {
-  RiftEyes.center();
-  RiftVectorDial.reset();
-});
-RiftVectorDial.init();
-RiftEyes.start();
-Engine.init();
+const target = document.getElementById("app");
+if (target) {
+  mount(App, { target });
+}
