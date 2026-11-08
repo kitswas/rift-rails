@@ -7,15 +7,1573 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>Rift Rails: The Infinite Express</title>
+    <style>
+      :root {
+        --bg: #07090e;
+        --panel-bg: #10141d;
+        --panel-sub-bg: #06080d;
+        --text: #e2e8f0;
+        --text-muted: #8494a7;
+        --border: #1e293b;
+        --border-bright: #334155;
+
+        /* Uniform Semantic Status Colors */
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --energy: #a855f7;
+        --action: #f59e0b;
+        --info: #38bdf8;
+        --help: #f1f5f9;
+
+        /* Dynamic Procedural Dimension Theme Colors */
+        --theme-primary: #73acce;
+        --theme-secondary: #f0f3ff;
+        --theme-glow: rgba(115, 172, 206, 0.25);
+
+        --overlay-bg: rgba(7, 9, 14, 0.96);
+        --font-mono: "SF Mono", "Fira Code", monospace, "Courier New";
+        --radius: 8px;
+        --safe-bottom: env(safe-area-inset-bottom, 8px);
+
+        --layer-scene: 0;
+        --layer-game-ui: 10;
+        --layer-tutorial: 20;
+        --layer-narrative: 30;
+        --layer-route-selection: 40;
+        --layer-start-screen: 50;
+        --layer-transition-effects: 60;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: var(--font-mono);
+        margin: 0;
+        padding: 0;
+        height: 100dvh;
+        width: 100vw;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        font-size: 14px;
+        transition:
+          filter 0.2s ease,
+          background-color 0.8s ease;
+      }
+
+      /* ================= JUMP TRANSITION & WARP FX ================= */
+      #fx-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: var(--layer-transition-effects);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      #fx-canvas.active {
+        opacity: 1;
+        pointer-events: auto;
+        cursor: wait;
+      }
+
+      .screen-shake {
+        animation: riftTremor 0.05s infinite alternate;
+      }
+
+      .chromatic-flash {
+        animation: chromaticFlash 0.35s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+      }
+
+      @keyframes riftTremor {
+        0% {
+          transform: translate(-3px, 2px) rotate(-0.3deg);
+        }
+        100% {
+          transform: translate(3px, -2px) rotate(0.3deg);
+        }
+      }
+
+      @keyframes chromaticFlash {
+        0% {
+          filter: invert(0.9) contrast(220%) hue-rotate(180deg) brightness(2);
+        }
+        35% {
+          filter: invert(0.25) saturate(250%) contrast(140%);
+        }
+        100% {
+          filter: invert(0) contrast(100%) hue-rotate(0deg) brightness(1);
+        }
+      }
+
+      /* ================= START SCREEN ================= */
+      #start-screen {
+        position: fixed;
+        inset: 0;
+        z-index: var(--layer-start-screen);
+        background: var(--bg);
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .start-card {
+        max-width: 520px;
+        background: var(--panel-bg);
+        border: 1px solid var(--border-bright);
+        border-radius: var(--radius);
+        padding: 24px;
+      }
+
+      .start-card h1 {
+        color: var(--action);
+        font-size: 1.35em;
+        margin-top: 0;
+        text-align: center;
+        border-bottom: 1px dashed var(--border-bright);
+        padding-bottom: 12px;
+        letter-spacing: 1px;
+      }
+
+      .start-card p {
+        line-height: 1.55;
+        color: var(--text);
+        margin-bottom: 12px;
+        font-size: 0.9em;
+      }
+
+      .briefing-box {
+        background: var(--panel-sub-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        margin: 14px 0;
+        font-size: 0.85em;
+        line-height: 1.6;
+      }
+
+      .briefing-box b {
+        color: var(--info);
+      }
+
+      /* ================= TOP PERSISTENT HUD ================= */
+      #hud-bar {
+        background: var(--panel-sub-bg);
+        border-bottom: 1px solid var(--border);
+        padding: 8px 12px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        flex-shrink: 0;
+        width: 100%;
+        transition: border-color 0.5s ease;
+      }
+
+      .hud-cell {
+        display: flex;
+        flex-direction: column;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        cursor: help;
+        user-select: none;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .hud-cell:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border-bright);
+      }
+
+      .hud-cell span:first-child {
+        font-size: 0.72em;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+      }
+
+      .hud-cell span:last-child {
+        font-size: 1.05em;
+        font-weight: 800;
+      }
+
+      /* ================= HORIZONTAL SNAP SLIDER ================= */
+      #game-container {
+        display: none;
+        flex: 1;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        position: relative;
+        z-index: var(--layer-game-ui);
+      }
+
+      #bridge-scene {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: var(--layer-scene);
+        background: radial-gradient(ellipse at 50% 30%, #17202c, var(--bg) 78%);
+      }
+
+      #bridge-scene img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.42;
+        filter: saturate(0.72) brightness(0.78);
+        -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+      }
+
+      #snap-slider {
+        display: flex;
+        flex: 1;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 12px;
+        padding: 10px 12px;
+      }
+
+      #snap-slider::-webkit-scrollbar {
+        display: none;
+      }
+
+      .pane {
+        flex: 0 0 100%;
+        width: 100%;
+        height: 100%;
+        scroll-snap-align: center;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      @media (min-width: 900px) {
+        body {
+          font-size: 15px;
+        }
+
+        #hud-bar {
+          max-width: 1400px;
+          margin: 10px auto 0;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 8px 14px;
+          gap: 8px;
+        }
+
+        #snap-slider {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 10px 0 14px;
+          height: calc(100% - 110px);
+        }
+
+        .pane {
+          flex: 0 0 calc((100% - 24px) / 3);
+          width: calc((100% - 24px) / 3);
+          scroll-snap-align: center;
+        }
+
+        #story-log {
+          max-height: 300px !important;
+          font-size: 0.9em !important;
+        }
+
+        button {
+          font-size: 0.84em !important;
+          min-height: 44px !important;
+        }
+
+        #bottom-nav {
+          max-width: 1400px;
+          margin: 0 auto 8px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 6px 12px !important;
+        }
+      }
+
+      .panel-card {
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        transition: border-color 0.5s ease;
+        position: relative;
+      }
+
+      #pane-bridge .panel-card {
+        background: rgba(16, 20, 29, 0.72);
+      }
+
+      /* ============ BLUEPRINT CRATE AESTHETIC ============ */
+      .panel-card,
+      .start-card,
+      #bottom-nav,
+      .cutscene-frame {
+        border-radius: 0;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      .start-card {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .panel-card::before,
+      .start-card::before,
+      .cutscene-frame::before {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        pointer-events: none;
+        z-index: 1;
+        background:
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            0 0 / 7px 7px no-repeat,
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            100% 0 / 7px 7px no-repeat,
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            0 100% / 7px 7px no-repeat,
+          radial-gradient(
+              circle,
+              var(--panel-bg) 0 1px,
+              var(--text-muted) 1.4px 2.4px,
+              transparent 2.8px
+            )
+            100% 100% / 7px 7px no-repeat,
+          repeating-linear-gradient(
+            45deg,
+            var(--border-bright) 0 1px,
+            transparent 1px 5px
+          )
+            0 0 / 100% 4px no-repeat;
+      }
+
+      .hud-cell {
+        position: relative;
+        padding-left: 17px;
+        border-radius: 0;
+      }
+
+      .hud-cell::before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 50%;
+        width: 7px;
+        height: 7px;
+        transform: translateY(-50%);
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+      }
+
+      .hud-cell::after {
+        content: "";
+        position: absolute;
+        left: 6.5px;
+        top: 50%;
+        width: 3px;
+        height: 3px;
+        transform: translateY(-50%);
+        background: var(--text-muted);
+      }
+
+      h2,
+      h3,
+      h4 {
+        margin: 0 0 8px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      h2 {
+        font-size: 0.95em;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 5px;
+      }
+
+      /* ================= SENSORS DISPLAY ================= */
+      #art-display svg,
+      #art-display img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: calc(var(--radius) - 2px);
+      }
+
+      #art-display img {
+        image-rendering: pixelated;
+      }
+
+      #art-display {
+        background: var(--panel-sub-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        position: relative;
+        overflow: hidden;
+        cursor: crosshair;
+      }
+
+      #art-glyph {
+        font-size: 3em;
+        color: var(--theme-primary);
+        filter: drop-shadow(0 0 10px var(--theme-glow));
+        transition:
+          transform 0.4s ease,
+          color 0.4s ease;
+      }
+
+      #art-label {
+        font-size: 0.72em;
+        color: var(--text-muted);
+        margin-top: 8px;
+        letter-spacing: 1px;
+      }
+
+      #location-type {
+        color: var(--info);
+        font-size: 0.82em;
+        margin-top: 3px;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+      }
+
+      .telemetry-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+
+      /* ================= JOURNEY LOG ================= */
+      #story-log {
+        flex: 1;
+        min-height: 160px;
+        max-height: 220px;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        background: var(--panel-sub-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 8px 10px;
+        line-height: 1.5;
+        font-size: 0.85em;
+        margin-bottom: 8px;
+        font-family: var(--font-mono);
+        cursor: text;
+      }
+
+      .log-entry {
+        --base-l: 0.48;
+        --text-l: 0.92;
+        --bg-l: 0.16;
+
+        margin-bottom: 5px;
+        font-weight: 600;
+        border-radius: 0 4px 4px 0;
+        padding: 4px 8px;
+        word-break: break-word;
+        line-height: 1.45;
+        border-left: 3px solid oklch(var(--base-l) var(--c) var(--h));
+        color: oklch(var(--text-l) calc(var(--c) * 0.5) var(--h));
+        background-color: oklch(
+          var(--bg-l) calc(var(--c) * 0.4) calc(var(--h) + 30)
+        );
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .log-entry b {
+        letter-spacing: 0.25px;
+        color: oklch(0.96 calc(var(--c) * 0.25) var(--h));
+      }
+
+      .log-damage {
+        --h: 25;
+        --c: 0.19;
+      }
+      .log-lore {
+        --h: 75;
+        --c: 0.16;
+      }
+      .log-success {
+        --h: 145;
+        --c: 0.16;
+      }
+      .log-system {
+        --h: 205;
+        --c: 0.15;
+      }
+      .log-event {
+        --h: 260;
+        --c: 0.14;
+      }
+      .log-help {
+        --h: 250;
+        --c: 0.03;
+      }
+
+      /* ================= CUTSCENE OVERLAY SYSTEM ================= */
+      #cutscene-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: var(--layer-narrative);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 16px 16px calc(var(--safe-bottom) + 12px);
+        background: linear-gradient(to bottom, transparent 42%, rgba(5, 8, 13, 0.22));
+        animation: cutsceneFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      #cutscene-overlay[hidden],
+      #tutorial-cue[hidden] {
+        display: none !important;
+      }
+
+      .cutscene-frame {
+        position: relative;
+        isolation: isolate;
+        width: min(100%, 1120px);
+        min-height: 160px;
+        max-height: 44dvh;
+        display: flex;
+        flex-direction: column;
+        padding: 24px 26px 14px;
+        border: 2px solid var(--action);
+        border-radius: 5px;
+        background: rgba(9, 13, 21, 0.92);
+        box-shadow: inset 0 0 22px rgba(245, 158, 11, 0.08), 0 8px 28px rgba(0, 0, 0, 0.62);
+      }
+
+      .cutscene-portrait {
+        position: absolute;
+        z-index: -1;
+        right: 3%;
+        bottom: 8px;
+        width: min(32vw, 270px);
+        height: min(40dvh, 330px);
+        object-fit: contain;
+        object-position: bottom;
+        filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.45));
+        pointer-events: none;
+      }
+
+      @keyframes cutsceneFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .cutscene-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        width: fit-content;
+        max-width: 72%;
+        margin-top: -42px;
+        margin-bottom: 12px;
+        padding: 8px 13px;
+        border: 2px solid var(--action);
+        border-bottom: 0;
+        border-radius: 5px 5px 0 0;
+        background: rgba(9, 13, 21, 0.96);
+      }
+
+      .cutscene-speaker {
+        font-weight: 800;
+        font-size: 0.8em;
+        color: var(--action);
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .cutscene-pips {
+        margin-left: 10px;
+        font-size: 0.72em;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .cutscene-text {
+        width: 72%;
+        min-height: 2.8em;
+        max-height: 26dvh;
+        overflow-y: auto;
+        color: #f1f5f9;
+        font-size: 0.94em;
+        line-height: 1.5;
+        padding: 0 4px 2px 0;
+        margin: 0 0 10px;
+      }
+
+      .cutscene-options {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: auto;
+      }
+
+      .btn-cutscene-choice {
+        background: rgba(245, 158, 11, 0.06);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: var(--text);
+        text-align: left;
+        padding: 9px 12px;
+        font-size: 0.82em !important;
+        font-weight: 600;
+        border-radius: 4px;
+        justify-content: flex-start;
+        transition: all 0.15s ease;
+        line-height: 1.35;
+      }
+
+      .btn-cutscene-choice:hover,
+      .btn-cutscene-choice:focus-visible {
+        background: rgba(245, 158, 11, 0.16);
+        border-color: var(--action);
+        color: #fff;
+        transform: translateX(2px);
+        outline: 2px solid rgba(245, 158, 11, 0.45);
+        outline-offset: 2px;
+      }
+
+      #tutorial-cue {
+        position: fixed;
+        z-index: var(--layer-tutorial);
+        left: 50%;
+        bottom: calc(var(--safe-bottom) + 60px);
+        transform: translateX(-50%);
+        width: min(calc(100vw - 24px), 390px);
+        padding: 9px 12px;
+        border: 1px solid var(--action);
+        border-radius: 5px;
+        background: rgba(9, 13, 21, 0.94);
+        color: var(--text);
+        text-align: center;
+        font-size: 0.82em;
+        line-height: 1.35;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+      }
+
+      #btn-explore.tutorial-highlight {
+        border-color: var(--action);
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35), 0 0 18px rgba(245, 158, 11, 0.28);
+      }
+
+      /* ================= BUTTONS & CONTROLS ================= */
+      button {
+        background-color: #131824;
+        color: var(--text);
+        border: 1px solid var(--border-bright);
+        border-radius: var(--radius);
+        padding: 9px 10px;
+        width: 100%;
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: 0.8em;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        transition: all 0.15s ease-out;
+        white-space: pre-wrap;
+        line-height: 1.3;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+      }
+
+      button:hover:not(:disabled) {
+        border-color: var(--text-muted);
+        filter: brightness(1.15);
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(1px) scale(0.99);
+        filter: brightness(1.25);
+      }
+
+      button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        border-color: var(--border);
+        box-shadow: none;
+        filter: grayscale(60%);
+      }
+
+      .btn-start {
+        background-color: var(--action);
+        color: #000;
+        font-size: 0.9em;
+        font-weight: 800;
+        padding: 12px;
+        margin-top: 10px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      }
+
+      .btn-new-game {
+        background-color: transparent;
+        color: var(--text-muted);
+        border-color: var(--border);
+        margin-top: 8px;
+      }
+
+      .btn-new-game:hover:not(:disabled) {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.08);
+      }
+
+      .btn-travel,
+      .btn-action {
+        border-color: var(--action);
+        color: var(--action);
+        background: rgba(245, 158, 11, 0.08);
+      }
+
+      .btn-desperate {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.12);
+        font-weight: 800;
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
+      }
+
+      .btn-success {
+        border-color: var(--success);
+        color: var(--success);
+        background: rgba(16, 185, 129, 0.08);
+      }
+
+      .btn-energy {
+        border-color: var(--energy);
+        color: var(--energy);
+        background: rgba(168, 85, 247, 0.08);
+      }
+
+      #action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+
+      #encounter-choices {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-top: 1px dashed var(--border);
+        padding-top: 6px;
+        margin-top: 4px;
+      }
+
+      .train-setup-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .manual-content,
+      .settings-content {
+        overflow-y: auto;
+        font-size: 0.82em;
+        line-height: 1.55;
+        color: var(--text);
+        cursor: default;
+      }
+
+      .manual-content button,
+      .settings-content button {
+        font-size: 1.02em !important;
+        cursor: pointer;
+      }
+
+      .manual-section,
+      .settings-section {
+        background: var(--panel-sub-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+
+      .manual-section h3,
+      .settings-section h3 {
+        font-size: 0.86em;
+        color: var(--action);
+        margin-bottom: 4px;
+      }
+
+      .manual-section p,
+      .settings-section p {
+        margin: 3px 0;
+        color: var(--text-muted);
+      }
+
+      .manual-section b,
+      .settings-section b {
+        color: var(--text);
+      }
+
+      /* Audio Controls in Settings */
+      .audio-control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 8px 0;
+        gap: 10px;
+      }
+
+      .audio-control-row label {
+        font-size: 0.85em;
+        font-weight: 700;
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .audio-slider {
+        flex: 1;
+        accent-color: var(--action);
+        cursor: pointer;
+      }
+
+      .audio-select {
+        background: #131824;
+        color: var(--text);
+        border: 1px solid var(--border-bright);
+        border-radius: 4px;
+        padding: 6px 8px;
+        font-family: var(--font-mono);
+        font-size: 0.82em;
+        outline: none;
+        cursor: pointer;
+        width: 60%;
+      }
+
+      .audio-select:focus {
+        border-color: var(--action);
+      }
+
+      #bottom-nav {
+        background: var(--panel-sub-bg);
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-around;
+        padding: 5px 8px calc(var(--safe-bottom) + 2px);
+        flex-shrink: 0;
+        gap: 4px;
+      }
+
+      .nav-tab {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-muted);
+        font-size: 0.72em;
+        letter-spacing: 0.5px;
+        min-height: 34px;
+        margin: 0;
+        padding: 4px 6px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        flex: 1;
+      }
+
+      .nav-tab.active {
+        background: var(--border-bright);
+        border-color: var(--info);
+        color: var(--text);
+        font-weight: bold;
+      }
+
+      #nav-screen {
+        position: fixed;
+        inset: 0;
+        background-color: var(--overlay-bg);
+        z-index: var(--layer-route-selection);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        backdrop-filter: blur(8px);
+      }
+
+      #nav-screen h1 {
+        color: var(--action);
+        font-size: 1.2em;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+
+      #nav-choices {
+        position: relative;
+        width: min(1000px, calc(100vw - 40px));
+        aspect-ratio: 1000 / 360;
+        overflow: visible;
+        z-index: 1;
+      }
+
+      .nav-board-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .nav-board-svg .board-frame rect {
+        fill: var(--panel-bg);
+        stroke: var(--border-bright);
+        stroke-width: 2;
+      }
+
+      .board-rail-back,
+      .board-rail-base,
+      .board-rail-notch,
+      .board-leader,
+      .board-hub circle,
+      .board-hub path {
+        fill: none;
+        stroke: var(--text);
+        stroke-linecap: square;
+        stroke-linejoin: miter;
+      }
+
+      .board-leader {
+        shape-rendering: crispEdges;
+      }
+
+      .board-leader-outer {
+        stroke: var(--text-muted);
+        stroke-width: 4;
+      }
+
+      .board-leader-inner {
+        stroke: var(--panel-bg);
+        stroke-width: 2;
+      }
+
+      .board-port {
+        fill: var(--panel-bg);
+        stroke: var(--text-muted);
+        stroke-width: 1.5;
+        shape-rendering: crispEdges;
+      }
+
+      .board-port-dot {
+        fill: var(--text-muted);
+        stroke: none;
+        shape-rendering: crispEdges;
+      }
+
+      .board-coupler[data-active="true"] .board-leader-outer,
+      .board-coupler[data-active="true"] .board-port {
+        stroke: var(--action);
+      }
+
+      .board-coupler[data-active="true"] .board-port-dot {
+        fill: var(--action);
+      }
+
+      .board-frame path {
+        fill: none;
+        stroke: var(--border-bright);
+        stroke-width: 2;
+      }
+
+      .board-rail-back {
+        stroke: var(--border);
+        stroke-width: 8;
+      }
+
+      .board-rail-base {
+        stroke-width: 4;
+      }
+
+      .board-rail-notch {
+        stroke-width: 2;
+        opacity: 0.45;
+      }
+
+      .board-sleepers path {
+        stroke: var(--border-bright);
+        stroke-width: 2;
+        opacity: 0.4;
+        shape-rendering: crispEdges;
+      }
+
+      .board-hub circle:nth-child(1) {
+        fill: var(--panel-sub-bg);
+        stroke-width: 3;
+      }
+
+      .board-hub circle:nth-child(2) {
+        fill: transparent;
+        stroke-width: 1.5;
+      }
+
+      .board-hub circle:nth-child(3) {
+        fill: var(--panel-bg);
+        stroke-width: 1.5;
+      }
+
+      .board-hub path {
+        stroke-width: 2;
+      }
+
+      #nav-choices .nav-carriage {
+        position: absolute;
+        width: 42%;
+        min-height: 112px;
+        padding: 0;
+        border: 1px solid var(--border-bright);
+        border-radius: 0;
+        background: var(--panel-bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        text-align: left;
+        pointer-events: auto;
+        margin: 0;
+        overflow: hidden;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+        transition:
+          transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+          border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+          box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      #nav-choices .nav-carriage::before,
+      #nav-vector::before {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        pointer-events: none;
+        z-index: 2;
+        background:
+          radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px) 0 0 / 7px 7px no-repeat,
+          radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px) 100% 0 / 7px 7px no-repeat,
+          radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px) 0 100% / 7px 7px no-repeat,
+          radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px) 100% 100% / 7px 7px no-repeat;
+      }
+
+      #nav-choices .nav-carriage[data-slot="0"] {
+        left: 4%;
+        top: 8%;
+      }
+
+      #nav-choices .nav-carriage[data-slot="1"] {
+        right: 4%;
+        top: 8%;
+      }
+
+      #nav-choices .nav-carriage[data-single="true"] {
+        left: 29%;
+        right: auto;
+        top: 8%;
+      }
+
+      #nav-choices .nav-carriage:hover,
+      #nav-choices .nav-carriage:focus-visible,
+      #nav-choices .nav-carriage[data-lift="true"] {
+        transform: translateY(-4px);
+        border-color: var(--text-muted);
+        background: var(--panel-sub-bg);
+        box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.45);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"],
+      #nav-choices .nav-carriage[data-lock="true"] {
+        transform: translateY(-4px);
+        border-color: var(--action);
+        background: var(--action);
+        box-shadow: 4px 6px 0 rgba(245, 158, 11, 0.22);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-head,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-head {
+        background: rgba(16, 20, 29, 0.16);
+        border-bottom-color: rgba(16, 20, 29, 0.4);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-name,
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-type,
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-tag,
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-axis,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-name,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-type,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-tag,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-axis {
+        color: var(--panel-bg);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-axis,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-axis {
+        border-top-color: rgba(16, 20, 29, 0.4);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-badge,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-badge {
+        background: var(--panel-bg);
+        border-color: var(--panel-bg);
+      }
+
+      #nav-choices .nav-carriage[data-arm="true"] .carriage-badge svg,
+      #nav-choices .nav-carriage[data-lock="true"] .carriage-badge svg {
+        fill: var(--action);
+      }
+
+      .nav-carriage .carriage-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px 5px;
+        border-bottom: 1px solid var(--border);
+        background:
+          repeating-linear-gradient(
+            45deg,
+            var(--border-bright) 0 1px,
+            transparent 1px 5px
+          )
+            0 0 / 100% 4px no-repeat,
+          var(--panel-sub-bg);
+      }
+
+      .nav-carriage .carriage-badge {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+      }
+
+      .nav-carriage .carriage-badge svg {
+        width: 12px;
+        height: 12px;
+        fill: var(--action);
+        shape-rendering: crispEdges;
+      }
+
+      .nav-carriage .carriage-tag {
+        font-family: var(--font-mono);
+        font-size: 0.6em;
+        letter-spacing: 1.2px;
+        color: var(--text-muted);
+      }
+
+      .nav-carriage .carriage-shell {
+        display: grid;
+        gap: 3px;
+        width: 100%;
+        padding: 8px 10px 10px;
+      }
+
+      .nav-carriage .carriage-name {
+        display: block;
+        font-size: 1.08em;
+        color: var(--text);
+        font-weight: bold;
+        line-height: 1.35;
+      }
+
+      .nav-carriage .carriage-type {
+        display: block;
+        font-size: 0.76em;
+        color: var(--info);
+        letter-spacing: 0.6px;
+      }
+
+      .nav-carriage .carriage-axis {
+        display: block;
+        font-size: 0.62em;
+        color: var(--text-muted);
+        letter-spacing: 0.8px;
+        border-top: 1px dashed var(--border);
+        padding-top: 5px;
+        margin-top: 4px;
+      }
+
+      #nav-screen .instrument {
+        margin-top: 22px;
+        width: min(240px, 34vw);
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.72em;
+        letter-spacing: 0.5px;
+        text-align: center;
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      #nav-vector {
+        cursor: grab;
+        touch-action: none;
+        outline-offset: 4px;
+        position: relative;
+      }
+
+      #nav-vector:active {
+        cursor: grabbing;
+      }
+
+      #nav-vector:focus-visible {
+        outline: 2px solid var(--action);
+      }
+
+      .dial-plate-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px 5px;
+        border-bottom: 1px solid var(--border-bright);
+        background:
+          repeating-linear-gradient(
+            45deg,
+            var(--border-bright) 0 1px,
+            transparent 1px 5px
+          )
+            0 0 / 100% 4px no-repeat,
+          var(--panel-sub-bg);
+      }
+
+      .dial-badge {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-bright);
+        background: var(--panel-bg);
+      }
+
+      .dial-badge svg {
+        width: 12px;
+        height: 12px;
+        fill: var(--action);
+        shape-rendering: crispEdges;
+      }
+
+      .dial-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-mono);
+        font-size: 0.62em;
+        letter-spacing: 1.2px;
+        color: var(--text);
+      }
+
+      .dial-title::before,
+      .dial-title::after {
+        content: "";
+        width: 16px;
+        height: 3px;
+        border-top: 1px solid var(--border-bright);
+        border-bottom: 1px solid var(--border-bright);
+      }
+
+      .dial-code {
+        margin-left: auto;
+        font-family: var(--font-mono);
+        font-size: 0.58em;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+      }
+
+      .dial-face {
+        padding: 8px;
+      }
+
+      .dial-face svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .vector-slot {
+        fill: var(--panel-bg);
+        stroke: var(--text-muted);
+        stroke-width: 2;
+        shape-rendering: crispEdges;
+      }
+
+      .vector-slot path {
+        fill: none;
+        stroke: var(--text-muted);
+        stroke-width: 2;
+      }
+
+      .vector-slot-dot {
+        fill: var(--text-muted);
+        stroke: none;
+      }
+
+      .vector-slot[data-selected="true"] {
+        fill: var(--action);
+        stroke: var(--action);
+      }
+
+      .vector-slot[data-selected="true"] .vector-slot-dot {
+        fill: var(--panel-bg);
+      }
+
+      .vector-slot[data-selected="true"] path {
+        stroke: var(--action);
+      }
+
+      .vector-slot text {
+        fill: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 7px;
+        letter-spacing: 0.5px;
+      }
+
+      .vector-slot[data-selected="true"] text {
+        fill: var(--panel-bg);
+      }
+
+      #vector-slot-solo {
+        display: none;
+      }
+
+      #nav-vector[data-solo="true"] .vector-slot:not(#vector-slot-solo) {
+        display: none;
+      }
+
+      #nav-vector[data-solo="true"] #vector-slot-solo {
+        display: block;
+      }
+
+      .vector-ticks rect {
+        fill: var(--border-bright);
+      }
+
+      #rift-vector-needle {
+        pointer-events: none;
+      }
+
+      #rift-vector-needle path {
+        pointer-events: none;
+        fill: var(--text);
+      }
+
+      #nav-vector[data-armed="true"] #rift-vector-needle path {
+        fill: var(--action);
+      }
+
+      #nav-vector-status {
+        display: block;
+        min-height: 1.25em;
+        margin: 0;
+        padding: 5px 8px;
+        border-top: 1px dashed var(--border);
+        background: var(--panel-sub-bg);
+      }
+
+      #corvus-portrait {
+        width: 176px;
+        height: 224px;
+        border: 1px solid var(--border-bright);
+        border-radius: var(--radius);
+        background: var(--panel-sub-bg);
+        position: relative;
+        margin: 8px 0 16px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      #corvus-portrait svg {
+        height: 100%;
+        display: block;
+        pointer-events: none;
+      }
+
+      #corvus-portrait .corvus-eye-pupil {
+        transform: translate(var(--corvus-eye-x, 0), var(--corvus-eye-y, 0));
+      }
+
+      /* Glint rides inside the pupil group: one transform source per eye,
+         so layers can never separate (DEVELOPER NOTES 4). */
+
+      .locked-ui,
+      .locked-ui * {
+        pointer-events: none;
+        opacity: 0.4;
+        filter: grayscale(100%);
+        cursor: not-allowed !important;
+      }
+
+      @media (max-width: 600px) {
+        #cutscene-overlay {
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+
+        .cutscene-frame {
+          min-height: 150px;
+          max-height: 48dvh;
+          padding: 20px 14px 12px;
+        }
+
+        .cutscene-portrait {
+          right: 0;
+          width: 39vw;
+          height: min(34dvh, 250px);
+        }
+
+        .cutscene-header {
+          max-width: 76%;
+          margin-top: -38px;
+          margin-bottom: 10px;
+          padding: 7px 9px;
+        }
+
+        .cutscene-speaker {
+          font-size: 0.68em;
+          letter-spacing: 0.5px;
+        }
+
+        .cutscene-pips {
+          margin-left: 6px;
+          font-size: 0.66em;
+        }
+
+        .cutscene-text {
+          width: 76%;
+          max-height: 30dvh;
+          font-size: 0.84em;
+          line-height: 1.45;
+        }
+
+        .btn-cutscene-choice {
+          min-height: 36px;
+        }
+
+        #nav-screen {
+          padding: 12px;
+          justify-content: flex-start;
+          overflow-y: auto;
+        }
+
+        #nav-choices {
+          width: 100%;
+          max-width: 100%;
+          aspect-ratio: 1000 / 620;
+        }
+
+        #nav-choices .nav-carriage {
+          width: 76%;
+          min-height: 76px;
+          padding: 10px 12px;
+        }
+
+        #nav-choices .nav-carriage[data-slot="0"] {
+          left: 12%;
+          right: auto;
+          top: 8%;
+        }
+
+        #nav-choices .nav-carriage[data-slot="1"] {
+          left: 12%;
+          right: auto;
+          top: 50%;
+        }
+
+        #nav-choices .nav-carriage[data-single="true"] {
+          left: 12%;
+          top: 35%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #cutscene-overlay,
+        .screen-shake,
+        .chromatic-flash {
+          animation-duration: 0.01ms !important;
+        }
+      }
+    </style>
   </head>
   <body>
-    <!--
+    <!-- 
     ========================================================
     DEVELOPER NOTES: THE ENERGY & SECTOR ECONOMY
     *** DO NOT REMOVE THIS COMMENT BLOCK ***
     ========================================================
     1. ENGINE TIER = MAX ENERGY & TRAVEL COST
-       - A larger engine increases the max Energy capacity of the train,
+       - A larger engine increases the max Energy capacity of the train, 
          allowing for more explorations and actions per dimension.
        - However, a heavier engine increases the Fuel cost to initiate a Rift Jump.
        - Anti-Trap Transparency: Human players exhibit bounded rationality and
@@ -28,131 +1586,553 @@
        - Onboarding Runway: An initial fixed sequence safely introduces mining,
          harvesting, combat, and upgrading without opening RNG death spirals.
        - Sector Cadence: Hubs are fixed at recurring waypoints to provide reliable
-         tension-relief harbors. Deep-void nodes between Hubs are drawn from a
+         tension-relief harbors. Deep-void nodes between Hubs are drawn from a 
          balanced bag shuffle to eliminate dry streaks.
-
+       - Tier-Scaled Station Economy: Hub refueling scales with engine tier so
+         that heavier industrial trains can replenish proportional jump fuel.
+       - Biofuel Coherence: Solitary voidbeasts yield Energy Crystals (fuel + flux)
+         so combat-oriented conductors do not face sudden fuel dead-ends.
+         Packs yield pelts and beast parts of purely economic market value.
+         
     3. ENGAGING GAMEPLAY & BOUNDED RATIONALITY
        - Designed for human decision horizons (immediate 1-3 step lookahead)
          rather than predictive machine optimizers.
-
+       - Generous starting fuel cushions exploration while preserving tight,
+         earned near-miss survival moments across the deeper sectors.
+         
     4. CODE QUALITY RULES
        - Preserve comments. Comments explain why, not what.
        - Single source of truth. DRY.
        - No magic literals. Constant names explain purpose.
        - Literals only belong in assignment statements.
-
+       
     5. PROGRAM CORRECTNESS
-       - State mutations strictly flow through Engine.transitionTo().
-       - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions
+       - The game uses embedded Runtime Assertions to verify its own logic.
+       - verifyGraphIntegrity(): Runs on boot. Ensures GAME_DATA.transitions 
          has no deadlocks or orphaned states (crucial when AI hallucinates edits).
        - verifyPaletteIntegrity(): Ensure log colour types remain visually distinct.
-       - assertInvariants(): Runs after every UI update. Verifies mathematically
-         impossible states (e.g., negative energy) hasn't occurred.
+       - assertInvariants(): Runs after every UI update. Verifies mathematically 
+         impossible states (e.g., negative energy) haven't occurred.
+       - State mutations strictly flow through Engine.transitionTo().
     ========================================================
     -->
-    <div id="app">
-      <div id="start-screen">
-        <h1>Rift Rails</h1>
-        <button id="btn-ignite" type="button">Ignite</button>
-        <button id="btn-start-fresh" type="button">New Journey</button>
-      </div>
-      <div id="game-container" style="display: none">
-        <header id="hud-bar">
-          <span id="location-name"></span>
-          <span id="location-type"></span>
-          <span id="stat-hull"></span>
-          <span id="stat-fuel"></span>
-          <span id="stat-energy"></span>
-          <span id="stat-flux"></span>
-          <span id="stat-rep"></span>
-          <span id="stat-sector"></span>
-        </header>
-        <div id="right-panel">
-          <div id="snap-slider">
-            <section id="pane-settings">
-              <select id="select-ambient-mode"></select>
-              <input id="slider-ambient-vol" type="range" />
-              <span id="lbl-ambient-vol"></span>
-              <input id="slider-sfx-vol" type="range" />
-              <span id="lbl-sfx-vol"></span>
-              <button id="btn-toggle-mute" type="button"></button>
-              <button id="btn-reset-save" type="button"></button>
-            </section>
-            <section id="pane-sensors">
-              <div id="art-display">
-                <div id="art-glyph"></div>
-                <span id="art-label"></span>
-              </div>
-            </section>
-            <section id="pane-bridge">
-              <div id="bridge-scene"></div>
-            </section>
-            <section id="pane-forge">
-              <span id="lbl-forge"></span>
-              <button id="btn-forge-engine" type="button"></button>
-              <button id="btn-forge-weapon" type="button"></button>
-              <span id="equip-engine"></span>
-              <span id="equip-weapon"></span>
-              <span id="equip-module"></span>
-              <span id="equip-carriage"></span>
-              <span id="equip-crew"></span>
-            </section>
-            <section id="pane-manual">
-              <div id="dim-type-codex"></div>
-            </section>
-          </div>
-          <div id="action-buttons">
-            <button id="btn-explore" type="button"></button>
-            <button id="btn-travel" type="button"></button>
-            <button id="btn-desperate" type="button"></button>
-          </div>
-          <div id="story-log"></div>
-          <div id="encounter-choices"></div>
+    <canvas id="fx-canvas"></canvas>
+    <div id="bridge-scene" aria-hidden="true"></div>
+
+    <div id="start-screen">
+      <div class="start-card">
+        <h1>RIFT RAILS</h1>
+        <p>
+          Command the <strong>Aethelgard Express</strong> across the infinite
+          Ley-Rails. Keep the train fueled and intact.
+        </p>
+        <div class="briefing-box">
+          <b>HOW TO PLAY:</b><br />
+          [1] <b>EXPLORE:</b> Spend Energy to reveal actions.<br />
+          [2] <b>GATHER:</b> Collect Fuel and Flux.<br />
+          [3] <b>UPGRADE:</b> Spend Flux in the Workshop.<br />
+          [4] <b>RIFT JUMP:</b> Spend Fuel to reach the next realm and restore
+          Energy.
         </div>
-        <nav id="bottom-nav">
-          <button id="tab-settings" type="button"></button>
-          <button id="tab-sensors" type="button"></button>
-          <button id="tab-bridge" type="button"></button>
-          <button id="tab-forge" type="button"></button>
-          <button id="tab-manual" type="button"></button>
-        </nav>
-        <div id="corvus-portrait">
-          <div id="robe"></div>
-          <div id="eye-sockets">
-            <div id="eye-glow-left"></div>
-            <div id="eye-glow-right"></div>
-          </div>
-          <div id="beak"></div>
-          <div id="mask"></div>
-          <div id="sparkle"></div>
-          <div id="veil"></div>
-        </div>
-        <div id="nav-screen">
-          <h2 id="lbl-nav-title"></h2>
-          <div id="nav-choices"></div>
-          <div id="nav-vector">
-            <svg id="rift-vector-scale">
-              <g id="rift-vector-mesh"></g>
-              <g id="rift-vector-needle"></g>
-            </svg>
-            <span id="vector-slot-0"></span>
-            <span id="vector-slot-1"></span>
-            <span id="vector-slot-solo"></span>
-            <span id="nav-vector-status"></span>
-          </div>
-        </div>
-        <div id="tutorial-cue"></div>
-        <div id="cutscene-overlay">
-          <div id="cutscene-speaker"></div>
-          <div id="cutscene-body"></div>
-          <div id="cutscene-progress"></div>
-          <div id="cutscene-choices"></div>
-          <button id="cutscene-btn-a" type="button"></button>
-          <button id="cutscene-btn-b" type="button"></button>
-        </div>
-        <canvas id="fx-canvas"></canvas>
+        <p style="font-size: 0.82em; color: var(--text-muted)">
+          Select a HUD stat for help. Progress auto-saves after each Rift Jump.
+        </p>
+        <button class="btn-start" id="btn-ignite"></button>
+        <button
+          id="btn-start-fresh"
+          class="btn-new-game"
+          style="display: none"
+        ></button>
       </div>
     </div>
+
+    <div id="nav-screen">
+      <h1 id="lbl-nav-title"></h1>
+      <div id="nav-choices"></div>
+      <div
+        id="nav-vector"
+        class="instrument"
+        tabindex="0"
+        role="button"
+        aria-label="Rift vector dial. Drag or tap a vector once to choose it, then tap again to confirm."
+      >
+        <div class="dial-plate-head">
+          <span class="dial-badge" aria-hidden="true">
+            <svg viewBox="0 0 8 8"><path d="M0 1h8v1H0zM0 3h8v1H0zM0 5h8v1H0zM0 7h5v1H0z"/></svg>
+          </span>
+          <span class="dial-title">RIFT VECTOR</span>
+          <span class="dial-code">RV-02</span>
+        </div>
+        <div class="dial-face">
+        <svg viewBox="0 0 160 160" aria-hidden="true">
+          <defs>
+            <pattern
+              id="rift-vector-mesh"
+              width="6"
+              height="6"
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(45)"
+            >
+              <path d="M0 0h6M0 6h6" stroke="var(--border-bright)" stroke-width="0.4" fill="none"/>
+            </pattern>
+          </defs>
+          <path
+            id="rift-vector-scale"
+            d="M20 80A52 52 0 1 1 140 80"
+            fill="none"
+            stroke="var(--border-bright)"
+            stroke-width="2"
+          />
+          <circle cx="80" cy="80" r="52" fill="url(#rift-vector-mesh)" opacity="0.24"/>
+          <g class="vector-ticks" aria-hidden="true">
+            <rect x="27.2" y="42.4" width="4" height="4"/>
+            <rect x="37.1" y="31.4" width="4" height="4"/>
+            <rect x="49.4" y="23.0" width="4" height="4"/>
+            <rect x="63.3" y="17.8" width="4" height="4"/>
+            <rect x="78" y="16" width="4" height="4"/>
+            <rect x="92.7" y="17.8" width="4" height="4"/>
+            <rect x="106.6" y="23.0" width="4" height="4"/>
+            <rect x="118.9" y="31.4" width="4" height="4"/>
+            <rect x="128.8" y="42.4" width="4" height="4"/>
+          </g>
+          <g id="vector-slot-0" class="vector-slot" data-slot="0">
+            <rect x="31" y="44" width="12" height="12"/>
+            <rect class="vector-slot-dot" x="34" y="47" width="6" height="6"/>
+            <path d="M37 56L45 64"/>
+            <text class="vector-label" x="37" y="37" text-anchor="middle">V1</text>
+          </g>
+          <g id="vector-slot-1" class="vector-slot" data-slot="1">
+            <rect x="117" y="44" width="12" height="12"/>
+            <rect class="vector-slot-dot" x="120" y="47" width="6" height="6"/>
+            <path d="M123 56L115 64"/>
+            <text class="vector-label" x="123" y="37" text-anchor="middle">V2</text>
+          </g>
+          <g id="vector-slot-solo" class="vector-slot" data-slot="0">
+            <rect x="126" y="74" width="12" height="12"/>
+            <rect class="vector-slot-dot" x="129" y="77" width="6" height="6"/>
+            <path d="M126 80L118 88"/>
+            <text class="vector-label" x="132" y="68" text-anchor="middle">V1</text>
+          </g>
+          <g
+            id="rift-vector-needle"
+            transform="rotate(0 80 80)"
+            data-pivot="80 80"
+          >
+            <path d="M80 22 L84.5 78 L80 90 L75.5 78 Z"/>
+            <circle cx="80" cy="80" r="4" fill="var(--action)"/>
+          </g>
+          <title>Rift Vector</title>
+          <desc>Rift charge vector</desc>
+        </svg>
+        </div>
+        <span id="nav-vector-status" aria-live="polite">Vector idle</span>
+      </div>
+    </div>
+
+    <div id="game-container">
+      <div id="hud-bar">
+        <div class="hud-cell" onclick="Engine.inspect('hull')">
+          <span>Hull [HP]</span>
+          <span id="stat-hull"></span>
+        </div>
+        <div class="hud-cell" onclick="Engine.inspect('fuel')">
+          <span>Fuel [Jump]</span>
+          <span id="stat-fuel"></span>
+        </div>
+        <div class="hud-cell" onclick="Engine.inspect('energy')">
+          <span>Energy [Turn]</span>
+          <span id="stat-energy"></span>
+        </div>
+        <div class="hud-cell" onclick="Engine.inspect('flux')">
+          <span>Flux [Cred]</span>
+          <span id="stat-flux"></span>
+        </div>
+        <div class="hud-cell" onclick="Engine.inspect('sector')">
+          <span>Sector</span>
+          <span id="stat-sector"></span>
+        </div>
+      </div>
+
+      <div id="snap-slider">
+        <!-- PANE 0: SETTINGS -->
+        <div class="pane" id="pane-settings">
+          <div class="panel-card">
+            <h2>Conduit Settings</h2>
+            <div class="settings-content">
+              <div class="settings-section">
+                <h3 style="color: var(--action); letter-spacing: 1px">
+                  [ ACOUSTIC LEY SOUNDSCAPES ]
+                </h3>
+                <div class="audio-control-row">
+                  <label for="select-ambient-mode">Soundscape</label>
+                  <select id="select-ambient-mode" class="audio-select">
+                    <option value="rails" selected>
+                      Ley-Rail Rhythm (Kinetic)
+                    </option>
+                    <option value="telemetry">Bridge Telemetry (Lo-Fi)</option>
+                    <option value="none">Mute Ambient (Off)</option>
+                  </select>
+                </div>
+                <div class="audio-control-row">
+                  <label for="slider-ambient-vol">Ambient Vol</label>
+                  <input
+                    type="range"
+                    id="slider-ambient-vol"
+                    class="audio-slider"
+                    min="0"
+                    max="100"
+                    value="100"
+                  />
+                  <span id="lbl-ambient-vol">100%</span>
+                </div>
+                <div class="audio-control-row">
+                  <label for="slider-sfx-vol">Subsystem SFX</label>
+                  <input
+                    type="range"
+                    id="slider-sfx-vol"
+                    class="audio-slider"
+                    min="0"
+                    max="100"
+                    value="100"
+                  />
+                  <span id="lbl-sfx-vol">100%</span>
+                </div>
+                <button
+                  id="btn-toggle-mute"
+                  class="btn-action"
+                  style="margin-top: 8px"
+                >
+                  Mute Audio: OFF
+                </button>
+              </div>
+
+              <div class="settings-section">
+                <h3 style="color: var(--success); letter-spacing: 1px">
+                  [ LOCAL ARCHIVE // ONLINE ]
+                </h3>
+                <p>
+                  <b>Auto-Save Status:</b> Active. Voyage telemetry is
+                  automatically stored to your conduit after every Rift Jump.
+                </p>
+                <p
+                  style="
+                    font-size: 0.85em;
+                    color: var(--text-muted);
+                    margin-top: 6px;
+                  "
+                >
+                  Catastrophic breaches or void-stranding automatically clear
+                  the archive for subsequent journeys.
+                </p>
+                <button
+                  id="btn-reset-save"
+                  class="btn-new-game"
+                  style="margin-top: 14px"
+                ></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 1: SENSORS -->
+        <div class="pane" id="pane-sensors">
+          <div class="panel-card">
+            <h2>Sensors & Telemetry</h2>
+            <div id="art-display">
+              <div id="art-glyph">:: SCANNING ::</div>
+              <span id="art-label">SIGNAL LOCKED</span>
+            </div>
+            <h2>Atmospheric Reading</h2>
+            <div class="telemetry-grid">
+              <div class="hud-cell" onclick="Engine.inspect('rep')">
+                <span>Reputation</span>
+                <span id="stat-rep"></span>
+              </div>
+              <div class="hud-cell" onclick="Engine.inspect('node')">
+                <span>Sector Node</span>
+                <span id="dim-type-codex"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 2: TACTICAL BRIDGE & CUTSCENE LOG -->
+        <div class="pane" id="pane-bridge">
+          <div class="panel-card">
+            <h2 id="location-name" tabindex="-1"></h2>
+            <h3 id="location-type"></h3>
+
+            <figure
+              id="corvus-portrait"
+              aria-label="Master Corvus, veiled scholar"
+            >
+              <svg viewBox="0 0 400 520" aria-hidden="true">
+                <defs>
+                  <radialGradient id="eye-glow-left" cx="37%" cy="38%" r="40%">
+                    <stop offset="0%" stop-color="#FFF5D6"/>
+                    <stop offset="25%" stop-color="#FFC02B"/>
+                    <stop offset="60%" stop-color="#D97706"/>
+                    <stop offset="100%" stop-color="#7C2D12" stop-opacity="0"/>
+                  </radialGradient>
+                  <radialGradient id="eye-glow-right" cx="63%" cy="38%" r="40%">
+                    <stop offset="0%" stop-color="#FFF5D6"/>
+                    <stop offset="25%" stop-color="#FFC02B"/>
+                    <stop offset="60%" stop-color="#D97706"/>
+                    <stop offset="100%" stop-color="#7C2D12" stop-opacity="0"/>
+                  </radialGradient>
+                  <g id="sparkle">
+                    <path d="M 0,-8 Q 0,0 8,0 Q 0,0 0,8 Q 0,0 -8,0 Q 0,0 0,-8 Z" fill="#FFEAA7" opacity="0.8"/>
+                  </g>
+                </defs>
+                <g class="corvus-figure">
+                  <g id="robe">
+                    <polygon points="0,520 80,420 200,480 320,420 400,520" fill="#0B0F19"/>
+                    <polygon points="0,520 0,380 70,300 120,410 80,420" fill="#181F2C"/>
+                    <polygon points="0,380 50,250 110,290 70,300" fill="#222B3D"/>
+                    <polygon points="70,300 110,290 150,370 120,410" fill="#1C2436"/>
+                    <polygon points="120,410 150,370 200,440 140,520 80,420" fill="#131A26"/>
+                    <polygon points="400,520 400,380 330,300 280,410 320,420" fill="#121824"/>
+                    <polygon points="400,380 350,250 290,290 330,300" fill="#1A2232"/>
+                    <polygon points="330,300 290,290 250,370 280,410" fill="#161D2B"/>
+                    <polygon points="280,410 250,370 200,440 260,520 320,420" fill="#0F141F"/>
+                    <polygon points="150,370 200,330 250,370 200,440" fill="#0D121D"/>
+                    <polygon points="130,320 200,280 270,320 250,370 150,370" fill="#141B28"/>
+                    <polygon points="160,260 200,230 240,260 270,320 130,320" fill="#0A0E17"/>
+                  </g>
+                  <g id="veil">
+                    <polygon points="200,48 260,70 200,105 140,70" fill="#3D4B5E"/>
+                    <polygon points="200,48 140,70 90,130 150,115 200,105" fill="#4B5B72"/>
+                    <polygon points="200,48 260,70 310,130 250,115 200,105" fill="#2F3B4C"/>
+                    <polygon points="90,130 50,220 110,210 150,115" fill="#3A4759"/>
+                    <polygon points="50,220 0,380 70,300 110,210" fill="#2C3747"/>
+                    <polygon points="110,210 70,300 130,320 160,260" fill="#242F3D"/>
+                    <polygon points="310,130 350,220 290,210 250,115" fill="#242E3D"/>
+                    <polygon points="350,220 400,380 330,300 290,210" fill="#1A222E"/>
+                    <polygon points="290,210 330,300 270,320 240,260" fill="#1D2634"/>
+                    <polygon points="150,115 200,105 250,115 220,135 180,135" fill="#586A85"/>
+                    <polygon points="150,115 180,135 140,190 110,210" fill="#46546B"/>
+                    <polygon points="250,115 220,135 260,190 290,210" fill="#323E50"/>
+                  </g>
+                  <g id="mask">
+                    <polygon points="140,190 180,135 220,135 260,190 270,320 130,320" fill="#04060A"/>
+                    <polygon points="180,135 200,130 220,135 200,155" fill="#12151F"/>
+                    <polygon points="140,190 180,135 200,155 160,200" fill="#1A1E2B"/>
+                    <polygon points="260,190 220,135 200,155 240,200" fill="#0D0F18"/>
+                    <polygon points="160,200 200,155 200,230 150,250" fill="#151824"/>
+                    <polygon points="240,200 200,155 200,230 250,250" fill="#090B12"/>
+                  </g>
+                  <g id="beak">
+                    <polygon points="200,180 206,240 200,320 194,240" fill="#2B313E"/>
+                    <polygon points="200,180 194,240 160,260" fill="#202531"/>
+                    <polygon points="194,240 200,320 170,310 160,260" fill="#181D27"/>
+                    <polygon points="200,320 206,390 196,380 170,310" fill="#11151F"/>
+                    <polygon points="200,320 203,420 196,380" fill="#1D222E"/>
+                    <polygon points="200,180 206,240 240,260" fill="#171A24"/>
+                    <polygon points="206,240 200,320 230,310 240,260" fill="#10131B"/>
+                    <polygon points="200,320 206,390 230,310" fill="#0A0C12"/>
+                    <polygon points="200,320 203,420 206,390" fill="#0F1219"/>
+                    <polygon points="200,320 208,410 203,425 197,410" fill="#3A4252"/>
+                  </g>
+                  <g id="eye-sockets">
+                    <g class="corvus-eye-socket left">
+                      <polygon points="148,190 178,185 182,215 152,220" fill="#07090E" stroke="#1C2230" stroke-width="1.5"/>
+                      <circle cx="165" cy="200" r="28" fill="url(#eye-glow-left)"/>
+                      <polygon points="154,193 174,189 177,211 157,214" fill="#B45309"/>
+                      <g class="corvus-eye-pupil">
+                        <polygon points="158,196 170,193 172,208 160,210" fill="#FBBF24"/>
+                        <polygon class="corvus-eye-glint" points="161,198 167,196 168,205 162,206" fill="#FFFBEB"/>
+                      </g>
+                    </g>
+                    <g class="corvus-eye-socket right">
+                      <polygon points="222,185 252,190 248,220 218,215" fill="#040508" stroke="#141824" stroke-width="1.5"/>
+                      <circle cx="235" cy="200" r="28" fill="url(#eye-glow-right)"/>
+                      <polygon points="226,189 246,193 243,214 223,211" fill="#B45309"/>
+                      <g class="corvus-eye-pupil">
+                        <polygon points="230,193 242,196 240,210 228,208" fill="#FBBF24"/>
+                        <polygon class="corvus-eye-glint" points="233,196 239,198 238,206 232,205" fill="#FFFBEB"/>
+                      </g>
+                    </g>
+                    <use href="#sparkle" x="145" y="175" transform="scale(0.7)"/>
+                    <use href="#sparkle" x="255" y="175" transform="scale(0.7)"/>
+                    <use href="#sparkle" x="175" y="225" transform="scale(0.5)"/>
+                    <use href="#sparkle" x="225" y="225" transform="scale(0.5)"/>
+                    <use href="#sparkle" x="340" y="460" transform="scale(1.2)"/>
+                  </g>
+                </g>
+              </svg>
+            </figure>
+
+            <div id="story-log"></div>
+
+            <div id="action-buttons">
+              <button id="btn-explore" class="btn-energy"></button>
+              <button id="btn-travel" class="btn-travel"></button>
+            </div>
+            <button
+              id="btn-desperate"
+              class="btn-desperate"
+              style="display: none"
+            ></button>
+            <div id="encounter-choices"></div>
+          </div>
+        </div>
+
+        <!-- PANE 3: WORKSHOP & FORGE -->
+        <div class="pane" id="pane-forge">
+          <div class="panel-card" id="right-panel">
+            <h2>Train Configuration</h2>
+            <div class="train-setup-grid">
+              <div class="hud-cell" onclick="Engine.inspect('engine')">
+                <span>Engine</span>
+                <span id="equip-engine"></span>
+              </div>
+              <div class="hud-cell" onclick="Engine.inspect('weapon')">
+                <span>Weapon</span>
+                <span id="equip-weapon"></span>
+              </div>
+              <div class="hud-cell" onclick="Engine.inspect('module')">
+                <span>Module</span>
+                <span id="equip-module"></span>
+              </div>
+              <div class="hud-cell" onclick="Engine.inspect('carriage')">
+                <span>Carriage</span>
+                <span id="equip-carriage"></span>
+              </div>
+              <div
+                class="hud-cell"
+                style="grid-column: span 2"
+                onclick="Engine.inspect('crew')"
+              >
+                <span>Crew Member</span>
+                <span id="equip-crew"></span>
+              </div>
+            </div>
+
+            <h4 style="margin: 6px 0" id="lbl-forge"></h4>
+            <button id="btn-forge-engine"></button>
+            <button id="btn-forge-weapon"></button>
+          </div>
+        </div>
+
+        <!-- PANE 4: MANUAL -->
+        <div class="pane" id="pane-manual">
+          <div class="panel-card">
+            <h2>Operations Manual</h2>
+            <div class="manual-content">
+              <div class="manual-section">
+                <h3>[1] Operational Cycle</h3>
+                <p>
+                  1. <b>EXPLORE:</b> Spends Energy (EN) on the Bridge to survey
+                  the local realm and open station gates.
+                </p>
+                <p>
+                  2. <b>RESOLVE:</b> Execute revealed rites (Siphon Fuel,
+                  Harvest Flux, Hunt Voidbeasts, or Trade at Hubs).
+                </p>
+                <p>
+                  3. <b>UPGRADE:</b> Access the Workshop to mutate train
+                  components.
+                </p>
+                <p>
+                  4. <b>RIFT JUMP:</b> When EN is exhausted, initiate a Jump to
+                  advance. EN replenishes completely upon realm breach.
+                </p>
+              </div>
+
+              <div class="manual-section">
+                <h3>[2] Telemetry Matrix</h3>
+                <p>
+                  • <b>Hull:</b> Warded iron plating. Reaching 0% causes
+                  catastrophic destruction.
+                </p>
+                <p>
+                  • <b>Fuel:</b> Inter-realm propulsion reserves. Does not
+                  auto-recharge. Must be siphoned or bought.
+                </p>
+                <p>
+                  • <b>Energy:</b> Dimension-local operational capacity. Fully
+                  resets to engine maximum after every jump.
+                </p>
+                <p>
+                  • <b>Flux:</b> Catalytic alchemical currency for Workshop
+                  mutations and Hub bazaar items.
+                </p>
+              </div>
+
+              <div class="manual-section">
+                <h3>[3] Engine Mass Tradeoff</h3>
+                <p>
+                  • Mutating the <b>Crucible Engine</b> increases Max EN per
+                  sector.
+                </p>
+                <p>
+                  • Increased engine mass raises the
+                  <b>Fuel cost per Rift Jump</b>. Ensure you secure fuel before
+                  upgrading.
+                </p>
+              </div>
+
+              <div class="manual-section">
+                <h3>[4] Contingency Protocol</h3>
+                <p>
+                  • If Fuel drops below the jump threshold, use
+                  <b>Strip Plating</b> on the Bridge to convert Hull into
+                  emergency Fuel.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="bottom-nav">
+        <button class="nav-tab" id="tab-settings">Settings</button>
+        <button class="nav-tab" id="tab-sensors">Sensors</button>
+        <button class="nav-tab active" id="tab-bridge">Bridge</button>
+        <button class="nav-tab" id="tab-forge">Workshop</button>
+        <button class="nav-tab" id="tab-manual">Manual</button>
+      </div>
+    </div>
+
+    <!-- CUTSCENE OVERLAY CONTAINER -->
+    <div
+      id="cutscene-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cutscene-speaker"
+      aria-describedby="cutscene-body"
+      hidden
+    >
+      <section class="cutscene-frame">
+        <img
+          class="cutscene-portrait"
+          src="assets/corvus.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <div class="cutscene-header">
+          <span class="cutscene-speaker" id="cutscene-speaker">
+            <span aria-hidden="true">⚜</span> MASTER CORVUS // VEILED SCHOLAR
+          </span>
+          <span id="cutscene-progress" class="cutscene-pips"></span>
+        </div>
+        <div id="cutscene-body" class="cutscene-text" aria-live="polite"></div>
+        <div id="cutscene-choices" class="cutscene-options">
+          <button
+            class="btn-cutscene-choice"
+            id="cutscene-btn-a"
+            type="button"
+          ></button>
+          <button
+            class="btn-cutscene-choice"
+            id="cutscene-btn-b"
+            type="button"
+          ></button>
+        </div>
+      </section>
+    </div>
+    <div id="tutorial-cue" role="status" hidden></div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
