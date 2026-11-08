@@ -7,145 +7,137 @@ interface WebkitWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
 }
 
-export const SoundFX = {
-  ctx: null as AudioContext | null,
-  masterGain: null as GainNode | null,
-  ambientGain: null as GainNode | null,
-  sfxGain: null as GainNode | null,
-  isMuted: false,
-  ambientSliderVal: 100,
-  sfxSliderVal: 100,
-  ambientVolume: 1.0,
-  sfxVolume: 1.0,
-  ambientMode: "rails" as AmbientMode,
-  currentThemeKey: "Fractured",
+export class SoundFXService {
+  ctx: AudioContext | null = null;
+  masterGain: GainNode | null = null;
+  ambientGain: GainNode | null = null;
+  sfxGain: GainNode | null = null;
+  isMuted = false;
+  ambientSliderVal = 100;
+  sfxSliderVal = 100;
+  ambientVolume = 1.0;
+  sfxVolume = 1.0;
+  ambientMode: AmbientMode = "rails";
+  currentThemeKey = "Fractured";
 
-  railsTimer: null as number | null,
-  railsStep: 0,
-  telemetryTimer: null as number | null,
+  railsTimer: number | null = null;
+  railsStep = 0;
+  telemetryTimer: number | null = null;
 
   sliderToGain(sliderVal: number): number {
     const clamped = Math.max(0, Math.min(100, sliderVal));
     if (clamped <= 0) return 0;
     return Math.pow(clamped / 100, GAME_DATA.audio.LOG_AUDIO_EXPONENT);
-  },
+  }
 
   init(): void {
-    if (!SoundFX.ctx) {
+    if (!this.ctx) {
       const AudioContextCtor = window.AudioContext || (window as WebkitWindow).webkitAudioContext;
       if (AudioContextCtor) {
-        SoundFX.ctx = new AudioContextCtor();
+        this.ctx = new AudioContextCtor();
 
-        SoundFX.masterGain = SoundFX.ctx.createGain();
-        SoundFX.masterGain.gain.setValueAtTime(SoundFX.isMuted ? 0 : 1.0, SoundFX.ctx.currentTime);
-        SoundFX.masterGain.connect(SoundFX.ctx.destination);
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1.0, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
 
-        SoundFX.sfxGain = SoundFX.ctx.createGain();
-        SoundFX.sfxGain.gain.setValueAtTime(SoundFX.sfxVolume, SoundFX.ctx.currentTime);
-        SoundFX.sfxGain.connect(SoundFX.masterGain);
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.setValueAtTime(this.sfxVolume, this.ctx.currentTime);
+        this.sfxGain.connect(this.masterGain);
 
-        SoundFX.ambientGain = SoundFX.ctx.createGain();
-        SoundFX.ambientGain.gain.setValueAtTime(SoundFX.ambientVolume, SoundFX.ctx.currentTime);
-        SoundFX.ambientGain.connect(SoundFX.masterGain);
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.setValueAtTime(this.ambientVolume, this.ctx.currentTime);
+        this.ambientGain.connect(this.masterGain);
 
-        SoundFX.startActiveSoundscape();
+        this.startActiveSoundscape();
       }
     }
-    if (SoundFX.ctx && SoundFX.ctx.state === "suspended") {
-      void SoundFX.ctx.resume();
+    if (this.ctx && this.ctx.state === "suspended") {
+      void this.ctx.resume();
     }
-  },
+  }
 
   stopAllAmbient(): void {
-    if (SoundFX.railsTimer !== null) clearInterval(SoundFX.railsTimer);
-    if (SoundFX.telemetryTimer !== null) clearTimeout(SoundFX.telemetryTimer);
-  },
+    if (this.railsTimer !== null) clearInterval(this.railsTimer);
+    if (this.telemetryTimer !== null) clearTimeout(this.telemetryTimer);
+  }
 
   startActiveSoundscape(): void {
-    if (!SoundFX.ctx || !SoundFX.ambientGain) return;
-    SoundFX.stopAllAmbient();
+    if (!this.ctx || !this.ambientGain) return;
+    this.stopAllAmbient();
 
     const phase = VoyageSession.getPhase();
     if (
       phase === GAME_DATA.phases.dead ||
       phase === GAME_DATA.phases.stranded ||
-      SoundFX.ambientMode === "none"
+      this.ambientMode === "none"
     ) {
       return;
     }
 
-    switch (SoundFX.ambientMode) {
+    switch (this.ambientMode) {
       case "rails":
-        SoundFX.startRailsEngine();
+        this.startRailsEngine();
         break;
       case "telemetry":
-        SoundFX.startTelemetryEngine();
+        this.startTelemetryEngine();
         break;
     }
-  },
+  }
 
   setAmbientMode(mode: AmbientMode): void {
-    SoundFX.ambientMode = mode;
+    this.ambientMode = mode;
     SaveSystem.saveAudioPrefs();
-    if (SoundFX.ctx) SoundFX.startActiveSoundscape();
-  },
+    if (this.ctx) this.startActiveSoundscape();
+  }
 
   setAmbientVolume(sliderVal: number): void {
-    SoundFX.ambientSliderVal = sliderVal;
-    SoundFX.ambientVolume = SoundFX.sliderToGain(sliderVal);
+    this.ambientSliderVal = sliderVal;
+    this.ambientVolume = this.sliderToGain(sliderVal);
     SaveSystem.saveAudioPrefs();
-    if (SoundFX.ambientGain && SoundFX.ctx) {
-      SoundFX.ambientGain.gain.setTargetAtTime(
-        SoundFX.ambientVolume,
-        SoundFX.ctx.currentTime,
-        0.05,
-      );
+    if (this.ambientGain && this.ctx) {
+      this.ambientGain.gain.setTargetAtTime(this.ambientVolume, this.ctx.currentTime, 0.05);
     }
-  },
+  }
 
   setSfxVolume(sliderVal: number): void {
-    SoundFX.sfxSliderVal = sliderVal;
-    SoundFX.sfxVolume = SoundFX.sliderToGain(sliderVal);
+    this.sfxSliderVal = sliderVal;
+    this.sfxVolume = this.sliderToGain(sliderVal);
     SaveSystem.saveAudioPrefs();
-    if (SoundFX.sfxGain && SoundFX.ctx) {
-      SoundFX.sfxGain.gain.setTargetAtTime(SoundFX.sfxVolume, SoundFX.ctx.currentTime, 0.05);
+    if (this.sfxGain && this.ctx) {
+      this.sfxGain.gain.setTargetAtTime(this.sfxVolume, this.ctx.currentTime, 0.05);
     }
-  },
+  }
 
   toggleMute(): boolean {
-    SoundFX.isMuted = !SoundFX.isMuted;
+    this.isMuted = !this.isMuted;
     SaveSystem.saveAudioPrefs();
-    if (SoundFX.masterGain && SoundFX.ctx) {
-      SoundFX.masterGain.gain.setTargetAtTime(
-        SoundFX.isMuted ? 0 : 1,
-        SoundFX.ctx.currentTime,
-        0.05,
-      );
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime, 0.05);
     }
-    return SoundFX.isMuted;
-  },
+    return this.isMuted;
+  }
 
   startRailsEngine(): void {
-    SoundFX.railsStep = 0;
+    this.railsStep = 0;
     const interval = 195;
 
-    SoundFX.railsTimer = window.setInterval(() => {
-      if (!SoundFX.ctx) return;
-      if (SoundFX.railsStep === 0) SoundFX.playRailClick(true);
-      else if (SoundFX.railsStep === 1) SoundFX.playRailClick(false);
-      else if (SoundFX.railsStep === 2) SoundFX.playRailClick(true);
+    this.railsTimer = window.setInterval(() => {
+      if (!this.ctx) return;
+      if (this.railsStep === 0) this.playRailClick(true);
+      else if (this.railsStep === 1) this.playRailClick(false);
+      else if (this.railsStep === 2) this.playRailClick(true);
 
-      SoundFX.railsStep = (SoundFX.railsStep + 1) % 4;
+      this.railsStep = (this.railsStep + 1) % 4;
     }, interval);
-  },
+  }
 
   playRailClick(isAccent: boolean): void {
-    if (!SoundFX.ctx || !SoundFX.ambientGain) return;
-    const now = SoundFX.ctx.currentTime;
+    if (!this.ctx || !this.ambientGain) return;
+    const now = this.ctx.currentTime;
 
-    const osc = SoundFX.ctx.createOscillator();
-    const filter = SoundFX.ctx.createBiquadFilter();
-    const gain = SoundFX.ctx.createGain();
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
 
     osc.type = isAccent ? "triangle" : "sine";
     osc.frequency.setValueAtTime(isAccent ? 140 : 95, now);
@@ -159,30 +151,30 @@ export const SoundFX = {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(SoundFX.ambientGain);
+    gain.connect(this.ambientGain);
 
     osc.start(now);
     osc.stop(now + 0.04);
-  },
+  }
 
   startTelemetryEngine(): void {
     const scheduleNext = (): void => {
       const delay = 140 + Math.random() * 680;
-      SoundFX.telemetryTimer = window.setTimeout(() => {
-        SoundFX.playTelemetryBlip();
+      this.telemetryTimer = window.setTimeout(() => {
+        this.playTelemetryBlip();
         scheduleNext();
       }, delay);
     };
     scheduleNext();
-  },
+  }
 
   playTelemetryBlip(): void {
-    if (!SoundFX.ctx || !SoundFX.ambientGain) return;
-    const now = SoundFX.ctx.currentTime;
+    if (!this.ctx || !this.ambientGain) return;
+    const now = this.ctx.currentTime;
     const isPing = Math.random() < 0.22;
 
-    const osc = SoundFX.ctx.createOscillator();
-    const gain = SoundFX.ctx.createGain();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
 
     if (isPing) {
       osc.type = "sine";
@@ -201,35 +193,35 @@ export const SoundFX = {
     }
 
     osc.connect(gain);
-    gain.connect(SoundFX.ambientGain);
-  },
+    gain.connect(this.ambientGain);
+  }
 
   updateAmbientTheme(adjective: string): void {
-    SoundFX.currentThemeKey = adjective;
-  },
+    this.currentThemeKey = adjective;
+  }
 
   duckAmbientForJump(durationSec: number): void {
-    if (!SoundFX.ctx || !SoundFX.ambientGain) return;
-    const now = SoundFX.ctx.currentTime;
-    SoundFX.ambientGain.gain.setValueAtTime(SoundFX.ambientGain.gain.value, now);
-    SoundFX.ambientGain.gain.linearRampToValueAtTime(0.02, now + durationSec * 0.4);
-    SoundFX.ambientGain.gain.linearRampToValueAtTime(SoundFX.ambientVolume, now + durationSec);
-  },
+    if (!this.ctx || !this.ambientGain) return;
+    const now = this.ctx.currentTime;
+    this.ambientGain.gain.setValueAtTime(this.ambientGain.gain.value, now);
+    this.ambientGain.gain.linearRampToValueAtTime(0.02, now + durationSec * 0.4);
+    this.ambientGain.gain.linearRampToValueAtTime(this.ambientVolume, now + durationSec);
+  }
 
   silenceOnDeath(): void {
-    SoundFX.stopAllAmbient();
-    if (!SoundFX.ctx || !SoundFX.ambientGain) return;
-    const now = SoundFX.ctx.currentTime;
-    SoundFX.ambientGain.gain.linearRampToValueAtTime(0.0001, now + 1.5);
-  },
+    this.stopAllAmbient();
+    if (!this.ctx || !this.ambientGain) return;
+    const now = this.ctx.currentTime;
+    this.ambientGain.gain.linearRampToValueAtTime(0.0001, now + 1.5);
+  }
 
   playJumpCharge(breachSec: number): void {
-    if (!SoundFX.ctx) return;
-    SoundFX.duckAmbientForJump(breachSec + 0.6);
-    const now = SoundFX.ctx.currentTime;
+    if (!this.ctx) return;
+    this.duckAmbientForJump(breachSec + 0.6);
+    const now = this.ctx.currentTime;
 
-    const osc1 = SoundFX.ctx.createOscillator();
-    const gain1 = SoundFX.ctx.createGain();
+    const osc1 = this.ctx.createOscillator();
+    const gain1 = this.ctx.createGain();
     osc1.type = "sawtooth";
     osc1.frequency.setValueAtTime(GAME_DATA.audio.chargeRumbleStartFreq, now);
     osc1.frequency.exponentialRampToValueAtTime(
@@ -241,7 +233,7 @@ export const SoundFX = {
     gain1.gain.linearRampToValueAtTime(0.2, now + breachSec * 0.9);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + breachSec + 0.04);
 
-    const filter = SoundFX.ctx.createBiquadFilter();
+    const filter = this.ctx.createBiquadFilter();
     filter.type = "bandpass";
     filter.frequency.setValueAtTime(GAME_DATA.audio.chargeBandpassStartFreq, now);
     filter.frequency.exponentialRampToValueAtTime(
@@ -252,10 +244,10 @@ export const SoundFX = {
 
     osc1.connect(filter);
     filter.connect(gain1);
-    gain1.connect(SoundFX.sfxGain!);
+    gain1.connect(this.sfxGain!);
 
-    const osc2 = SoundFX.ctx.createOscillator();
-    const gain2 = SoundFX.ctx.createGain();
+    const osc2 = this.ctx.createOscillator();
+    const gain2 = this.ctx.createGain();
     osc2.type = "sine";
     osc2.frequency.setValueAtTime(GAME_DATA.audio.chargeWhistleStartFreq, now);
     osc2.frequency.exponentialRampToValueAtTime(
@@ -268,19 +260,19 @@ export const SoundFX = {
     gain2.gain.exponentialRampToValueAtTime(0.001, now + breachSec + 0.04);
 
     osc2.connect(gain2);
-    gain2.connect(SoundFX.sfxGain!);
+    gain2.connect(this.sfxGain!);
 
     osc1.start(now);
     osc2.start(now);
     osc1.stop(now + breachSec + 0.05);
     osc2.stop(now + breachSec + 0.05);
-  },
+  }
 
   playArrivalChime(): void {
-    if (!SoundFX.ctx) return;
-    const now = SoundFX.ctx.currentTime;
-    const osc = SoundFX.ctx.createOscillator();
-    const gain = SoundFX.ctx.createGain();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
 
     osc.type = "triangle";
     osc.frequency.setValueAtTime(GAME_DATA.audio.chimeNoteStart, now);
@@ -290,16 +282,16 @@ export const SoundFX = {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
     osc.connect(gain);
-    gain.connect(SoundFX.sfxGain!);
+    gain.connect(this.sfxGain!);
     osc.start(now);
     osc.stop(now + 0.55);
-  },
+  }
 
   playDialogueChime(): void {
-    if (!SoundFX.ctx) return;
-    const now = SoundFX.ctx.currentTime;
-    const osc = SoundFX.ctx.createOscillator();
-    const gain = SoundFX.ctx.createGain();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
 
     osc.type = "sine";
     osc.frequency.setValueAtTime(GAME_DATA.audio.dialogueChimeFreq, now);
@@ -307,17 +299,17 @@ export const SoundFX = {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
 
     osc.connect(gain);
-    gain.connect(SoundFX.sfxGain!);
+    gain.connect(this.sfxGain!);
     osc.start(now);
     osc.stop(now + 0.22);
-  },
+  }
 
   playActionSuccess(): void {
-    if (!SoundFX.ctx || SoundFX.isMuted) return;
+    if (!this.ctx || this.isMuted) return;
     try {
-      const now = SoundFX.ctx.currentTime;
-      const osc = SoundFX.ctx.createOscillator();
-      const gain = SoundFX.ctx.createGain();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
       osc.type = "triangle";
       osc.frequency.setValueAtTime(523.25, now);
       osc.frequency.setValueAtTime(659.25, now + 0.06);
@@ -327,20 +319,20 @@ export const SoundFX = {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
 
       osc.connect(gain);
-      gain.connect(SoundFX.sfxGain!);
+      gain.connect(this.sfxGain!);
       osc.start(now);
       osc.stop(now + 0.3);
     } catch {
       // Ignore audio device errors; gameplay continues silently.
     }
-  },
+  }
 
   playActionDamage(): void {
-    if (!SoundFX.ctx || SoundFX.isMuted) return;
+    if (!this.ctx || this.isMuted) return;
     try {
-      const now = SoundFX.ctx.currentTime;
-      const osc = SoundFX.ctx.createOscillator();
-      const gain = SoundFX.ctx.createGain();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
       osc.type = "sawtooth";
       osc.frequency.setValueAtTime(110, now);
       osc.frequency.exponentialRampToValueAtTime(45, now + 0.2);
@@ -349,11 +341,13 @@ export const SoundFX = {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
 
       osc.connect(gain);
-      gain.connect(SoundFX.sfxGain!);
+      gain.connect(this.sfxGain!);
       osc.start(now);
       osc.stop(now + 0.24);
     } catch {
       // Ignore audio device errors; gameplay continues silently.
     }
-  },
-};
+  }
+}
+
+export const SoundFX = new SoundFXService();
