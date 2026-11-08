@@ -30,6 +30,12 @@ describe("manifest validation", () => {
     expect(isCompatible(manifest)).toBe(true);
   });
 
+  it("accepts the explicit network permission", () => {
+    expect(parseManifest({ ...VALID_MANIFEST, permissions: ["net:fetch"] }).permissions).toEqual([
+      "net:fetch",
+    ]);
+  });
+
   it("accepts the sample-plugin manifest.json targeting HOST_API_VERSION", () => {
     const manifest = parseManifest(sampleManifest);
     expect(manifest.id).toBe("sample-plugin");
@@ -111,9 +117,10 @@ function makeHost(permissions: string[]) {
   };
   const actions = new Map<string, unknown>();
   const nodes = new Map<string, unknown>();
-  const registry: RegistryLike = {
+  const registry: RegistryLike & { getAction: (id: string) => unknown } = {
     registerAction: (pluginId, def) => void actions.set(`${pluginId}:${def.id}`, def),
     registerNode: (pluginId, def) => void nodes.set(`${pluginId}:${def.id}`, def),
+    getAction: (id) => actions.get(id),
     removePlugin: (pluginId) => {
       for (const key of [...actions.keys()]) if (key.startsWith(`${pluginId}:`)) actions.delete(key);
       for (const key of [...nodes.keys()]) if (key.startsWith(`${pluginId}:`)) nodes.delete(key);
@@ -145,8 +152,44 @@ function makeHost(permissions: string[]) {
     );
     return messages[messages.length - 1];
   };
-  return { grant, voyageState, voyage };
+  const registerOne = (id: string, kind: "action" | "node", def: unknown): void => {
+    (host as unknown as { registerOne(id: string, kind: "action" | "node", def: unknown): void })
+      .registerOne(id, kind, def);
+  };
+  return { grant, voyageState, voyage, registerOne, actions, nodes };
 }
+
+describe("plugin registration", () => {
+  it("namespaces node action references and makes numeric rules executable", () => {
+    const { registerOne, actions, nodes } = makeHost(["voyage:executeAction"]);
+    registerOne("test-plugin", "action", {
+      id: "trade",
+      label: "Trade",
+      consumes: [{ res: "fuel", amount: 2 }],
+      produces: [{ res: "flux", amount: 3 }],
+    });
+    registerOne("test-plugin", "node", {
+      id: "market",
+      label: "Market",
+      actions: ["trade"],
+    });
+
+    const action = actions.get("test-plugin:trade") as {
+      consumes: { amount: (state: unknown, config: unknown) => number }[];
+      produces: { amount: (state: unknown, config: unknown) => number }[];
+    };
+    expect(action.consumes[0]?.amount({}, {})).toBe(2);
+    expect(action.produces[0]?.amount({}, {})).toBe(3);
+    expect(nodes.get("test-plugin:market")).toMatchObject({ actions: ["test-plugin:trade"] });
+  });
+
+  it("executes plugin actions by local id through grants", () => {
+    const { registerOne, grant, voyage } = makeHost(["voyage:executeAction"]);
+    registerOne("test-plugin", "action", { id: "trade", label: "Trade" });
+    grant({ kind: "executeAction", actionId: "trade" });
+    expect(voyage.executeAction).toHaveBeenCalledWith("test-plugin:trade");
+  });
+});
 
 describe("host grant bounds", () => {
   it("rejects ops without the matching permission", () => {

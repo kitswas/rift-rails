@@ -33,6 +33,7 @@ export const KNOWN_PERMISSIONS: ReadonlySet<string> = new Set([
   "voyage:executeAction",
   "voyage:explore",
   "voyage:desperate",
+  "net:fetch",
 ]);
 
 /** True when the host API is new enough for the manifest's minApi. */

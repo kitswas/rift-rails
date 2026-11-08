@@ -307,9 +307,9 @@ function parseActionDef(def: unknown): RegisteredAction | null {
     ...clone(def),
     id: def.id as string,
     label: def.label as string,
-    consumes,
-    produces,
-    failConsumes,
+    consumes: consumes.map(({ res, amount }) => ({ res, amount: () => amount })),
+    produces: produces.map(({ res, amount }) => ({ res, amount: () => amount })),
+    failConsumes: failConsumes.map(({ res, amount }) => ({ res, amount: () => amount })),
     requires,
   };
   return normalized as unknown as RegisteredAction;
@@ -701,7 +701,12 @@ export class PluginHost {
       if (kind === "action") {
         this.deps.registry.registerAction(id, parsed as RegisteredAction);
       } else {
-        this.deps.registry.registerNode(id, parsed as RegisteredNode);
+        const node = parsed as RegisteredNode;
+        const actions = node.actions;
+        this.deps.registry.registerNode(id, {
+          ...node,
+          ...(Array.isArray(actions) ? { actions: actions.map((actionId) => `${id}:${actionId}`) } : {}),
+        });
       }
     } catch (err) {
       this.deps.log(
@@ -836,18 +841,29 @@ export class PluginHost {
           let act: unknown;
           let hasLookup = false;
           const regGet = (this.deps.registry as unknown as { getAction?: unknown }).getAction;
+          let actionId = `${id}:${op.actionId}`;
           if (typeof regGet === "function") {
             hasLookup = true;
-            act = (regGet as (v: string) => unknown).call(this.deps.registry, op.actionId);
+            const getAction = regGet as (v: string) => unknown;
+            act = getAction.call(this.deps.registry, actionId);
+            if (!act) {
+              actionId = op.actionId;
+              act = getAction.call(this.deps.registry, actionId);
+            }
           } else {
             const vreg = (voyage as unknown as { registry?: { getAction?: unknown } }).registry;
             if (vreg && typeof vreg.getAction === "function") {
               hasLookup = true;
-              act = (vreg.getAction as (v: string) => unknown).call(vreg, op.actionId);
+              const getAction = vreg.getAction as (v: string) => unknown;
+              act = getAction.call(vreg, actionId);
+              if (!act) {
+                actionId = op.actionId;
+                act = getAction.call(vreg, actionId);
+              }
             }
           }
           if (hasLookup && !act) {
-            reply(false, `unknown action: ${op.actionId}`);
+            reply(false, `unknown action: ${actionId}`);
             return;
           }
           if (act !== undefined && act !== null) {
@@ -868,7 +884,7 @@ export class PluginHost {
               return;
             }
           }
-          const result: unknown = voyage.executeAction(op.actionId);
+          const result: unknown = voyage.executeAction(actionId);
           if (result === false) {
             reply(false, "action failed");
             return;

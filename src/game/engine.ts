@@ -45,6 +45,7 @@ export interface EngineDeps {
   scrollStarted?: () => void;
   syncObserverPresence?: (departed: boolean) => void;
   onExploreSurveyed?: () => void;
+  scrollEncounterChoices?: () => void;
   showNavScreen?: (visible: boolean) => void;
   schedule?: (fn: () => void, ms: number) => void;
   onSyncTabs?: () => void;
@@ -304,6 +305,7 @@ export class EngineService {
     this.sound?.playDialogueChime();
     this.transitionTo(this.phaseOf("encounter", "ENCOUNTER"));
     this.evaluateSurvival();
+    this.deps.scrollEncounterChoices?.();
   }
 
   initiateTravel(): void {

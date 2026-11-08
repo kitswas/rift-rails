@@ -54,6 +54,7 @@ export class TransitionFXService {
   private readonly random: () => number;
   private readonly setTimeoutFn: ((cb: () => void, ms: number) => number) | undefined;
   private readonly getViewportSize: (() => { width: number; height: number }) | undefined;
+  private readonly onResize = (): void => this.resize();
 
   constructor(deps: FXDeps) {
     this.config = deps.config;
@@ -63,7 +64,7 @@ export class TransitionFXService {
     this.vibrate = deps.vibrate;
     this.requestFrame = deps.requestFrame;
     this.cancelFrame = deps.cancelFrame;
-    this.now = deps.now ?? (() => Date.now());
+    this.now = deps.now ?? (() => performance.now());
     this.random = deps.random ?? Math.random;
     this.setTimeoutFn = deps.setTimeoutFn;
     this.getViewportSize = deps.getViewportSize;
@@ -87,6 +88,7 @@ export class TransitionFXService {
   init(): void {
     if (!this.canvas) return;
     this.resize();
+    window.addEventListener("resize", this.onResize);
     this.initStars();
   }
 

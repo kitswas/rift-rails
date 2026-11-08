@@ -51,10 +51,13 @@ const conduit = new ConduitDeck({
   waypointHubInterval: GAME_DATA.config.WAYPOINT_HUB_INTERVAL,
   adjectives: GAME_DATA.procedural.adjectives,
   nouns: GAME_DATA.procedural.nouns,
+  random: () => Math.random(),
 });
 conduit.init();
 
-const voyage = new Voyage(registry, GAME_DATA.config, conduit);
+const voyage = new Voyage(registry, GAME_DATA.config, conduit, undefined, {
+  random: () => Math.random(),
+});
 
 const host = new PluginHost({
   voyage: {
@@ -163,7 +166,10 @@ const art = new DioramaPipelineService({
       return {
         ready,
         postMessage: (message) => frame.contentWindow?.postMessage(message, "*"),
-        subscribeMessage: (handler) => window.addEventListener("message", handler as EventListener),
+        subscribeMessage: (handler) =>
+          window.addEventListener("message", (event) => {
+            if (event.source === frame.contentWindow) handler(event);
+          }),
       };
     } catch {
       return null;
@@ -187,14 +193,15 @@ const fx = new TransitionFXService({
   vibrate: (pattern) => navigator.vibrate?.(pattern),
   requestFrame: (cb) => window.requestAnimationFrame(cb),
   cancelFrame: (id) => window.cancelAnimationFrame(id),
-  now: () => Date.now(),
+  now: () => performance.now(),
   random: () => Math.random(),
   setTimeoutFn: (cb, ms) => window.setTimeout(cb, ms),
   getViewportSize: () => ({ width: window.innerWidth, height: window.innerHeight }),
 });
 
+const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const motion = new RiftMotionService({
-  reducedMotion: () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  reducedMotion: () => reducedMotionQuery.matches,
   now: () => performance.now(),
   requestFrame: (cb) => window.requestAnimationFrame(cb),
   cancelFrame: (id) => window.cancelAnimationFrame(id),
@@ -222,6 +229,10 @@ const cutscene = new CutsceneEngine({
   dialoguePhase: GAME_DATA.phases.dialogue,
   idlePhase: GAME_DATA.phases.idle,
   firstCutsceneId: "wp1",
+  tutorialCueText: () => {
+    const node = registry.getNode(voyage.getSnapshot().dimId);
+    return GAME_DATA.text.tutorialExplore(node?.isHub ?? false, node?.exploreCost ?? 1);
+  },
 });
 
 let navChoices: Trajectory[] = [];
@@ -518,6 +529,21 @@ const resetNav = (): void => {
   if (status) status.textContent = "Vector idle";
 };
 
+reducedMotionQuery.addEventListener?.("change", () => {
+  eyes.center();
+  armedSlot = -1;
+  lockSlot = -1;
+  el("nav-vector")?.removeAttribute("data-armed");
+  el("nav-vector")?.removeAttribute("data-solo");
+  const slot0 = el("vector-slot-0");
+  if (slot0) slot0.dataset.selected = "false";
+  const slot1 = el("vector-slot-1");
+  if (slot1) slot1.dataset.selected = "false";
+  setNeedle(0);
+  const status = el("nav-vector-status");
+  if (status) status.textContent = "Vector idle";
+});
+
 let menuSeq = 0;
 const syncUI = (): void => {
   const s = voyage.getSnapshot();
@@ -785,6 +811,25 @@ const deps: EngineDeps = {
     const cue = el("tutorial-cue");
     if (cue) (cue as HTMLElement & { hidden: boolean }).hidden = true;
     btn("btn-explore")?.classList.remove(GAME_DATA.dom.classes.tutorialHighlight ?? "tutorial-highlight");
+  },
+  readPaletteVar: (type, variable) => {
+    const classes: Record<string, string> = {
+      damage: GAME_DATA.dom.classes.logDamage ?? "log-damage",
+      lore: GAME_DATA.dom.classes.logLore ?? "log-lore",
+      success: "log-success",
+      system: GAME_DATA.dom.classes.logSystem ?? "log-system",
+      event: GAME_DATA.dom.classes.logEvent ?? "log-event",
+      help: GAME_DATA.dom.classes.logHelp ?? "log-help",
+    };
+    const probe = document.createElement("div");
+    probe.className = `${GAME_DATA.dom.classes.logEntry ?? "log-entry"} ${classes[type] ?? ""}`;
+    document.body.appendChild(probe);
+    const value = getComputedStyle(probe).getPropertyValue(variable).trim();
+    probe.remove();
+    return value || null;
+  },
+  scrollEncounterChoices: () => {
+    el("encounter-choices")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
   showNavScreen,
   schedule,

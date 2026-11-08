@@ -17,6 +17,7 @@ export interface CutsceneDeps {
   refs: CutsceneRefGetter;
   formatProgress?: (beat: number, total: number) => string;
   tutorialHighlightClass?: string;
+  tutorialCueText?: () => string;
   logLoreClass?: string;
   dialoguePhase?: Phase;
   idlePhase?: Phase;
@@ -42,6 +43,7 @@ export class CutsceneEngine {
   private readonly refs: CutsceneRefGetter;
   private readonly formatProgress: (beat: number, total: number) => string;
   private readonly tutorialHighlightClass: string;
+  private readonly tutorialCueText: (() => string) | undefined;
   private readonly logLoreClass: string;
   private readonly dialoguePhase: Phase;
   private readonly idlePhase: Phase;
@@ -57,6 +59,7 @@ export class CutsceneEngine {
     this.formatProgress =
       deps.formatProgress ?? ((beat: number, total: number) => `Beat ${beat} of ${total}`);
     this.tutorialHighlightClass = deps.tutorialHighlightClass ?? "tutorial-highlight";
+    this.tutorialCueText = deps.tutorialCueText;
     this.logLoreClass = deps.logLoreClass ?? "log-lore";
     this.dialoguePhase = deps.dialoguePhase ?? "DIALOGUE";
     this.idlePhase = deps.idlePhase ?? "IDLE";
@@ -109,6 +112,11 @@ export class CutsceneEngine {
 
   showExploreHint(): void {
     this.el("btnExplore")?.classList.add(this.tutorialHighlightClass);
+    const cue = this.el("tutorialCue");
+    if (cue) {
+      cue.textContent = this.tutorialCueText?.() ?? "";
+      cue.hidden = false;
+    }
   }
 
   play(cutsceneId: string): void {

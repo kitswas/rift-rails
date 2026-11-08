@@ -108,7 +108,14 @@ export function appendLog(text: string, styleClass = cls.logSystem): void {
   if (!log) return;
   const div = document.createElement("div");
   div.className = `${cls.logEntry} ${styleClass}`;
-  div.textContent = text;
+  const encounterTitle = /^<b>([\s\S]*?)<\/b>([\s\S]*)$/.exec(text);
+  if (encounterTitle) {
+    const title = document.createElement("b");
+    title.textContent = encounterTitle[1] ?? "";
+    div.append(title, document.createTextNode(encounterTitle[2] ?? ""));
+  } else {
+    div.textContent = text;
+  }
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
