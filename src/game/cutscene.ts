@@ -1,35 +1,35 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
 import { DOM } from "../ui/dom";
 import { SoundFX } from "./audio";
 import { GAME_DATA } from "./data";
 import { Engine } from "./engine";
 import { VoyageSession } from "./session";
-export const CutsceneEngine: any = {
-  activeCutscene: null,
-  beatIndex: 0,
-  returnFocus: null,
+import type { Cutscene, CutsceneId } from "./types";
 
-  trapFocus: (event) => {
+export const CutsceneEngine = {
+  activeCutscene: null as Cutscene | null,
+  beatIndex: 0,
+  returnFocus: null as Element | null,
+
+  trapFocus(this: void, event: Event): void {
     if (!CutsceneEngine.activeCutscene) return;
-    if (event.type === "keydown" && event.key === "Tab") {
+    if (event instanceof KeyboardEvent && event.key === "Tab") {
       event.preventDefault();
       DOM.cutsceneBtnA.focus();
-    } else if (event.type === "focusin" && !DOM.cutsceneOverlay.contains(event.target)) {
+    } else if (event instanceof FocusEvent && !DOM.cutsceneOverlay.contains(event.target as Node)) {
       DOM.cutsceneBtnA.focus();
     }
   },
 
-  showExploreHint: () => {
+  showExploreHint(): void {
     const snap = VoyageSession.getSnapshot();
     const node = GAME_DATA.nodes[snap.dimId];
     DOM.tutorialCue.innerText = GAME_DATA.text.tutorialExplore(node.isHub, node.exploreCost);
     DOM.tutorialCue.hidden = false;
-    DOM.btnExplore.classList.add(GAME_DATA.dom.classes.tutorialHighlight);
+    DOM.btnExplore.classList.add(GAME_DATA.dom.classes.tutorialHighlight!);
   },
 
-  play: (cutsceneId) => {
-    const cutscene = GAME_DATA.cutscenes[cutsceneId];
+  play(cutsceneId: string): void {
+    const cutscene = GAME_DATA.cutscenes[cutsceneId as CutsceneId];
     if (!cutscene) return;
 
     CutsceneEngine.activeCutscene = cutscene;
@@ -39,13 +39,14 @@ export const CutsceneEngine: any = {
 
     DOM.gameContainer.inert = true;
     DOM.cutsceneOverlay.hidden = false;
-    Engine.transitionTo(GAME_DATA.phases.dialogue);
+    Engine.transitionTo(GAME_DATA.phases.dialogue!);
     CutsceneEngine.renderCurrentBeat();
     DOM.cutsceneBtnA.focus();
   },
 
-  renderCurrentBeat: () => {
+  renderCurrentBeat(): void {
     const cutscene = CutsceneEngine.activeCutscene;
+    if (!cutscene) return;
     const beat = cutscene.beats[CutsceneEngine.beatIndex];
     if (!beat) return;
 
@@ -63,13 +64,13 @@ export const CutsceneEngine: any = {
     );
     DOM.cutsceneBody.innerText = beat.text;
 
-    // Corvus ignores the reply either way — the choice is pure flavour.
     DOM.cutsceneBtnA.innerText = `[A] "${beat.choiceA}"`;
     DOM.cutsceneBtnB.innerText = `[B] "${beat.choiceB}"`;
   },
 
-  advance: () => {
+  advance(): void {
     const cutscene = CutsceneEngine.activeCutscene;
+    if (!cutscene) return;
     CutsceneEngine.beatIndex++;
 
     if (CutsceneEngine.beatIndex < cutscene.beats.length) {
@@ -79,29 +80,31 @@ export const CutsceneEngine: any = {
     }
   },
 
-  close: () => {
+  close(): void {
     const cutscene = CutsceneEngine.activeCutscene;
     DOM.cutsceneOverlay.hidden = true;
     DOM.gameContainer.inert = false;
 
     if (cutscene?.logSummary) {
-      Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore);
+      Engine.log(cutscene.logSummary, GAME_DATA.dom.classes.logLore!);
     }
 
     CutsceneEngine.activeCutscene = null;
     CutsceneEngine.beatIndex = 0;
 
-    Engine.transitionTo(GAME_DATA.phases.idle);
+    Engine.transitionTo(GAME_DATA.phases.idle!);
     VoyageSession.evaluateSurvival();
 
     if (cutscene?.id === "wp1") CutsceneEngine.showExploreHint();
 
     const returnFocus = CutsceneEngine.returnFocus;
     const canRestoreFocus =
-      returnFocus?.isConnected &&
+      returnFocus !== null &&
+      returnFocus instanceof HTMLElement &&
+      returnFocus.isConnected &&
       returnFocus !== document.body &&
       returnFocus !== document.documentElement &&
-      !returnFocus.disabled &&
+      !(returnFocus as HTMLButtonElement).disabled &&
       returnFocus.getClientRects().length > 0;
     let focusRestored = false;
     if (canRestoreFocus) {
@@ -118,6 +121,3 @@ export const CutsceneEngine: any = {
     CutsceneEngine.returnFocus = null;
   },
 };
-/* ========================================================
-         TACTICAL GAME ENGINE (ORCHESTRATOR & UI ADAPTER)
-         ======================================================== */

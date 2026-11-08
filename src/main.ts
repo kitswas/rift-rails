@@ -15,29 +15,53 @@ import { VECTOR_IDLE_ANGLE, RiftVectorDial } from "./game/dial";
 import { RiftEyes } from "./game/eyes";
 import { DOM } from "./ui/dom";
 
-const w: any = window;
-w.GAME_DATA = GAME_DATA;
-w.calcEffectiveWeaponTier = calcEffectiveWeaponTier;
-w.DioramaPipeline = DioramaPipeline;
-w.ConduitDeck = ConduitDeck;
-w.SoundFX = SoundFX;
-w.INITIAL_STATE = INITIAL_STATE;
-w.VoyageSession = VoyageSession;
-w.SaveSystem = SaveSystem;
-w.TransitionFX = TransitionFX;
-w.CutsceneEngine = CutsceneEngine;
-w.Engine = Engine;
-w.clearEncounterChoices = clearEncounterChoices;
-w.StateHooks = StateHooks;
-w.RiftReducedMotion = RiftReducedMotion;
-w.RiftMotion = RiftMotion;
-w.RiftCouplingBoard = RiftCouplingBoard;
-w.VECTOR_IDLE_ANGLE = VECTOR_IDLE_ANGLE;
-w.RiftVectorDial = RiftVectorDial;
-w.RiftEyes = RiftEyes;
-w.DOM = DOM;
+declare global {
+  interface Window {
+    GAME_DATA: typeof GAME_DATA;
+    calcEffectiveWeaponTier: typeof calcEffectiveWeaponTier;
+    DioramaPipeline: typeof DioramaPipeline;
+    ConduitDeck: typeof ConduitDeck;
+    SoundFX: typeof SoundFX;
+    INITIAL_STATE: typeof INITIAL_STATE;
+    VoyageSession: typeof VoyageSession;
+    SaveSystem: typeof SaveSystem;
+    TransitionFX: typeof TransitionFX;
+    CutsceneEngine: typeof CutsceneEngine;
+    Engine: typeof Engine;
+    clearEncounterChoices: typeof clearEncounterChoices;
+    StateHooks: typeof StateHooks;
+    RiftReducedMotion: typeof RiftReducedMotion;
+    RiftMotion: typeof RiftMotion;
+    RiftCouplingBoard: typeof RiftCouplingBoard;
+    VECTOR_IDLE_ANGLE: typeof VECTOR_IDLE_ANGLE;
+    RiftVectorDial: typeof RiftVectorDial;
+    RiftEyes: typeof RiftEyes;
+    DOM: typeof DOM;
+  }
+}
 
-RiftReducedMotion.addEventListener?.("change", () => {
+window.GAME_DATA = GAME_DATA;
+window.calcEffectiveWeaponTier = calcEffectiveWeaponTier;
+window.DioramaPipeline = DioramaPipeline;
+window.ConduitDeck = ConduitDeck;
+window.SoundFX = SoundFX;
+window.INITIAL_STATE = INITIAL_STATE;
+window.VoyageSession = VoyageSession;
+window.SaveSystem = SaveSystem;
+window.TransitionFX = TransitionFX;
+window.CutsceneEngine = CutsceneEngine;
+window.Engine = Engine;
+window.clearEncounterChoices = clearEncounterChoices;
+window.StateHooks = StateHooks;
+window.RiftReducedMotion = RiftReducedMotion;
+window.RiftMotion = RiftMotion;
+window.RiftCouplingBoard = RiftCouplingBoard;
+window.VECTOR_IDLE_ANGLE = VECTOR_IDLE_ANGLE;
+window.RiftVectorDial = RiftVectorDial;
+window.RiftEyes = RiftEyes;
+window.DOM = DOM;
+
+RiftReducedMotion.addEventListener("change", () => {
   RiftEyes.center();
   RiftVectorDial.reset();
 });

@@ -1,12 +1,12 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
-export const RiftReducedMotion: any = matchMedia("(prefers-reduced-motion: reduce)");
+import type { MotionEntry } from "./types";
 
-export const RiftMotion: any = {
-  springs: new Set(),
+export const RiftReducedMotion: MediaQueryList = matchMedia("(prefers-reduced-motion: reduce)");
+
+export const RiftMotion = {
+  springs: new Set<MotionEntry>(),
   raf: 0,
-  reduced: () => RiftReducedMotion.matches,
-  add(entry) {
+  reduced: (): boolean => RiftReducedMotion.matches,
+  add(entry: MotionEntry): void {
     if (RiftMotion.reduced()) {
       entry.value = entry.target;
       entry.velocity = 0;
@@ -21,7 +21,7 @@ export const RiftMotion: any = {
       RiftMotion.raf = requestAnimationFrame((now) => RiftMotion.tick(now));
     }
   },
-  remove(entry) {
+  remove(entry: MotionEntry): void {
     entry.active = false;
     RiftMotion.springs.delete(entry);
     if (!RiftMotion.springs.size && RiftMotion.raf) {
@@ -29,15 +29,15 @@ export const RiftMotion: any = {
       RiftMotion.raf = 0;
     }
   },
-  set(entry, target) {
+  set(entry: MotionEntry | null | undefined, target: number): void {
     if (!entry) return;
     entry.target = target;
     RiftMotion.add(entry);
   },
-  tick(now) {
+  tick(now: number): void {
     let live = 0;
     RiftMotion.springs.forEach((entry) => {
-      const dt = Math.min(1, (now - entry.last) / 1000);
+      const dt = Math.min(1, (now - (entry.last ?? now)) / 1000);
       entry.last = now;
       const pull = (entry.target - entry.value) * (entry.stiffness ?? 180);
       entry.velocity += pull * dt;

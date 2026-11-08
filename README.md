@@ -32,7 +32,7 @@ pnpm verify     # builds, serves dist on 8100, runs headless Edge harness
 git config core.hooksPath .githooks
 ```
 
-`src/game/*.ts` modules were extracted verbatim from the old single-file script. Legacy modules still carry `// @ts-nocheck`; remove that marker per module as real types land. Keep gameplay, save format, RNG, and procedural art behavior unchanged during typing work.
+`src/game/*.ts` is strict TypeScript: game data, voyage state, UI orchestration, and navigation live in typed modules (`types.ts` holds the domain model, `config.ts` mirrors jump timing from `GAME_DATA`). There are no `@ts-nocheck` escapes and no `any` types. Keep gameplay, save format, RNG, and procedural art behavior unchanged when editing.
 
 ## Contributing
 

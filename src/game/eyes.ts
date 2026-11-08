@@ -1,29 +1,26 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
+import type { MotionEntry } from "./types";
 import { RiftMotion } from "./motion";
-export const RiftEyes: any = {
-  portrait: document.querySelector("#corvus-portrait"),
-  x: null,
-  y: null,
 
-  start() {
+function motionEntry(portrait: HTMLElement, property: string): MotionEntry {
+  return {
+    value: 0,
+    target: 0,
+    velocity: 0,
+    stiffness: 190,
+    damping: 20,
+    update: (value: number) => portrait.style.setProperty(property, `${value.toFixed(2)}px`),
+  };
+}
+
+export const RiftEyes = {
+  portrait: document.querySelector("#corvus-portrait") as HTMLElement | null,
+  x: null as MotionEntry | null,
+  y: null as MotionEntry | null,
+
+  start(): void {
     if (!this.portrait) return;
-    this.x = {
-      value: 0,
-      target: 0,
-      velocity: 0,
-      stiffness: 190,
-      damping: 20,
-      update: (value) => this.portrait.style.setProperty("--corvus-eye-x", `${value.toFixed(2)}px`),
-    };
-    this.y = {
-      value: 0,
-      target: 0,
-      velocity: 0,
-      stiffness: 190,
-      damping: 20,
-      update: (value) => this.portrait.style.setProperty("--corvus-eye-y", `${value.toFixed(2)}px`),
-    };
+    this.x = motionEntry(this.portrait, "--corvus-eye-x");
+    this.y = motionEntry(this.portrait, "--corvus-eye-y");
     const rig = document.getElementById("game-container");
     if (rig) {
       rig.addEventListener("pointermove", this.aim, { passive: true });
@@ -34,7 +31,7 @@ export const RiftEyes: any = {
     this.center();
   },
 
-  aim(event) {
+  aim(this: void, event: PointerEvent): void {
     if (!RiftEyes.portrait || !RiftEyes.x || !RiftEyes.y) return;
     if (RiftMotion.reduced()) {
       RiftEyes.center();
@@ -50,7 +47,7 @@ export const RiftEyes: any = {
     RiftMotion.set(RiftEyes.y, y);
   },
 
-  center() {
+  center(this: void): void {
     if (!RiftEyes.portrait || !RiftEyes.x || !RiftEyes.y) return;
     [RiftEyes.x, RiftEyes.y].forEach((entry) => {
       entry.target = 0;

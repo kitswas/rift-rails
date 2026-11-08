@@ -6,11 +6,6 @@ export default defineConfig({
   build: {
     cssCodeSplit: false,
     assetsInlineLimit: Number.MAX_SAFE_INTEGER,
-    rollupOptions: {
-      output: {
-        inlineDynamicImports: true,
-      },
-    },
   },
   server: {
     host: "127.0.0.1",

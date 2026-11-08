@@ -1,6 +1,5 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
-export const GAME_DATA: any = {
+import type { GameConfig, GameData, SaveState } from "./types";
+export const GAME_DATA: GameData = {
   config: {
     MAX_HULL: 100,
     START_FUEL: 50,
@@ -566,9 +565,10 @@ export const GAME_DATA: any = {
       desc: "Passively repairs the Hull slightly after every Rift Jump.",
     },
   },
+  actions: {} as GameData["actions"],
 };
 
-export const calcEffectiveWeaponTier: any = (s, c) =>
+export const calcEffectiveWeaponTier = (s: SaveState, c: GameConfig): number =>
   s.weaponTier + (s.crew === GAME_DATA.yard.orc.name ? c.ORC_WPN_BONUS : 0);
 
 GAME_DATA.actions = {
@@ -585,16 +585,16 @@ GAME_DATA.actions = {
     label: "Siphon Gases",
     uiClass: GAME_DATA.dom.classes.btnEnergy,
     requires: {},
-    consumes: [{ res: "energy", amount: (s, c) => c.RES_SIPHON_ENERGY }],
-    produces: [{ res: "fuel", amount: (s, c) => c.RES_SIPHON_FUEL }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.RES_SIPHON_ENERGY }],
+    produces: [{ res: "fuel", amount: (_s, c) => c.RES_SIPHON_FUEL }],
     logSuccess: "Siphoned volatile surface vapors into Crucible fuel.",
   },
   res_harvest: {
     label: "Safe Harvest",
     uiClass: GAME_DATA.dom.classes.btnEnergy,
     requires: {},
-    consumes: [{ res: "energy", amount: (s, c) => c.RES_HARVEST_ENERGY }],
-    produces: [{ res: "flux", amount: (s, c) => c.RES_HARVEST_FLUX }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.RES_HARVEST_ENERGY }],
+    produces: [{ res: "flux", amount: (_s, c) => c.RES_HARVEST_FLUX }],
     logSuccess: "Harvested local rift anomalies for Dimensional Flux.",
   },
   res_drill: {
@@ -602,10 +602,10 @@ GAME_DATA.actions = {
     uiClass: GAME_DATA.dom.classes.btnEnergy,
     requires: {},
     consumes: [
-      { res: "energy", amount: (s, c) => c.RES_DRILL_ENERGY },
-      { res: "hull", amount: (s, c) => c.RES_DRILL_HULL_DMG },
+      { res: "energy", amount: (_s, c) => c.RES_DRILL_ENERGY },
+      { res: "hull", amount: (_s, c) => c.RES_DRILL_HULL_DMG },
     ],
-    produces: [{ res: "flux", amount: (s, c) => c.RES_DRILL_FLUX }],
+    produces: [{ res: "flux", amount: (_s, c) => c.RES_DRILL_FLUX }],
     logSuccess: "Drilling cracked hull armor, but yielded rich Flux seams.",
   },
   maze_blast: {
@@ -613,30 +613,30 @@ GAME_DATA.actions = {
     uiClass: GAME_DATA.dom.classes.btnEnergy,
     requires: {},
     consumes: [
-      { res: "energy", amount: (s, c) => c.MAZE_BLAST_ENERGY },
+      { res: "energy", amount: (_s, c) => c.MAZE_BLAST_ENERGY },
       {
         res: "hull",
         amount: (s, c) =>
           Math.max(0, c.MAZE_BLAST_BASE_DMG - s.engineTier * c.MAZE_BLAST_TIER_REDUC),
       },
     ],
-    produces: [{ res: "flux", amount: (s, c) => c.MAZE_BLAST_FLUX }],
+    produces: [{ res: "flux", amount: (_s, c) => c.MAZE_BLAST_FLUX }],
     logSuccess: "Blasted through spatial wreckage, incurring minor hull stress.",
   },
   maze_map_fuel: {
     label: "Extract Core [Map]",
     uiClass: GAME_DATA.dom.classes.btnSuccess,
     requires: { module: GAME_DATA.yard.map.name },
-    consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
-    produces: [{ res: "fuel", amount: (s, c) => c.MAZE_MAP_FUEL_YIELD }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.MAZE_MAP_ENERGY }],
+    produces: [{ res: "fuel", amount: (_s, c) => c.MAZE_MAP_FUEL_YIELD }],
     logSuccess: "Dimensional Map bypassed hazards to salvage an intact Power Core.",
   },
   maze_map_flux: {
     label: "Extract Artifact [Map]",
     uiClass: GAME_DATA.dom.classes.btnSuccess,
     requires: { module: GAME_DATA.yard.map.name },
-    consumes: [{ res: "energy", amount: (s, c) => c.MAZE_MAP_ENERGY }],
-    produces: [{ res: "flux", amount: (s, c) => c.MAZE_MAP_FLUX_YIELD }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.MAZE_MAP_ENERGY }],
+    produces: [{ res: "flux", amount: (_s, c) => c.MAZE_MAP_FLUX_YIELD }],
     logSuccess: "Dimensional Map revealed a safe path to extract an Eldritch Artifact.",
   },
   hunt_solitary: {
@@ -645,12 +645,12 @@ GAME_DATA.actions = {
     requires: {},
     probability: (s, c) =>
       c.HUNT_SOLITARY_WIN_RATE + calcEffectiveWeaponTier(s, c) * c.HUNT_WPN_MULT,
-    consumes: [{ res: "energy", amount: (s, c) => c.HUNT_SOLITARY_ENERGY }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.HUNT_SOLITARY_ENERGY }],
     produces: [
-      { res: "flux", amount: (s, c) => c.HUNT_SOLITARY_FLUX },
-      { res: "fuel", amount: (s, c) => c.HUNT_SOLITARY_FUEL },
+      { res: "flux", amount: (_s, c) => c.HUNT_SOLITARY_FLUX },
+      { res: "fuel", amount: (_s, c) => c.HUNT_SOLITARY_FUEL },
     ],
-    failConsumes: [{ res: "hull", amount: (s, c) => c.HUNT_SOLITARY_HULL_DMG }],
+    failConsumes: [{ res: "hull", amount: (_s, c) => c.HUNT_SOLITARY_HULL_DMG }],
     logSuccess: "The voidbeast fell! Harvested its radiant Energy Crystal for Fuel and Flux.",
     logFail: "The beast breached your defenses! Took Hull damage.",
   },
@@ -659,8 +659,8 @@ GAME_DATA.actions = {
     uiClass: GAME_DATA.dom.classes.btnEnergy,
     requires: {},
     probability: (s, c) => c.HUNT_PACK_WIN_RATE + calcEffectiveWeaponTier(s, c) * c.HUNT_WPN_MULT,
-    consumes: [{ res: "energy", amount: (s, c) => c.HUNT_PACK_ENERGY }],
-    produces: [{ res: "flux", amount: (s, c) => c.HUNT_PACK_FLUX }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.HUNT_PACK_ENERGY }],
+    produces: [{ res: "flux", amount: (_s, c) => c.HUNT_PACK_FLUX }],
     logSuccess: "Scattered the pack and harvested valuable hides and pelts for Flux.",
     logFail:
       "The pack overwhelmed your targeting, but you sealed the doors in time without taking hull damage.",
@@ -670,20 +670,20 @@ GAME_DATA.actions = {
     uiClass: GAME_DATA.dom.classes.btnEnergy,
     requires: { weaponTier: GAME_DATA.config.HUNT_DEEP_WPN_REQ },
     probability: (s, c) => c.HUNT_DEEP_WIN_RATE + calcEffectiveWeaponTier(s, c) * c.HUNT_WPN_MULT,
-    consumes: [{ res: "energy", amount: (s, c) => c.HUNT_DEEP_ENERGY }],
+    consumes: [{ res: "energy", amount: (_s, c) => c.HUNT_DEEP_ENERGY }],
     produces: [
-      { res: "flux", amount: (s, c) => c.HUNT_DEEP_FLUX },
-      { res: "fuel", amount: (s, c) => c.HUNT_DEEP_FUEL },
+      { res: "flux", amount: (_s, c) => c.HUNT_DEEP_FLUX },
+      { res: "fuel", amount: (_s, c) => c.HUNT_DEEP_FUEL },
     ],
-    failConsumes: [{ res: "hull", amount: (s, c) => c.HUNT_DEEP_HULL_DMG }],
+    failConsumes: [{ res: "hull", amount: (_s, c) => c.HUNT_DEEP_HULL_DMG }],
     logSuccess: "An apex titan falls! Harvested massive Flux and rich biofuel core.",
     logFail: "Apex entity crushed outer bulkheads! Heavy structural damage sustained.",
   },
   hub_rest: {
     label: "Dockyard Repairs",
     requires: {},
-    consumes: [{ res: "flux", amount: (s, c) => c.HUB_REST_FLUX_COST }],
-    produces: [{ res: "hull", amount: (s, c) => c.HUB_REST_HULL_YIELD }],
+    consumes: [{ res: "flux", amount: (_s, c) => c.HUB_REST_FLUX_COST }],
+    produces: [{ res: "hull", amount: (_s, c) => c.HUB_REST_HULL_YIELD }],
     logSuccess: "Depot blacksmiths patched armor and repaired your Hull.",
   },
   hub_fuel: {
@@ -707,10 +707,10 @@ GAME_DATA.actions = {
   hub_quest_easy: {
     label: "Supply Delivery",
     requires: {},
-    consumes: [{ res: "fuel", amount: (s, c) => c.HUB_EASY_FUEL_COST }],
+    consumes: [{ res: "fuel", amount: (_s, c) => c.HUB_EASY_FUEL_COST }],
     produces: [
-      { res: "flux", amount: (s, c) => c.HUB_EASY_FLUX_YIELD },
-      { res: "rep", amount: (s, c) => c.HUB_EASY_REP_YIELD },
+      { res: "flux", amount: (_s, c) => c.HUB_EASY_FLUX_YIELD },
+      { res: "rep", amount: (_s, c) => c.HUB_EASY_REP_YIELD },
     ],
     logSuccess: "Delivered cargo supplies to depot. Earned Flux and Station Reputation.",
   },
@@ -718,8 +718,8 @@ GAME_DATA.actions = {
     label: "VIP Escort Contract",
     uiClass: GAME_DATA.dom.classes.btnAction,
     requires: { rep: GAME_DATA.config.HUB_HARD_REP_REQ },
-    consumes: [{ res: "fuel", amount: (s, c) => c.HUB_HARD_FUEL_COST }],
-    produces: [{ res: "flux", amount: (s, c) => c.HUB_HARD_FLUX_YIELD }],
+    consumes: [{ res: "fuel", amount: (_s, c) => c.HUB_HARD_FUEL_COST }],
+    produces: [{ res: "flux", amount: (_s, c) => c.HUB_HARD_FLUX_YIELD }],
     logSuccess: "High-value VIP transported safely. Received substantial Flux bounty.",
   },
 };

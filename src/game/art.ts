@@ -1,35 +1,45 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
-export const DioramaPipeline: any = {
-  bridgeIframe: null,
-  ready: null,
-  cache: new Map(),
-  pending: new Map(),
-  processing: new Map(),
+interface ArtResultMessage {
+  type?: string;
+  reqId?: number;
+  src?: string;
+  error?: string;
+}
+
+interface PendingEntry {
+  resolve: (src: string) => void;
+  reject: (error: Error) => void;
+}
+
+export const DioramaPipeline = {
+  bridgeIframe: null as HTMLIFrameElement | null,
+  ready: null as Promise<void> | null,
+  cache: new Map<string, string>(),
+  pending: new Map<string, Promise<string>>(),
+  processing: new Map<number, PendingEntry>(),
   requestId: 0,
 
-  init: () => {
+  init(): void {
     if (DioramaPipeline.bridgeIframe) return;
     const iframe = document.createElement("iframe");
     iframe.id = "art-bridge";
     iframe.src = "artwork-browser.html?bridge=1";
     iframe.style.display = "none";
-    DioramaPipeline.ready = new Promise((resolve) => {
-      iframe.addEventListener("load", resolve, { once: true });
+    DioramaPipeline.ready = new Promise<void>((resolve) => {
+      iframe.addEventListener("load", () => resolve(), { once: true });
     });
     DioramaPipeline.bridgeIframe = iframe;
     window.addEventListener("message", DioramaPipeline.onMessage);
     document.body.appendChild(iframe);
   },
 
-  onMessage: (event) => {
+  onMessage(this: void, event: MessageEvent): void {
     if (
       !DioramaPipeline.bridgeIframe ||
       event.source !== DioramaPipeline.bridgeIframe.contentWindow
     ) {
       return;
     }
-    const data = event.data;
+    const data = event.data as ArtResultMessage | null;
     if (!data || !data.reqId) return;
     const entry = DioramaPipeline.processing.get(data.reqId);
     if (!entry) return;
@@ -42,17 +52,18 @@ export const DioramaPipeline: any = {
     }
   },
 
-  render: (dimName, callback) => {
+  render(dimName: string, callback?: (markup: string) => void): string {
     if (!dimName) return "";
-    if (DioramaPipeline.cache.has(dimName)) {
-      return DioramaPipeline.cache.get(dimName);
+    const cached = DioramaPipeline.cache.get(dimName);
+    if (cached !== undefined) {
+      return cached;
     }
     DioramaPipeline.init();
     if (!DioramaPipeline.pending.has(dimName)) {
       const pending = DioramaPipeline.ready
-        .then(
+        ?.then(
           () =>
-            new Promise((resolve, reject) => {
+            new Promise<string>((resolve, reject) => {
               const reqId = ++DioramaPipeline.requestId;
               const timeout = setTimeout(() => {
                 DioramaPipeline.processing.delete(reqId);
@@ -69,14 +80,14 @@ export const DioramaPipeline: any = {
                 },
               });
               try {
-                DioramaPipeline.bridgeIframe.contentWindow.postMessage(
+                DioramaPipeline.bridgeIframe?.contentWindow?.postMessage(
                   { type: "RENDER_PIXEL_DIORAMA", dimName, reqId },
                   "*",
                 );
               } catch (error) {
                 clearTimeout(timeout);
                 DioramaPipeline.processing.delete(reqId);
-                reject(error);
+                reject(error as Error);
               }
             }),
         )
@@ -86,17 +97,14 @@ export const DioramaPipeline: any = {
           return markup;
         })
         .finally(() => DioramaPipeline.pending.delete(dimName));
-      DioramaPipeline.pending.set(dimName, pending);
+      DioramaPipeline.pending.set(dimName, pending ?? Promise.resolve(""));
     }
     DioramaPipeline.pending
       .get(dimName)
-      .then((markup) => {
+      ?.then((markup) => {
         if (callback) callback(markup);
       })
-      .catch((error) => console.error("Diorama rendering failed:", error));
+      .catch((error: unknown) => console.error("Diorama rendering failed:", error));
     return "";
   },
 };
-/* ========================================================
-  CONDUIT DECK (PROCEDURAL RUNWAY & SECTOR PACING)
-  ======================================================== */

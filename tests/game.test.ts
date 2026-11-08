@@ -22,7 +22,7 @@ describe("config", () => {
 describe("cutscene data", () => {
   it("has choiceA and choiceB on all beats", () => {
     let beats = 0;
-    for (const cutscene of Object.values(GAME_DATA.cutscenes) as any[]) {
+    for (const cutscene of Object.values(GAME_DATA.cutscenes)) {
       for (const beat of cutscene.beats) {
         beats += 1;
         expect(typeof beat.choiceA).toBe("string");

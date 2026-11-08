@@ -1,10 +1,10 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
 import { GAME_DATA } from "./data";
-export const ConduitDeck: any = {
-  sectorBag: [],
+import type { DimId, Trajectory } from "./types";
 
-  init: (savedBag = null) => {
+export const ConduitDeck = {
+  sectorBag: [] as string[],
+
+  init(savedBag: string[] | null = null): void {
     if (savedBag && Array.isArray(savedBag) && savedBag.length > 0) {
       ConduitDeck.sectorBag = [...savedBag];
     } else {
@@ -12,20 +12,23 @@ export const ConduitDeck: any = {
     }
   },
 
-  shuffleArray: (arr) => arr.sort(() => Math.random() - 0.5),
+  shuffleArray<T>(arr: T[]): T[] {
+    return arr.sort(() => Math.random() - 0.5);
+  },
 
-  createShuffledSectorBag: () => {
-    const bag = [];
+  createShuffledSectorBag(): string[] {
+    const bag: string[] = [];
     for (const [nodeType, count] of Object.entries(GAME_DATA.sectorPoolCounts)) {
-      for (let i = 0; i < count; i++) bag.push(nodeType);
+      for (let i = 0; i < (count ?? 0); i++) bag.push(nodeType);
     }
     return ConduitDeck.shuffleArray(bag);
   },
 
-  resolveNextNodeId: (jumpCount, pop = false) => {
+  resolveNextNodeId(jumpCount: number, pop: boolean = false): DimId {
     const nextJump = jumpCount + 1;
     if (nextJump <= GAME_DATA.runway.length) {
-      return GAME_DATA.runway[nextJump - 1];
+      const fixed = GAME_DATA.runway[nextJump - 1];
+      if (fixed !== undefined) return fixed;
     }
     if (nextJump % GAME_DATA.config.WAYPOINT_HUB_INTERVAL === 0) {
       return "hub";
@@ -33,12 +36,13 @@ export const ConduitDeck: any = {
     if (!ConduitDeck.sectorBag || ConduitDeck.sectorBag.length === 0) {
       ConduitDeck.sectorBag = ConduitDeck.createShuffledSectorBag();
     }
-    return pop
+    const next = pop
       ? ConduitDeck.sectorBag.pop()
       : ConduitDeck.sectorBag[ConduitDeck.sectorBag.length - 1];
+    return (next ?? "hub") as DimId;
   },
 
-  generateDimensionForId: (chosenId) => {
+  generateDimensionForId(chosenId: DimId): { id: DimId; name: string } {
     const adj =
       GAME_DATA.procedural.adjectives[
         Math.floor(Math.random() * GAME_DATA.procedural.adjectives.length)
@@ -48,7 +52,7 @@ export const ConduitDeck: any = {
     return { id: chosenId, name: `${adj} ${noun}` };
   },
 
-  getTrajectories: (jumpCount, hasAstrolabe) => {
+  getTrajectories(jumpCount: number, hasAstrolabe: boolean): Trajectory[] {
     const nextJump = jumpCount + 1;
     const isFixedPoint =
       nextJump <= GAME_DATA.runway.length ||
@@ -60,7 +64,8 @@ export const ConduitDeck: any = {
       return [{ ...dest, returnId: null }];
     }
 
-    let id1, id2;
+    let id1: DimId;
+    let id2: DimId;
     if (isFixedPoint) {
       id1 = ConduitDeck.resolveNextNodeId(jumpCount, true);
       id2 = id1;
@@ -78,7 +83,7 @@ export const ConduitDeck: any = {
     ];
   },
 
-  commitTrajectory: (choice) => {
+  commitTrajectory(choice: Trajectory): { dimId: string; dimName: string } {
     if (choice.returnId && ConduitDeck.sectorBag) {
       ConduitDeck.sectorBag.push(choice.returnId);
       ConduitDeck.shuffleArray(ConduitDeck.sectorBag);
@@ -86,8 +91,7 @@ export const ConduitDeck: any = {
     return { dimId: choice.id, dimName: choice.name };
   },
 
-  serialize: () => ConduitDeck.sectorBag || [],
+  serialize(): string[] {
+    return ConduitDeck.sectorBag || [];
+  },
 };
-/* ========================================================
-         HEADACHE-FREE PROCEDURAL ACOUSTIC ENGINE (2 MODES)
-         ======================================================== */

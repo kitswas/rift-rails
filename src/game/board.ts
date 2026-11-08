@@ -1,31 +1,31 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
 import { DOM } from "../ui/dom";
 import { ConduitDeck } from "./conduit";
 import { GAME_DATA } from "./data";
 import { RiftVectorDial } from "./dial";
 import { Engine } from "./engine";
-export const RiftCouplingBoard: any = {
-  choices: [],
+import type { Trajectory } from "./types";
+
+export const RiftCouplingBoard = {
+  choices: [] as Trajectory[],
   activeSlot: -1,
   armedSlot: -1,
   lockSlot: -1,
 
-  slotCount(choices) {
+  slotCount(choices: Trajectory[] | null | undefined): number {
     return choices && choices.length ? choices.length : 0;
   },
 
-  slotGeometry(index, count) {
+  slotGeometry(index: number, count: number): { left: number; top: number; width: number } {
     if (count === 1) return { left: 29, top: 46, width: 42 };
     return index === 0 ? { left: 4, top: 46, width: 42 } : { left: 54, top: 46, width: 42 };
   },
 
-  needleAngle(slot, count) {
+  needleAngle(slot: number, count: number): number {
     if (count <= 1) return 90;
     return slot === 0 ? 305 : 55;
   },
 
-  buildRailSvg(count) {
+  buildRailSvg(count: number): SVGSVGElement {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "nav-board-svg");
     svg.setAttribute("viewBox", "0 0 1000 360");
@@ -88,7 +88,7 @@ export const RiftCouplingBoard: any = {
     return svg;
   },
 
-  render(choices) {
+  render(choices: Trajectory[]): boolean {
     const host = DOM.navChoices;
     if (!host || !Array.isArray(choices)) return false;
     this.choices = choices;
@@ -149,7 +149,7 @@ export const RiftCouplingBoard: any = {
     return true;
   },
 
-  lift(index) {
+  lift(index: number): void {
     this.activeSlot = index;
     [...DOM.navChoices.children].forEach((node) => {
       if (!(node instanceof HTMLElement) || !node.classList.contains("nav-carriage")) {
@@ -160,13 +160,14 @@ export const RiftCouplingBoard: any = {
     this.markCoupler(index);
   },
 
-  markCoupler(index) {
+  markCoupler(index: number): void {
     DOM.navChoices?.querySelectorAll(".board-coupler").forEach((node) => {
-      node.dataset.active = Number(node.dataset.slot) === index ? "true" : "false";
+      (node as HTMLElement).dataset.active =
+        Number((node as HTMLElement).dataset.slot) === index ? "true" : "false";
     });
   },
 
-  arm(index, count) {
+  arm(index: number, count: number): void {
     this.armedSlot = index;
     this.lift(index);
     [...DOM.navChoices.children].forEach((node) => {
@@ -184,24 +185,25 @@ export const RiftCouplingBoard: any = {
     RiftVectorDial.arm(index, count);
   },
 
-  confirm(index, count) {
+  confirm(index: number, count: number): boolean {
     if (this.armedSlot !== index) return false;
     this.lock(index);
     RiftVectorDial.breach(index, count);
     const choice = this.choices[index];
+    if (!choice) return false;
     const committed = ConduitDeck.commitTrajectory(choice);
     Engine.finalizeJump(committed.dimId, committed.dimName);
     return true;
   },
 
-  reset() {
+  reset(): void {
     this.choices = [];
     this.activeSlot = -1;
     this.armedSlot = -1;
     this.lockSlot = -1;
   },
 
-  lock(index) {
+  lock(index: number): void {
     this.lockSlot = index;
     [...DOM.navChoices.children].forEach((node) => {
       if (!(node instanceof HTMLElement) || !node.classList.contains("nav-carriage")) {
@@ -218,5 +220,3 @@ export const RiftCouplingBoard: any = {
     });
   },
 };
-
-// Needle rest angle: straight up, between both vector slots.

@@ -1,39 +1,40 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
 import { GAME_DATA } from "./data";
 import { SaveSystem } from "./save";
 import { VoyageSession } from "./session";
-export const SoundFX: any = {
-  ctx: null,
-  masterGain: null,
-  ambientGain: null,
-  sfxGain: null,
+import type { AmbientMode } from "./types";
+
+interface WebkitWindow extends Window {
+  webkitAudioContext?: typeof AudioContext;
+}
+
+export const SoundFX = {
+  ctx: null as AudioContext | null,
+  masterGain: null as GainNode | null,
+  ambientGain: null as GainNode | null,
+  sfxGain: null as GainNode | null,
   isMuted: false,
   ambientSliderVal: 100,
   sfxSliderVal: 100,
   ambientVolume: 1.0,
   sfxVolume: 1.0,
-  ambientMode: "rails",
+  ambientMode: "rails" as AmbientMode,
   currentThemeKey: "Fractured",
 
-  // Rails State
-  railsTimer: null,
+  railsTimer: null as number | null,
   railsStep: 0,
+  telemetryTimer: null as number | null,
 
-  // Telemetry State
-  telemetryTimer: null,
-
-  sliderToGain: (sliderVal) => {
+  sliderToGain(sliderVal: number): number {
     const clamped = Math.max(0, Math.min(100, sliderVal));
     if (clamped <= 0) return 0;
     return Math.pow(clamped / 100, GAME_DATA.audio.LOG_AUDIO_EXPONENT);
   },
 
-  init: () => {
+  init(): void {
     if (!SoundFX.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        SoundFX.ctx = new AudioContext();
+      const AudioContextCtor = window.AudioContext || (window as WebkitWindow).webkitAudioContext;
+      if (AudioContextCtor) {
+        SoundFX.ctx = new AudioContextCtor();
 
         SoundFX.masterGain = SoundFX.ctx.createGain();
         SoundFX.masterGain.gain.setValueAtTime(SoundFX.isMuted ? 0 : 1.0, SoundFX.ctx.currentTime);
@@ -51,16 +52,16 @@ export const SoundFX: any = {
       }
     }
     if (SoundFX.ctx && SoundFX.ctx.state === "suspended") {
-      SoundFX.ctx.resume();
+      void SoundFX.ctx.resume();
     }
   },
 
-  stopAllAmbient: () => {
-    if (SoundFX.railsTimer) clearInterval(SoundFX.railsTimer);
-    if (SoundFX.telemetryTimer) clearTimeout(SoundFX.telemetryTimer);
+  stopAllAmbient(): void {
+    if (SoundFX.railsTimer !== null) clearInterval(SoundFX.railsTimer);
+    if (SoundFX.telemetryTimer !== null) clearTimeout(SoundFX.telemetryTimer);
   },
 
-  startActiveSoundscape: () => {
+  startActiveSoundscape(): void {
     if (!SoundFX.ctx || !SoundFX.ambientGain) return;
     SoundFX.stopAllAmbient();
 
@@ -83,13 +84,13 @@ export const SoundFX: any = {
     }
   },
 
-  setAmbientMode: (mode) => {
+  setAmbientMode(mode: AmbientMode): void {
     SoundFX.ambientMode = mode;
     SaveSystem.saveAudioPrefs();
     if (SoundFX.ctx) SoundFX.startActiveSoundscape();
   },
 
-  setAmbientVolume: (sliderVal) => {
+  setAmbientVolume(sliderVal: number): void {
     SoundFX.ambientSliderVal = sliderVal;
     SoundFX.ambientVolume = SoundFX.sliderToGain(sliderVal);
     SaveSystem.saveAudioPrefs();
@@ -102,7 +103,7 @@ export const SoundFX: any = {
     }
   },
 
-  setSfxVolume: (sliderVal) => {
+  setSfxVolume(sliderVal: number): void {
     SoundFX.sfxSliderVal = sliderVal;
     SoundFX.sfxVolume = SoundFX.sliderToGain(sliderVal);
     SaveSystem.saveAudioPrefs();
@@ -111,7 +112,7 @@ export const SoundFX: any = {
     }
   },
 
-  toggleMute: () => {
+  toggleMute(): boolean {
     SoundFX.isMuted = !SoundFX.isMuted;
     SaveSystem.saveAudioPrefs();
     if (SoundFX.masterGain && SoundFX.ctx) {
@@ -124,12 +125,11 @@ export const SoundFX: any = {
     return SoundFX.isMuted;
   },
 
-  /* ---- [MODE 1] KINETIC LEY-RAIL RHYTHM ---- */
-  startRailsEngine: () => {
+  startRailsEngine(): void {
     SoundFX.railsStep = 0;
     const interval = 195;
 
-    SoundFX.railsTimer = setInterval(() => {
+    SoundFX.railsTimer = window.setInterval(() => {
       if (!SoundFX.ctx) return;
       if (SoundFX.railsStep === 0) SoundFX.playRailClick(true);
       else if (SoundFX.railsStep === 1) SoundFX.playRailClick(false);
@@ -139,7 +139,7 @@ export const SoundFX: any = {
     }, interval);
   },
 
-  playRailClick: (isAccent) => {
+  playRailClick(isAccent: boolean): void {
     if (!SoundFX.ctx || !SoundFX.ambientGain) return;
     const now = SoundFX.ctx.currentTime;
 
@@ -165,11 +165,10 @@ export const SoundFX: any = {
     osc.stop(now + 0.04);
   },
 
-  /* ---- [MODE 2] BRIDGE TELEMETRY RADIO ---- */
-  startTelemetryEngine: () => {
-    const scheduleNext = () => {
+  startTelemetryEngine(): void {
+    const scheduleNext = (): void => {
       const delay = 140 + Math.random() * 680;
-      SoundFX.telemetryTimer = setTimeout(() => {
+      SoundFX.telemetryTimer = window.setTimeout(() => {
         SoundFX.playTelemetryBlip();
         scheduleNext();
       }, delay);
@@ -177,7 +176,7 @@ export const SoundFX: any = {
     scheduleNext();
   },
 
-  playTelemetryBlip: () => {
+  playTelemetryBlip(): void {
     if (!SoundFX.ctx || !SoundFX.ambientGain) return;
     const now = SoundFX.ctx.currentTime;
     const isPing = Math.random() < 0.22;
@@ -205,11 +204,11 @@ export const SoundFX: any = {
     gain.connect(SoundFX.ambientGain);
   },
 
-  updateAmbientTheme: (adjective) => {
+  updateAmbientTheme(adjective: string): void {
     SoundFX.currentThemeKey = adjective;
   },
 
-  duckAmbientForJump: (durationSec) => {
+  duckAmbientForJump(durationSec: number): void {
     if (!SoundFX.ctx || !SoundFX.ambientGain) return;
     const now = SoundFX.ctx.currentTime;
     SoundFX.ambientGain.gain.setValueAtTime(SoundFX.ambientGain.gain.value, now);
@@ -217,15 +216,14 @@ export const SoundFX: any = {
     SoundFX.ambientGain.gain.linearRampToValueAtTime(SoundFX.ambientVolume, now + durationSec);
   },
 
-  silenceOnDeath: () => {
+  silenceOnDeath(): void {
     SoundFX.stopAllAmbient();
     if (!SoundFX.ctx || !SoundFX.ambientGain) return;
     const now = SoundFX.ctx.currentTime;
     SoundFX.ambientGain.gain.linearRampToValueAtTime(0.0001, now + 1.5);
   },
 
-  /* SFX Methods */
-  playJumpCharge: (breachSec) => {
+  playJumpCharge(breachSec: number): void {
     if (!SoundFX.ctx) return;
     SoundFX.duckAmbientForJump(breachSec + 0.6);
     const now = SoundFX.ctx.currentTime;
@@ -254,7 +252,7 @@ export const SoundFX: any = {
 
     osc1.connect(filter);
     filter.connect(gain1);
-    gain1.connect(SoundFX.sfxGain);
+    gain1.connect(SoundFX.sfxGain!);
 
     const osc2 = SoundFX.ctx.createOscillator();
     const gain2 = SoundFX.ctx.createGain();
@@ -270,7 +268,7 @@ export const SoundFX: any = {
     gain2.gain.exponentialRampToValueAtTime(0.001, now + breachSec + 0.04);
 
     osc2.connect(gain2);
-    gain2.connect(SoundFX.sfxGain);
+    gain2.connect(SoundFX.sfxGain!);
 
     osc1.start(now);
     osc2.start(now);
@@ -278,7 +276,7 @@ export const SoundFX: any = {
     osc2.stop(now + breachSec + 0.05);
   },
 
-  playArrivalChime: () => {
+  playArrivalChime(): void {
     if (!SoundFX.ctx) return;
     const now = SoundFX.ctx.currentTime;
     const osc = SoundFX.ctx.createOscillator();
@@ -292,12 +290,12 @@ export const SoundFX: any = {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
     osc.connect(gain);
-    gain.connect(SoundFX.sfxGain);
+    gain.connect(SoundFX.sfxGain!);
     osc.start(now);
     osc.stop(now + 0.55);
   },
 
-  playDialogueChime: () => {
+  playDialogueChime(): void {
     if (!SoundFX.ctx) return;
     const now = SoundFX.ctx.currentTime;
     const osc = SoundFX.ctx.createOscillator();
@@ -309,12 +307,12 @@ export const SoundFX: any = {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
 
     osc.connect(gain);
-    gain.connect(SoundFX.sfxGain);
+    gain.connect(SoundFX.sfxGain!);
     osc.start(now);
     osc.stop(now + 0.22);
   },
 
-  playActionSuccess: () => {
+  playActionSuccess(): void {
     if (!SoundFX.ctx || SoundFX.isMuted) return;
     try {
       const now = SoundFX.ctx.currentTime;
@@ -329,13 +327,15 @@ export const SoundFX: any = {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
 
       osc.connect(gain);
-      gain.connect(SoundFX.sfxGain);
+      gain.connect(SoundFX.sfxGain!);
       osc.start(now);
       osc.stop(now + 0.3);
-    } catch (e) {}
+    } catch {
+      // Ignore audio device errors; gameplay continues silently.
+    }
   },
 
-  playActionDamage: () => {
+  playActionDamage(): void {
     if (!SoundFX.ctx || SoundFX.isMuted) return;
     try {
       const now = SoundFX.ctx.currentTime;
@@ -349,13 +349,11 @@ export const SoundFX: any = {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
 
       osc.connect(gain);
-      gain.connect(SoundFX.sfxGain);
+      gain.connect(SoundFX.sfxGain!);
       osc.start(now);
       osc.stop(now + 0.24);
-    } catch (e) {}
+    } catch {
+      // Ignore audio device errors; gameplay continues silently.
+    }
   },
 };
-
-/* ========================================================
-          INITIAL LOCOMOTIVE STATE
-         ======================================================== */

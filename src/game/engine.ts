@@ -1,5 +1,3 @@
-// @ts-nocheck -- legacy module extracted verbatim; remove per-module as types land.
-// Extracted verbatim from index.html during TS migration.
 import { DOM } from "../ui/dom";
 import { DioramaPipeline } from "./art";
 import { SoundFX } from "./audio";
@@ -11,9 +9,20 @@ import { RiftVectorDial } from "./dial";
 import { TransitionFX } from "./fx";
 import { SaveSystem } from "./save";
 import { VoyageSession } from "./session";
-export const Engine: any = {
-  verifyGraphIntegrity: () => {
-    const phases = Object.values(GAME_DATA.phases);
+import type {
+  ActionId,
+  GameAction,
+  Phase,
+  ResourceKey,
+  StateHook,
+  TierKey,
+  YardItem,
+  YardKey,
+} from "./types";
+
+export const Engine = {
+  verifyGraphIntegrity(): void {
+    const phases = Object.values(GAME_DATA.phases) as Phase[];
     const terminal = [GAME_DATA.phases.dead, GAME_DATA.phases.stranded];
     for (const [phase, targets] of Object.entries(GAME_DATA.transitions)) {
       if (targets.length === 0 && !terminal.includes(phase)) {
@@ -28,14 +37,14 @@ export const Engine: any = {
     }
   },
 
-  verifyPaletteIntegrity: () => {
+  verifyPaletteIntegrity(): void {
     const MIN_DELTA_E = 0.08;
     const dummy = document.createElement("div");
     dummy.style.display = "none";
     document.body.appendChild(dummy);
 
     const types = ["damage", "lore", "success", "system", "event", "help"];
-    const colorNodes = [];
+    const colorNodes: { name: string; L: number; a: number; b: number }[] = [];
 
     types.forEach((type) => {
       dummy.className = `log-entry log-${type}`;
@@ -62,6 +71,7 @@ export const Engine: any = {
       for (let j = i + 1; j < colorNodes.length; j++) {
         const c1 = colorNodes[i];
         const c2 = colorNodes[j];
+        if (!c1 || !c2) continue;
         const deltaE = Math.hypot(c1.L - c2.L, c1.a - c2.a, c1.b - c2.b);
 
         if (deltaE < MIN_DELTA_E) {
@@ -72,7 +82,8 @@ export const Engine: any = {
       }
     }
   },
-  log: (msg, styleClass) => {
+
+  log(msg: string, styleClass: string): void {
     const div = document.createElement("div");
     div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
     div.innerHTML = msg;
@@ -80,49 +91,53 @@ export const Engine: any = {
     DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
   },
 
-  inspect: (topic) => {
+  inspect(topic: string): void {
     const info = GAME_DATA.glossary[topic];
     if (info) {
-      Engine.log(`[INTEL] ${info}`, GAME_DATA.dom.classes.logHelp);
+      Engine.log(`[INTEL] ${info}`, GAME_DATA.dom.classes.logHelp!);
     }
   },
 
-  transitionTo: (newPhase) => {
+  transitionTo(newPhase: Phase): boolean {
     const currentPhase = VoyageSession.getPhase();
-    const allowed = GAME_DATA.transitions[currentPhase];
+    const allowed = GAME_DATA.transitions[currentPhase]!;
+    if (!allowed) {
+      console.error(`ILLEGAL TRANSITION: Cannot move from ${currentPhase} to ${newPhase}`);
+      return false;
+    }
 
     if (!allowed.includes(newPhase)) {
       console.error(`ILLEGAL TRANSITION: Cannot move from ${currentPhase} to ${newPhase}`);
       return false;
     }
 
-    if (StateHooks[currentPhase]?.onExit) StateHooks[currentPhase].onExit();
+    if (StateHooks[currentPhase]?.onExit) StateHooks[currentPhase].onExit!();
     VoyageSession.setPhase(newPhase);
-    if (StateHooks[newPhase]?.onEnter) StateHooks[newPhase].onEnter();
+    if (StateHooks[newPhase]?.onEnter) StateHooks[newPhase].onEnter!();
 
     Engine.updateUI();
     return true;
   },
 
-  executeAction: (actId) => {
+  executeAction(actId: ActionId): void {
     const res = VoyageSession.executeAction(actId);
     if (res.isMenu) {
-      Engine.transitionTo(res.menuTarget);
+      Engine.transitionTo(res.menuTarget!);
       return;
     }
 
-    Engine.log(res.logText, res.logClass);
+    Engine.log(res.logText ?? "", res.logClass ?? "");
 
     const snap = VoyageSession.getSnapshot();
     if (snap.hull <= GAME_DATA.config.DEATH_HULL_THRESHOLD) {
-      Engine.transitionTo(GAME_DATA.phases.dead);
+      Engine.transitionTo(GAME_DATA.phases.dead!);
     } else {
-      Engine.transitionTo(GAME_DATA.phases.idle);
+      Engine.transitionTo(GAME_DATA.phases.idle!);
       VoyageSession.evaluateSurvival();
     }
   },
 
-  exploreNode: () => {
+  exploreNode(this: void): void {
     const snap = VoyageSession.getSnapshot();
     const node = GAME_DATA.nodes[snap.dimId];
     if (snap.energy < node.exploreCost) return;
@@ -131,14 +146,14 @@ export const Engine: any = {
     if (!success) return;
 
     DOM.tutorialCue.hidden = true;
-    DOM.btnExplore.classList.remove(GAME_DATA.dom.classes.tutorialHighlight);
+    DOM.btnExplore.classList.remove(GAME_DATA.dom.classes.tutorialHighlight!);
 
     Engine.log(
       GAME_DATA.text.logEncounterTitle(node.label, node.desc),
-      GAME_DATA.dom.classes.logEvent,
+      GAME_DATA.dom.classes.logEvent!,
     );
     SoundFX.playDialogueChime();
-    Engine.transitionTo(GAME_DATA.phases.encounter);
+    Engine.transitionTo(GAME_DATA.phases.encounter!);
     VoyageSession.evaluateSurvival();
 
     DOM.encounterChoices.scrollIntoView({
@@ -147,31 +162,37 @@ export const Engine: any = {
     });
   },
 
-  initiateTravel: () => {
+  initiateTravel(this: void): void {
     const travel = VoyageSession.initiateTravel();
     if (!travel) return;
 
     if (travel.isNavigating) {
-      Engine.transitionTo(GAME_DATA.phases.navigating);
+      Engine.transitionTo(GAME_DATA.phases.navigating!);
     } else {
-      Engine.finalizeJump(travel.targetDimId, travel.targetDimName);
+      Engine.finalizeJump(travel.targetDimId!, travel.targetDimName!);
     }
   },
 
-  finalizeJump: (dimId, dimName) => {
+  finalizeJump(dimId: string, dimName: string): void {
     VoyageSession.commitJumpTarget(dimId, dimName);
-    Engine.transitionTo(GAME_DATA.phases.jumping);
+    Engine.transitionTo(GAME_DATA.phases.jumping!);
   },
 
-  desperateScavenge: () => {
+  desperateScavenge(this: void): void {
     const success = VoyageSession.desperateScavenge();
     if (!success) return;
 
-    Engine.log(GAME_DATA.text.logDesperate, GAME_DATA.dom.classes.logDamage);
+    Engine.log(GAME_DATA.text.logDesperate, GAME_DATA.dom.classes.logDamage!);
     Engine.updateUI();
     VoyageSession.evaluateSurvival();
   },
-  buildMenuButton: (label, onClick, uiClass, dataActId) => {
+
+  buildMenuButton(
+    label: string,
+    onClick: () => void,
+    uiClass?: string,
+    dataActId?: string,
+  ): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.innerText = label;
     if (uiClass) btn.className = uiClass;
@@ -181,26 +202,26 @@ export const Engine: any = {
     return btn;
   },
 
-  updateActionBtnData: (btn, act) => {
+  updateActionBtnData(btn: HTMLButtonElement, act: GameAction): void {
     const snap = VoyageSession.getSnapshot();
     const meetsReqsAndAffords = VoyageSession.canAffordAction(act);
-    const reqStrs = [];
+    const reqStrs: string[] = [];
     for (const [rKey, rVal] of Object.entries(act.requires || {})) {
-      reqStrs.push(
-        typeof rVal === "number" ? `Req: ${rVal} ${GAME_DATA.resources[rKey]}` : `Req: ${rVal}`,
-      );
+      const key = rKey as ResourceKey;
+      const label = GAME_DATA.resources[key];
+      reqStrs.push(typeof rVal === "number" ? `Req: ${rVal} ${label}` : `Req: ${String(rVal)}`);
     }
     const costStrs = act.consumes.map((rule) =>
       GAME_DATA.text.formatResVal(VoyageSession.getActualCost(rule), GAME_DATA.resources[rule.res]),
     );
     if (act.probability) {
       costStrs.push(
-        GAME_DATA.text.formatChance(Math.floor(act.probability(snap, GAME_DATA.config) * 100)),
+        GAME_DATA.text.formatChance(Math.floor(act.probability(snap!, GAME_DATA.config) * 100)),
       );
     }
     const prodStrs = (act.produces || []).map((rule) =>
       GAME_DATA.text.formatResVal(
-        rule.amount(snap, GAME_DATA.config),
+        rule.amount(snap!, GAME_DATA.config),
         GAME_DATA.resources[rule.res],
       ),
     );
@@ -209,10 +230,10 @@ export const Engine: any = {
     btn.disabled = !meetsReqsAndAffords;
   },
 
-  updateYardBtnData: (btn, item) => {
+  updateYardBtnData(btn: HTMLButtonElement, item: YardItem): void {
     const snap = VoyageSession.getSnapshot();
     let label = GAME_DATA.text.yardItemLabelMenu(item.name, item.desc, item.cost);
-    const currentEq = snap[item.type];
+    const currentEq = String(snap[item.type] ?? "");
 
     if (currentEq === item.name) {
       label += `\n${GAME_DATA.text.yardOwned}`;
@@ -225,21 +246,22 @@ export const Engine: any = {
     btn.innerText = label;
   },
 
-  refreshActiveMenu: () => {
+  refreshActiveMenu(): void {
     const snap = VoyageSession.getSnapshot();
     if (snap.phase === GAME_DATA.phases.encounter) {
       Array.from(DOM.encounterChoices.children).forEach((btn) => {
-        if (btn.dataset.actId)
-          Engine.updateActionBtnData(btn, GAME_DATA.actions[btn.dataset.actId]);
+        const actId = (btn as HTMLElement).dataset.actId as ActionId | undefined;
+        if (actId) Engine.updateActionBtnData(btn as HTMLButtonElement, GAME_DATA.actions[actId]!);
       });
     } else if (snap.phase === GAME_DATA.phases.yard_category) {
       Array.from(DOM.encounterChoices.children).forEach((btn) => {
-        if (btn.dataset.yardId) Engine.updateYardBtnData(btn, GAME_DATA.yard[btn.dataset.yardId]);
+        const yardId = (btn as HTMLElement).dataset.yardId as YardKey | undefined;
+        if (yardId) Engine.updateYardBtnData(btn as HTMLButtonElement, GAME_DATA.yard[yardId]!);
       });
     }
   },
 
-  renderSensors: () => {
+  renderSensors(): void {
     const snap = VoyageSession.getSnapshot();
     if (!DOM.artDisplay || !DOM.bridgeScene) return;
 
@@ -266,24 +288,24 @@ export const Engine: any = {
               <div id="art-glyph"></div>
               <span id="art-label">SIGNAL LOCKED</span>
             `;
-      DOM.artLabel = document.getElementById("art-label");
-      DOM.artGlyph = document.getElementById("art-glyph");
-      TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
+      DOM.artLabel = document.getElementById("art-label") as HTMLElement;
+      DOM.artGlyph = document.getElementById("art-glyph") as HTMLElement;
+      TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
     }
   },
 
-  renderVitals: () => {
+  renderVitals(): void {
     const snap = VoyageSession.getSnapshot();
     DOM.locationName.innerText = GAME_DATA.text.formatDimName(snap.dimName);
 
     DOM.statHull.innerText = GAME_DATA.text.formatPct(Math.floor(snap.hull));
-    DOM.statFuel.innerText = Math.floor(snap.fuel);
+    DOM.statFuel.innerText = String(Math.floor(snap.fuel));
     DOM.statEnergy.innerText = GAME_DATA.text.formatStatPair(
       snap.energy,
       VoyageSession.getMaxEnergy(),
     );
-    DOM.statFlux.innerText = Math.floor(snap.flux);
-    DOM.statRep.innerText = snap.rep;
+    DOM.statFlux.innerText = String(Math.floor(snap.flux));
+    DOM.statRep.innerText = String(snap.rep);
     DOM.statSector.innerText = GAME_DATA.text.formatSectorWaypoint(snap.jumpCount);
 
     DOM.eqEngine.innerText = GAME_DATA.text.formatTier(snap.engineTier);
@@ -300,18 +322,16 @@ export const Engine: any = {
       snap.fuel < VoyageSession.getTravelCost() ? "var(--danger)" : "var(--action)";
     DOM.statEnergy.style.color = snap.energy === 0 ? "var(--warning)" : "var(--energy)";
 
-    // Observer presence derives solely from save state, never from
-    // ad-hoc DOM writes (DEVELOPER NOTES 4: single source of truth).
     if (DOM.corvusPortrait) {
       DOM.corvusPortrait.hidden = VoyageSession.hasObserverDeparted();
     }
   },
 
-  renderInteractiveControls: () => {
+  renderInteractiveControls(): void {
     const snap = VoyageSession.getSnapshot();
     const travelCost = VoyageSession.getTravelCost();
     const node = GAME_DATA.nodes[snap.dimId];
-    const perms = GAME_DATA.permissions[snap.phase];
+    const perms = GAME_DATA.permissions[snap.phase]!;
 
     DOM.btnExplore.innerText = node.isHub
       ? GAME_DATA.text.btnExploreHub(node.exploreCost)
@@ -331,10 +351,10 @@ export const Engine: any = {
         : "none";
   },
 
-  renderForge: () => {
+  renderForge(): void {
     const snap = VoyageSession.getSnapshot();
     const fEngCost = VoyageSession.getForgeCost(snap.engineTier);
-    const perms = GAME_DATA.permissions[snap.phase];
+    const perms = GAME_DATA.permissions[snap.phase]!;
     const nextJumpCost = VoyageSession.getNextTierTravelCost();
 
     DOM.btnForgeEng.innerText =
@@ -358,7 +378,7 @@ export const Engine: any = {
       !perms.forge || snap.flux < fWpnCost || snap.weaponTier >= GAME_DATA.config.MAX_TIER;
   },
 
-  forgeUpgrade: (tierKey, onUpgrade) => {
+  forgeUpgrade(tierKey: TierKey, onUpgrade?: () => void): void {
     const success = VoyageSession.forgeUpgrade(tierKey, onUpgrade);
     if (success) {
       Engine.updateUI();
@@ -366,7 +386,7 @@ export const Engine: any = {
     }
   },
 
-  resetGame: (confirmPrompt = true) => {
+  resetGame(confirmPrompt: boolean = true): void {
     if (confirmPrompt && !confirm("Purge all voyage telemetry and restart from Waypoint 1?")) {
       return;
     }
@@ -374,15 +394,15 @@ export const Engine: any = {
     location.reload();
   },
 
-  lockdownGameOver: (logMessage) => {
+  lockdownGameOver(logMessage: string): void {
     SaveSystem.clear();
     SoundFX.silenceOnDeath();
     document.querySelectorAll("button").forEach((b) => (b.disabled = true));
-    DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI);
-    Engine.log(logMessage, GAME_DATA.dom.classes.logDamage);
+    DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI!);
+    Engine.log(logMessage, GAME_DATA.dom.classes.logDamage!);
   },
 
-  updateUI: () => {
+  updateUI(): void {
     VoyageSession.enforceStateBounds();
     Engine.renderVitals();
     Engine.renderInteractiveControls();
@@ -392,19 +412,20 @@ export const Engine: any = {
     VoyageSession.assertInvariants();
   },
 
-  cacheDOM: () => {
+  cacheDOM(): void {
     Object.entries(GAME_DATA.dom.ids).forEach(([domKey, elementId]) => {
-      DOM[domKey] = document.getElementById(elementId);
+      const el = document.getElementById(elementId);
+      if (el) (DOM as unknown as Record<string, HTMLElement>)[domKey] = el;
     });
     DOM.panes = [DOM.paneSettings, DOM.paneSensors, DOM.paneBridge, DOM.paneForge, DOM.paneManual];
     DOM.tabs = [DOM.tabSettings, DOM.tabSensors, DOM.tabBridge, DOM.tabForge, DOM.tabManual];
   },
 
-  setupStaticText: () => {
+  setupStaticText(): void {
     const snap = VoyageSession.getSnapshot();
     const audioPrefs = SaveSystem.loadAudioPrefs();
     if (audioPrefs) {
-      SoundFX.ambientMode = audioPrefs.mode || "rails";
+      SoundFX.ambientMode = audioPrefs.mode ?? "rails";
       SoundFX.ambientSliderVal = audioPrefs.ambientSlider ?? 100;
       SoundFX.sfxSliderVal = audioPrefs.sfxSlider ?? 100;
       SoundFX.ambientVolume = SoundFX.sliderToGain(SoundFX.ambientSliderVal);
@@ -412,9 +433,9 @@ export const Engine: any = {
       SoundFX.isMuted = !!audioPrefs.muted;
 
       if (DOM.selectAmbientMode) DOM.selectAmbientMode.value = SoundFX.ambientMode;
-      if (DOM.sliderAmbientVol) DOM.sliderAmbientVol.value = SoundFX.ambientSliderVal;
+      if (DOM.sliderAmbientVol) DOM.sliderAmbientVol.value = String(SoundFX.ambientSliderVal);
       if (DOM.lblAmbientVol) DOM.lblAmbientVol.innerText = `${SoundFX.ambientSliderVal}%`;
-      if (DOM.sliderSfxVol) DOM.sliderSfxVol.value = SoundFX.sfxSliderVal;
+      if (DOM.sliderSfxVol) DOM.sliderSfxVol.value = String(SoundFX.sfxSliderVal);
       if (DOM.lblSfxVol) DOM.lblSfxVol.innerText = `${SoundFX.sfxSliderVal}%`;
       if (DOM.btnToggleMute) {
         DOM.btnToggleMute.innerText = `Mute Audio: ${SoundFX.isMuted ? "ON" : "OFF"}`;
@@ -439,11 +460,11 @@ export const Engine: any = {
     }
     DOM.lblForge.innerText = GAME_DATA.text.lblForge;
     DOM.lblNavTitle.innerText = GAME_DATA.text.lblNavTitle;
-    TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
-    Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem);
+    TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
+    Engine.log(GAME_DATA.text.initLog, GAME_DATA.dom.classes.logSystem!);
   },
 
-  syncTabsWithScroll: () => {
+  syncTabsWithScroll(this: void): void {
     const container = DOM.snapSlider;
     if (!container || !DOM.panes) return;
 
@@ -466,7 +487,7 @@ export const Engine: any = {
     });
   },
 
-  scrollToPane: (index) => {
+  scrollToPane(index: number): void {
     const container = DOM.snapSlider;
     const target = DOM.panes?.[index];
     if (!target || !container) return;
@@ -485,7 +506,7 @@ export const Engine: any = {
     }
   },
 
-  bindEvents: () => {
+  bindEvents(): void {
     DOM.btnExplore.addEventListener("click", Engine.exploreNode);
     DOM.btnTravel.addEventListener("click", Engine.initiateTravel);
     DOM.btnDesperate.addEventListener("click", Engine.desperateScavenge);
@@ -512,21 +533,22 @@ export const Engine: any = {
     document.addEventListener("focusin", CutsceneEngine.trapFocus);
 
     DOM.selectAmbientMode.addEventListener("change", (e) => {
-      SoundFX.setAmbientMode(e.target.value);
+      const target = e.target as HTMLSelectElement;
+      SoundFX.setAmbientMode(target.value as "rails" | "telemetry" | "none");
       Engine.log(
-        `[ACOUSTICS] Soundscape shifted to: ${e.target.options[e.target.selectedIndex].text}`,
-        GAME_DATA.dom.classes.logSystem,
+        `[ACOUSTICS] Soundscape shifted to: ${target.options[target.selectedIndex]?.text ?? target.value}`,
+        GAME_DATA.dom.classes.logSystem!,
       );
     });
 
     DOM.sliderAmbientVol.addEventListener("input", (e) => {
-      const val = parseInt(e.target.value, 10);
+      const val = parseInt((e.target as HTMLInputElement).value, 10);
       DOM.lblAmbientVol.innerText = `${val}%`;
       SoundFX.setAmbientVolume(val);
     });
 
     DOM.sliderSfxVol.addEventListener("input", (e) => {
-      const val = parseInt(e.target.value, 10);
+      const val = parseInt((e.target as HTMLInputElement).value, 10);
       DOM.lblSfxVol.innerText = `${val}%`;
       SoundFX.setSfxVolume(val);
     });
@@ -547,16 +569,16 @@ export const Engine: any = {
       if (saved) {
         VoyageSession.loadState(saved);
         const snap = VoyageSession.getSnapshot();
-        TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0]);
+        TransitionFX.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
         Engine.log(
           `[CONDUIT] Resumed trajectory at ${snap.dimName} (Waypoint ${snap.jumpCount}).`,
-          GAME_DATA.dom.classes.logSystem,
+          GAME_DATA.dom.classes.logSystem!,
         );
       } else {
         ConduitDeck.init();
       }
 
-      Engine.transitionTo(GAME_DATA.phases.idle);
+      Engine.transitionTo(GAME_DATA.phases.idle!);
 
       setTimeout(() => {
         Engine.scrollToPane(2);
@@ -581,7 +603,7 @@ export const Engine: any = {
     });
   },
 
-  init: () => {
+  init(): void {
     Engine.verifyGraphIntegrity();
     Engine.verifyPaletteIntegrity();
     Engine.cacheDOM();
@@ -592,14 +614,16 @@ export const Engine: any = {
   },
 };
 
-export const clearEncounterChoices: any = () => (DOM.encounterChoices.innerHTML = "");
+export function clearEncounterChoices(): void {
+  DOM.encounterChoices.innerHTML = "";
+}
 
-export const StateHooks: any = {
+export const StateHooks: Record<string, StateHook> = {
   ENCOUNTER: {
     onEnter: () => {
       const snap = VoyageSession.getSnapshot();
       GAME_DATA.nodes[snap.dimId].actions.forEach((actId) => {
-        const act = GAME_DATA.actions[actId];
+        const act = GAME_DATA.actions[actId]!;
         const btn = Engine.buildMenuButton(
           "",
           () => Engine.executeAction(actId),
@@ -630,13 +654,13 @@ export const StateHooks: any = {
       categories.forEach(({ label, cat }) => {
         Engine.buildMenuButton(label, () => {
           VoyageSession.setYardCategory(cat);
-          Engine.transitionTo(GAME_DATA.phases.yard_category);
+          Engine.transitionTo(GAME_DATA.phases.yard_category!);
         });
       });
       Engine.buildMenuButton(
         GAME_DATA.text.btnYardLeave,
         () => {
-          Engine.transitionTo(GAME_DATA.phases.encounter);
+          Engine.transitionTo(GAME_DATA.phases.encounter!);
           VoyageSession.evaluateSurvival();
         },
         GAME_DATA.dom.classes.btnDesperate,
@@ -648,13 +672,13 @@ export const StateHooks: any = {
     onEnter: () => {
       const snap = VoyageSession.getSnapshot();
       Object.entries(GAME_DATA.yard)
-        .filter(([_, i]) => i.type === snap.yardCat)
+        .filter(([, i]) => i.type === snap.yardCat)
         .forEach(([k, item]) => {
           const btn = Engine.buildMenuButton("", () => {
-            if (VoyageSession.buyYardItem(k)) {
+            if (VoyageSession.buyYardItem(k as YardKey)) {
               Engine.log(
                 GAME_DATA.text.logYardPurchase(item.name),
-                GAME_DATA.dom.classes.logSuccess,
+                GAME_DATA.dom.classes.logSuccess!,
               );
               Engine.updateUI();
             }
@@ -663,7 +687,7 @@ export const StateHooks: any = {
         });
       Engine.buildMenuButton(
         GAME_DATA.text.btnYardBack,
-        () => Engine.transitionTo(GAME_DATA.phases.yard_root),
+        () => Engine.transitionTo(GAME_DATA.phases.yard_root!),
         GAME_DATA.dom.classes.btnTravel,
       );
     },
@@ -684,18 +708,16 @@ export const StateHooks: any = {
   JUMPING: {
     onEnter: () => {
       const snap = VoyageSession.getSnapshot();
-      const targetDimId = snap.targetDimId;
-      const targetDimName = snap.targetDimName;
-      // Needle already sits on the committed slot angle from
-      // RiftCouplingBoard.confirm(); do not override it here.
+      const targetDimId = snap.targetDimId ?? "";
+      const targetDimName = snap.targetDimName ?? "";
 
       DOM.artDisplay.innerHTML = `
               <div id="art-glyph"></div>
               <span id="art-label">SIGNAL LOCKED</span>
             `;
-      DOM.artLabel = document.getElementById("art-label");
-      DOM.artGlyph = document.getElementById("art-glyph");
-      TransitionFX.applyThemeStyles(targetDimName.split(" ")[0]);
+      DOM.artLabel = document.getElementById("art-label") as HTMLElement;
+      DOM.artGlyph = document.getElementById("art-glyph") as HTMLElement;
+      TransitionFX.applyThemeStyles(targetDimName.split(" ")[0] ?? "");
 
       TransitionFX.playJumpEffect(
         targetDimId,
@@ -706,31 +728,31 @@ export const StateHooks: any = {
           if (jumpResult.greenhouseYield > 0) {
             Engine.log(
               GAME_DATA.text.logGreenhouse(jumpResult.greenhouseYield),
-              GAME_DATA.dom.classes.logSystem,
+              GAME_DATA.dom.classes.logSystem!,
             );
           }
           if (jumpResult.goblinYield > 0) {
             Engine.log(
               GAME_DATA.text.logGoblin(jumpResult.goblinYield),
-              GAME_DATA.dom.classes.logSystem,
+              GAME_DATA.dom.classes.logSystem!,
             );
           }
 
           Engine.log(
             GAME_DATA.text.logLocEnter(
               targetDimName,
-              GAME_DATA.nodes[targetDimId].label,
+              GAME_DATA.nodes[targetDimId as "hub"].label,
               jumpResult.jumpCount,
             ),
-            GAME_DATA.dom.classes.logSystem,
+            GAME_DATA.dom.classes.logSystem!,
           );
         },
         () => {
-          Engine.transitionTo(GAME_DATA.phases.idle);
+          Engine.transitionTo(GAME_DATA.phases.idle!);
           VoyageSession.evaluateSurvival();
 
           const currentSnap = VoyageSession.getSnapshot();
-          const wpCutsceneMap = {
+          const wpCutsceneMap: Record<number, string> = {
             2: "wp2",
             3: "wp3",
             4: "wp4",
