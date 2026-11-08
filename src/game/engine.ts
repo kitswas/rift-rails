@@ -7,11 +7,11 @@ import { GAME_DATA } from "./data";
 import { TransitionFX } from "./fx";
 import { SaveSystem } from "./save";
 import { VoyageSession } from "./session";
-import { resetNav, setChoices } from "../stores/nav.svelte";
 import { syncUI, ui } from "../stores/ui.svelte";
 import { addMenuItem, clearMenu, syncActiveMenu } from "../stores/menu.svelte";
 import { syncSensors } from "../stores/sensors.svelte";
-import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem, YardKey } from "./types";
+import { PhaseMachine } from "./phaseMachine";
+import type { ActionId, GameAction, Phase, StateHook, TierKey, YardItem } from "./types";
 
 export const Engine = {
   verifyGraphIntegrity(): void {
@@ -104,9 +104,10 @@ export const Engine = {
       return false;
     }
 
-    if (StateHooks[currentPhase]?.onExit) StateHooks[currentPhase].onExit!();
+    const hooks = phaseMachine.hooks;
+    if (hooks[currentPhase]?.onExit) hooks[currentPhase].onExit!();
     VoyageSession.setPhase(newPhase);
-    if (StateHooks[newPhase]?.onEnter) StateHooks[newPhase].onEnter!();
+    if (hooks[newPhase]?.onEnter) hooks[newPhase].onEnter!();
 
     Engine.updateUI();
     return true;
@@ -474,159 +475,12 @@ export function clearEncounterChoices(): void {
   clearMenu();
 }
 
-export const StateHooks: Record<string, StateHook> = {
-  ENCOUNTER: {
-    onEnter: () => {
-      const snap = VoyageSession.getSnapshot();
-      GAME_DATA.nodes[snap.dimId].actions.forEach((actId) => {
-        const act = GAME_DATA.actions[actId]!;
-        const btn = Engine.buildMenuButton(
-          "",
-          () => Engine.executeAction(actId),
-          act.uiClass,
-          actId,
-        );
-        if (act.isMenu) btn.innerText = act.label;
-      });
-    },
-    onExit: clearEncounterChoices,
-  },
-  YARD_ROOT: {
-    onEnter: () => {
-      const categories = [
-        {
-          label: GAME_DATA.text.btnYardModules,
-          cat: GAME_DATA.resources.module,
-        },
-        {
-          label: GAME_DATA.text.btnYardCarriages,
-          cat: GAME_DATA.resources.carriage,
-        },
-        {
-          label: GAME_DATA.text.btnYardCrew,
-          cat: GAME_DATA.resources.crew,
-        },
-      ];
-      categories.forEach(({ label, cat }) => {
-        Engine.buildMenuButton(label, () => {
-          VoyageSession.setYardCategory(cat);
-          Engine.transitionTo(GAME_DATA.phases.yard_category!);
-        });
-      });
-      Engine.buildMenuButton(
-        GAME_DATA.text.btnYardLeave,
-        () => {
-          Engine.transitionTo(GAME_DATA.phases.encounter!);
-          VoyageSession.evaluateSurvival();
-        },
-        GAME_DATA.dom.classes.btnDesperate,
-      );
-    },
-    onExit: clearEncounterChoices,
-  },
-  YARD_CATEGORY: {
-    onEnter: () => {
-      const snap = VoyageSession.getSnapshot();
-      Object.entries(GAME_DATA.yard)
-        .filter(([, i]) => i.type === snap.yardCat)
-        .forEach(([k, item]) => {
-          const btn = Engine.buildMenuButton("", () => {
-            if (VoyageSession.buyYardItem(k as YardKey)) {
-              Engine.log(
-                GAME_DATA.text.logYardPurchase(item.name),
-                GAME_DATA.dom.classes.logSuccess!,
-              );
-              Engine.updateUI();
-            }
-          });
-          btn.dataset.yardId = k;
-        });
-      Engine.buildMenuButton(
-        GAME_DATA.text.btnYardBack,
-        () => Engine.transitionTo(GAME_DATA.phases.yard_root!),
-        GAME_DATA.dom.classes.btnTravel,
-      );
-    },
-    onExit: clearEncounterChoices,
-  },
-  NAVIGATING: {
-    onEnter: () => {
-      const snap = VoyageSession.getSnapshot();
-      DOM.navScreen.style.display = "flex";
-      setChoices(snap.navChoices);
-    },
-    onExit: () => {
-      DOM.navScreen.style.display = "none";
-      resetNav();
-    },
-  },
-  JUMPING: {
-    onEnter: () => {
-      const snap = VoyageSession.getSnapshot();
-      const targetDimId = snap.targetDimId ?? "";
-      const targetDimName = snap.targetDimName ?? "";
+const phaseMachine = new PhaseMachine({
+  transitionTo: (phase) => Engine.transitionTo(phase),
+  executeAction: (actId) => Engine.executeAction(actId),
+  log: (text, cls) => Engine.log(text, cls ?? GAME_DATA.dom.classes.logSystem!),
+  updateUI: () => Engine.updateUI(),
+  lockdownGameOver: (msg) => Engine.lockdownGameOver(msg),
+});
 
-      DOM.artDisplay.innerHTML = `
-              <div id="art-glyph"></div>
-              <span id="art-label">SIGNAL LOCKED</span>
-            `;
-      DOM.artLabel = document.getElementById("art-label") as HTMLElement;
-      DOM.artGlyph = document.getElementById("art-glyph") as HTMLElement;
-      TransitionFX.applyThemeStyles(targetDimName.split(" ")[0] ?? "");
-
-      TransitionFX.playJumpEffect(
-        targetDimId,
-        targetDimName,
-        () => {
-          const jumpResult = VoyageSession.completeJump(targetDimId, targetDimName);
-
-          if (jumpResult.greenhouseYield > 0) {
-            Engine.log(
-              GAME_DATA.text.logGreenhouse(jumpResult.greenhouseYield),
-              GAME_DATA.dom.classes.logSystem!,
-            );
-          }
-          if (jumpResult.goblinYield > 0) {
-            Engine.log(
-              GAME_DATA.text.logGoblin(jumpResult.goblinYield),
-              GAME_DATA.dom.classes.logSystem!,
-            );
-          }
-
-          Engine.log(
-            GAME_DATA.text.logLocEnter(
-              targetDimName,
-              GAME_DATA.nodes[targetDimId as "hub"].label,
-              jumpResult.jumpCount,
-            ),
-            GAME_DATA.dom.classes.logSystem!,
-          );
-        },
-        () => {
-          Engine.transitionTo(GAME_DATA.phases.idle!);
-          VoyageSession.evaluateSurvival();
-
-          const currentSnap = VoyageSession.getSnapshot();
-          const wpCutsceneMap: Record<number, string> = {
-            2: "wp2",
-            3: "wp3",
-            4: "wp4",
-            5: "wp5",
-          };
-          const nextCutscene = wpCutsceneMap[currentSnap.jumpCount];
-          if (nextCutscene && !currentSnap.seenCutscenes?.includes(nextCutscene)) {
-            setTimeout(() => {
-              CutsceneEngine.play(nextCutscene);
-            }, 150);
-          }
-        },
-      );
-    },
-  },
-  DEAD: {
-    onEnter: () => Engine.lockdownGameOver(GAME_DATA.text.logDead),
-  },
-  STRANDED: {
-    onEnter: () => Engine.lockdownGameOver(GAME_DATA.text.logStranded),
-  },
-};
+export const StateHooks: Record<string, StateHook> = phaseMachine.hooks;
