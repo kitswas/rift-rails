@@ -1590,4 +1590,53 @@
         accent-color: var(--action);
         flex-shrink: 0;
       }
+
+      /* Plugins file picker: dark mono override for native file input */
+      #plugins-panel input[type="file"],
+      .audio-select[type="file"] {
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 0.82em;
+        background: transparent;
+        border: none;
+        width: 60%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      #plugins-panel .audio-select[type="file"],
+      .audio-select[type="file"] {
+        width: auto;
+        min-width: 0;
+      }
+
+      #plugins-panel input[type="file"]::file-selector-button,
+      .audio-select[type="file"]::file-selector-button {
+        background: #131824;
+        color: var(--text);
+        border: 1px solid var(--border-bright);
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-family: var(--font-mono);
+        font-size: 0.82em;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+
+      #plugins-panel input[type="file"]::file-selector-button:hover,
+      .audio-select[type="file"]::file-selector-button:hover {
+        border-color: var(--text-muted);
+      }
+
+      #plugins-panel input[type="file"]:focus-visible,
+      .audio-select[type="file"]:focus-visible,
+      #plugins-panel input[type="file"]::file-selector-button:focus-visible,
+      .audio-select[type="file"]::file-selector-button:focus-visible {
+        outline: 2px solid rgba(245, 158, 11, 0.45);
+        outline-offset: 2px;
+      }
     
