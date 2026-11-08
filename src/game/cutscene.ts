@@ -18,7 +18,10 @@ export const CutsceneEngine = {
     if (event instanceof KeyboardEvent && event.key === "Tab") {
       event.preventDefault();
       el("cutsceneBtnA").focus();
-    } else if (event instanceof FocusEvent && !el("cutsceneOverlay").contains(event.target as Node)) {
+    } else if (
+      event instanceof FocusEvent &&
+      !el("cutsceneOverlay").contains(event.target as Node)
+    ) {
       el("cutsceneBtnA").focus();
     }
   },

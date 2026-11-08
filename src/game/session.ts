@@ -1,4 +1,4 @@
-import { DOM } from "../ui/dom";
+import { GAME_DATA } from "./data";
 import { SoundFX } from "./audio";
 import { Engine } from "./engine";
 import { SaveSystem } from "./save";
@@ -78,9 +78,10 @@ export const VoyageSession = {
     for (const breach of inner.assertInvariants()) {
       console.error(`INVARIANT BREACH: ${breach}`);
     }
-    if (DOM.corvusPortrait) {
+    const portrait = document.getElementById(GAME_DATA.dom.ids.corvusPortrait!);
+    if (portrait) {
       const departed = inner.hasObserverDeparted();
-      if (!!DOM.corvusPortrait.hidden !== departed)
+      if (!!(portrait as HTMLElement).hidden !== departed)
         console.error("INVARIANT BREACH: Observer presence out of sync with save state");
     }
   },

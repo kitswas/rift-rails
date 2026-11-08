@@ -1,4 +1,3 @@
-import { DOM } from "../ui/dom";
 import { DioramaPipeline } from "./art";
 import { SoundFX } from "./audio";
 import { ConduitDeck } from "./conduit";
@@ -81,8 +80,9 @@ export class EngineService {
     const div = document.createElement("div");
     div.className = `${GAME_DATA.dom.classes.logEntry} ${styleClass}`;
     div.innerHTML = msg;
-    DOM.storyLog.appendChild(div);
-    DOM.storyLog.scrollTop = DOM.storyLog.scrollHeight;
+    const storyLog = document.getElementById(GAME_DATA.dom.ids.storyLog!)!;
+    storyLog.appendChild(div);
+    storyLog.scrollTop = storyLog.scrollHeight;
   }
 
   inspect(topic: string): void {
@@ -140,8 +140,10 @@ export class EngineService {
     const success = VoyageSession.exploreNode();
     if (!success) return;
 
-    DOM.tutorialCue.hidden = true;
-    DOM.btnExplore.classList.remove(GAME_DATA.dom.classes.tutorialHighlight!);
+    const tutorialCue = document.getElementById(GAME_DATA.dom.ids.tutorialCue!)!;
+    tutorialCue.hidden = true;
+    const btnExplore = document.getElementById(GAME_DATA.dom.ids.btnExplore!)!;
+    btnExplore.classList.remove(GAME_DATA.dom.classes.tutorialHighlight!);
 
     this.log(
       GAME_DATA.text.logEncounterTitle(node.label, node.desc),
@@ -151,7 +153,7 @@ export class EngineService {
     this.transitionTo(GAME_DATA.phases.encounter!);
     VoyageSession.evaluateSurvival();
 
-    DOM.encounterChoices.scrollIntoView({
+    document.getElementById(GAME_DATA.dom.ids.encounterChoices!)!.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
     });
@@ -219,12 +221,19 @@ export class EngineService {
 
   renderVitals(): void {
     syncUI();
-    if (DOM.locationName) DOM.locationName.innerText = ui.locationName;
-    if (DOM.locationType) DOM.locationType.innerText = ui.locationType;
-    if (DOM.dimTypeCodex) DOM.dimTypeCodex.innerText = ui.dimTypeCodex;
-    if (DOM.statRep) DOM.statRep.innerText = ui.rep;
-    if (DOM.corvusPortrait) {
-      DOM.corvusPortrait.hidden = VoyageSession.hasObserverDeparted();
+    const loc = document.getElementById(GAME_DATA.dom.ids.locationName!) as HTMLElement | null;
+    if (loc) loc.innerText = ui.locationName;
+    const locType = document.getElementById(GAME_DATA.dom.ids.locationType!) as HTMLElement | null;
+    if (locType) locType.innerText = ui.locationType;
+    const codex = document.getElementById(GAME_DATA.dom.ids.dimTypeCodex!) as HTMLElement | null;
+    if (codex) codex.innerText = ui.dimTypeCodex;
+    const rep = document.getElementById(GAME_DATA.dom.ids.statRep!) as HTMLElement | null;
+    if (rep) rep.innerText = ui.rep;
+    const portrait = document.getElementById(
+      GAME_DATA.dom.ids.corvusPortrait!,
+    ) as HTMLElement | null;
+    if (portrait) {
+      portrait.hidden = VoyageSession.hasObserverDeparted();
     }
   }
 
@@ -256,7 +265,9 @@ export class EngineService {
     SaveSystem.clear();
     SoundFX.silenceOnDeath();
     document.querySelectorAll("button").forEach((b) => (b.disabled = true));
-    DOM.rightPanel.classList.add(GAME_DATA.dom.classes.lockedUI!);
+    document
+      .getElementById(GAME_DATA.dom.ids.rightPanel!)!
+      .classList.add(GAME_DATA.dom.classes.lockedUI!);
     this.log(logMessage, GAME_DATA.dom.classes.logDamage!);
   }
 
@@ -301,12 +312,7 @@ export class EngineService {
   }
 
   cacheDOM(): void {
-    Object.entries(GAME_DATA.dom.ids).forEach(([domKey, elementId]) => {
-      const el = document.getElementById(elementId);
-      if (el) (DOM as unknown as Record<string, HTMLElement>)[domKey] = el;
-    });
-    DOM.panes = [DOM.paneSettings, DOM.paneSensors, DOM.paneBridge, DOM.paneForge, DOM.paneManual];
-    DOM.tabs = [DOM.tabSettings, DOM.tabSensors, DOM.tabBridge, DOM.tabForge, DOM.tabManual];
+    // Svelte owns the DOM; lookups are direct via getElementById.
   }
 
   setupStaticText(): void {

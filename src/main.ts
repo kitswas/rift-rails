@@ -14,7 +14,6 @@ import { Engine, clearEncounterChoices, StateHooks } from "./game/engine";
 import { RiftReducedMotion, RiftMotion } from "./game/motion";
 import { VECTOR_IDLE_ANGLE } from "./game/config";
 import { RiftEyes } from "./game/eyes";
-import { DOM } from "./ui/dom";
 import {
   nav,
   arm,
@@ -92,7 +91,6 @@ declare global {
     VECTOR_IDLE_ANGLE: typeof VECTOR_IDLE_ANGLE;
     RiftVectorDial: typeof RiftVectorDial;
     RiftEyes: typeof RiftEyes;
-    DOM: typeof DOM;
     __nav: typeof nav;
   }
 }
@@ -119,7 +117,6 @@ window.RiftCouplingBoard = RiftCouplingBoard;
 window.VECTOR_IDLE_ANGLE = VECTOR_IDLE_ANGLE;
 window.RiftVectorDial = RiftVectorDial;
 window.RiftEyes = RiftEyes;
-window.DOM = DOM;
 window.__nav = nav;
 
 const target = document.getElementById("app");

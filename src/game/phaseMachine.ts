@@ -6,7 +6,6 @@ import { VoyageSession } from "./session";
 import { setChoices, resetNav } from "../stores/nav.svelte";
 import { addMenuItem, clearMenu } from "../stores/menu.svelte";
 import type { Phase, StateHook } from "./types";
-import { DOM } from "../ui/dom";
 
 export interface PhaseMachineDeps {
   transitionTo: (phase: Phase) => boolean;
@@ -93,11 +92,11 @@ export class PhaseMachine {
       NAVIGATING: {
         onEnter: () => {
           const snap = VoyageSession.getSnapshot();
-          DOM.navScreen.style.display = "flex";
+          document.getElementById(GAME_DATA.dom.ids.navScreen!)!.style.display = "flex";
           setChoices(snap.navChoices);
         },
         onExit: () => {
-          DOM.navScreen.style.display = "none";
+          document.getElementById(GAME_DATA.dom.ids.navScreen!)!.style.display = "none";
           resetNav();
         },
       },

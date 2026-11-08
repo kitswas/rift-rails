@@ -1,4 +1,3 @@
-import { DOM } from "../ui/dom";
 import { SoundFX } from "./audio";
 import { GAME_DATA } from "./data";
 import type { ProceduralTheme } from "./types";
@@ -20,7 +19,7 @@ export const TransitionFX = {
   running: false,
 
   init(): void {
-    TransitionFX.canvas = DOM.fxCanvas;
+    TransitionFX.canvas = document.getElementById(GAME_DATA.dom.ids.fxCanvas!) as HTMLCanvasElement;
     TransitionFX.ctx = TransitionFX.canvas.getContext("2d");
     TransitionFX.resize();
     window.addEventListener("resize", TransitionFX.resize);
@@ -54,9 +53,10 @@ export const TransitionFX = {
     document.documentElement.style.setProperty("--theme-secondary", theme.secondary);
     document.documentElement.style.setProperty("--theme-glow", `${theme.primary}55`);
     document.documentElement.style.setProperty("--bg", theme.bg);
-    if (DOM.artGlyph) {
-      DOM.artGlyph.innerText = theme.glyph;
-      DOM.artGlyph.style.color = theme.primary;
+    const artGlyph = document.getElementById(GAME_DATA.dom.ids.artGlyph!) as HTMLElement | null;
+    if (artGlyph) {
+      artGlyph.innerText = theme.glyph;
+      artGlyph.style.color = theme.primary;
     }
 
     SoundFX.updateAmbientTheme(adj);
@@ -75,9 +75,12 @@ export const TransitionFX = {
       navigator.vibrate(GAME_DATA.config.FX_VIBRATE_PATTERN);
     }
 
-    DOM.gameContainer.classList.add(GAME_DATA.dom.classes.screenShake!);
-    DOM.bridgeScene.classList.add(GAME_DATA.dom.classes.screenShake!);
-    DOM.fxCanvas.classList.add(GAME_DATA.dom.classes.fxActive!);
+    const gameEl = document.getElementById(GAME_DATA.dom.ids.gameContainer!)!;
+    const bridgeEl = document.getElementById(GAME_DATA.dom.ids.bridgeScene!)!;
+    const fxEl = document.getElementById(GAME_DATA.dom.ids.fxCanvas!)!;
+    gameEl.classList.add(GAME_DATA.dom.classes.screenShake!);
+    bridgeEl.classList.add(GAME_DATA.dom.classes.screenShake!);
+    fxEl.classList.add(GAME_DATA.dom.classes.fxActive!);
     TransitionFX.running = true;
 
     const adjective = targetDimName.split(" ")[0] ?? "";
@@ -180,19 +183,19 @@ export const TransitionFX = {
     setTimeout(() => {
       onBreach();
       TransitionFX.applyThemeStyles(adjective);
-      DOM.gameContainer.classList.remove(GAME_DATA.dom.classes.screenShake!);
-      DOM.bridgeScene.classList.remove(GAME_DATA.dom.classes.screenShake!);
-      DOM.gameContainer.classList.add(GAME_DATA.dom.classes.chromaticFlash!);
-      DOM.bridgeScene.classList.add(GAME_DATA.dom.classes.chromaticFlash!);
+      gameEl.classList.remove(GAME_DATA.dom.classes.screenShake!);
+      bridgeEl.classList.remove(GAME_DATA.dom.classes.screenShake!);
+      gameEl.classList.add(GAME_DATA.dom.classes.chromaticFlash!);
+      bridgeEl.classList.add(GAME_DATA.dom.classes.chromaticFlash!);
       SoundFX.playArrivalChime();
     }, GAME_DATA.config.JUMP_CHARGE_MS);
 
     setTimeout(() => {
       TransitionFX.running = false;
       cancelAnimationFrame(TransitionFX.animId);
-      DOM.fxCanvas.classList.remove(GAME_DATA.dom.classes.fxActive!);
-      DOM.gameContainer.classList.remove(GAME_DATA.dom.classes.chromaticFlash!);
-      DOM.bridgeScene.classList.remove(GAME_DATA.dom.classes.chromaticFlash!);
+      fxEl.classList.remove(GAME_DATA.dom.classes.fxActive!);
+      gameEl.classList.remove(GAME_DATA.dom.classes.chromaticFlash!);
+      bridgeEl.classList.remove(GAME_DATA.dom.classes.chromaticFlash!);
       onComplete();
     }, GAME_DATA.config.JUMP_TOTAL_MS);
   },
