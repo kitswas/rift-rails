@@ -32,6 +32,8 @@ test.describe("plugin smoke", () => {
     await page.goto("/");
     // Generic smoke until the plugin install UI selector is finalized.
     await expect(page.locator("#start-screen")).toBeVisible();
+    await expect(page.locator("#corvus-portrait")).toHaveCount(0);
+    await expect(page.locator("#cutscene-overlay .cutscene-portrait")).toHaveCount(1);
     // TODO: assert plugin install affordance (e.g. a file input accepting
     // .zip, or a menu button) once the entry point exists in the UI.
   });

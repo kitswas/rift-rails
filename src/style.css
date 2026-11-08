@@ -1432,29 +1432,6 @@
         background: var(--panel-sub-bg);
       }
 
-      #corvus-portrait {
-        width: 176px;
-        height: 224px;
-        border: 1px solid var(--border-bright);
-        border-radius: var(--radius);
-        background: var(--panel-sub-bg);
-        position: relative;
-        margin: 8px 0 16px;
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-      }
-
-      #corvus-portrait svg {
-        height: 100%;
-        display: block;
-        pointer-events: none;
-      }
-
-      #corvus-portrait .corvus-eye-pupil {
-        transform: translate(var(--corvus-eye-x, 0), var(--corvus-eye-y, 0));
-      }
-
       /* Glint rides inside the pupil group: one transform source per eye,
          so layers can never separate (DEVELOPER NOTES 4). */
 
@@ -1639,4 +1616,4 @@
         outline: 2px solid rgba(245, 158, 11, 0.45);
         outline-offset: 2px;
       }
-    
+

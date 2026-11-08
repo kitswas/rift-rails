@@ -14,7 +14,6 @@ import { DioramaPipelineService } from "./game/art";
 import type { ArtBridgeHandle } from "./game/art";
 import { TransitionFXService } from "./game/fx";
 import { CutsceneEngine } from "./game/cutscene";
-import { RiftEyesService } from "./game/eyes";
 import { RiftMotionService } from "./game/motion";
 import { appendLog, renderActionButtons, renderForge, renderVitals } from "./ui/render";
 import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins } from "./ui/panels";
@@ -206,8 +205,6 @@ const motion = new RiftMotionService({
   requestFrame: (cb) => window.requestAnimationFrame(cb),
   cancelFrame: (id) => window.cancelAnimationFrame(id),
 });
-const eyes = new RiftEyesService({ motion });
-
 let engine!: EngineService;
 
 const cutscene = new CutsceneEngine({
@@ -530,7 +527,6 @@ const resetNav = (): void => {
 };
 
 reducedMotionQuery.addEventListener?.("change", () => {
-  eyes.center();
   armedSlot = -1;
   lockSlot = -1;
   el("nav-vector")?.removeAttribute("data-armed");
@@ -803,10 +799,6 @@ const deps: EngineDeps = {
     if (game) game.style.display = started ? "flex" : "none";
   },
   scrollStarted: () => engine.scrollToPane(2),
-  syncObserverPresence: (departed) => {
-    const p = el("corvus-portrait");
-    if (p) (p as HTMLElement & { hidden: boolean }).hidden = departed;
-  },
   onExploreSurveyed: () => {
     const cue = el("tutorial-cue");
     if (cue) (cue as HTMLElement & { hidden: boolean }).hidden = true;
@@ -938,11 +930,7 @@ engine.attachHooks(phaseMachine.hooks);
 fx.bindCanvas(document.getElementById("fx-canvas") as HTMLCanvasElement | null);
 fx.bindArtGlyph(el("art-glyph"));
 fx.bindChrome(el("game-container"), el("bridge-scene"));
-eyes.bindPortrait(el("corvus-portrait"));
-eyes.bindRig(el("game-container"));
-eyes.start();
-
-export const app = { registry, conduit, voyage, engine, host, save, sound, art, fx, cutscene, eyes, motion };
+export const app = { registry, conduit, voyage, engine, host, save, sound, art, fx, cutscene, motion };
 
 function bind(): void {
   btn("btn-explore")?.addEventListener("click", () => engine.exploreNode());

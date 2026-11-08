@@ -43,7 +43,6 @@ export interface EngineDeps {
   lockUI?: () => void;
   showStarted?: (started: boolean) => void;
   scrollStarted?: () => void;
-  syncObserverPresence?: (departed: boolean) => void;
   onExploreSurveyed?: () => void;
   scrollEncounterChoices?: () => void;
   showNavScreen?: (visible: boolean) => void;
@@ -370,7 +369,6 @@ export class EngineService {
 
   renderVitals(): void {
     this.deps.syncUI();
-    this.deps.syncObserverPresence?.(this.voyage.hasObserverDeparted());
   }
 
   renderInteractiveControls(): void {
