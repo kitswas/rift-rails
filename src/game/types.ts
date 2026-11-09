@@ -38,6 +38,7 @@ export interface SaveState {
   navChoices: Trajectory[];
   yardCat: string | null;
   seenCutscenes: string[];
+  storyProgress: Record<string, StoryProgress>;
   isSurveyed: boolean;
   pluginState: Record<string, unknown>;
 }
@@ -59,7 +60,25 @@ export interface SerializedVoyage {
   dimName: string;
   isSurveyed: boolean;
   seenCutscenes: string[];
+  storyProgress: Record<string, StoryProgress>;
   pluginState: Record<string, unknown>;
+}
+
+export interface StoryProgress {
+  status: "active" | "complete";
+  nodeId: string;
+  waiting: boolean;
+  trace: { nodeId: string; choiceId: string }[];
+}
+
+export interface StoryTraceEntry {
+  nodeId: string;
+  choiceId: string;
+  actor: string;
+  verb: string;
+  target: string;
+  outcome: string;
+  choiceLabel: string;
 }
 
 export interface CutsceneBeat {

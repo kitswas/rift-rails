@@ -14,6 +14,8 @@ import { DioramaPipelineService } from "./game/art";
 import type { ArtBridgeHandle } from "./game/art";
 import { TransitionFXService } from "./game/fx";
 import { CutsceneEngine } from "./game/cutscene";
+import { StorylineService } from "./game/storyline";
+import type { StoryEvent } from "./game/storyline";
 import { RiftMotionService } from "./game/motion";
 import { appendLog, renderActionButtons, renderForge, renderVitals } from "./ui/render";
 import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins } from "./ui/panels";
@@ -37,6 +39,50 @@ function btn(id: string): HTMLButtonElement | null {
   return document.getElementById(id) as HTMLButtonElement | null;
 }
 
+let cutscene!: CutsceneEngine;
+let storylineService: StorylineService | undefined;
+
+function renderStoryJournal(): void {
+  const hostEl = el("story-journal");
+  if (!hostEl || !storylineService) return;
+  hostEl.replaceChildren();
+  const entries = storylineService.journal();
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "Stories installed by active plugins appear here.";
+    hostEl.appendChild(empty);
+    return;
+  }
+  for (const entry of entries) {
+    const section = document.createElement("section");
+    section.className = "story-journal-entry";
+    const title = document.createElement("h4");
+    title.textContent = entry.title;
+    const description = document.createElement("p");
+    description.textContent = entry.description;
+    const status = document.createElement("p");
+    status.className = `story-journal-status story-${entry.status}`;
+    status.textContent = entry.status === "complete" ? "Complete" : entry.status === "active" ? "In progress" : "Waiting for signal";
+    section.append(title, description, status);
+    if (entry.step) {
+      const step = document.createElement("p");
+      step.textContent = `Next: ${entry.step}`;
+      section.appendChild(step);
+    }
+    if (entry.trace.length) {
+      const list = document.createElement("ol");
+      list.className = "story-journal-trace";
+      for (const item of entry.trace) {
+        const row = document.createElement("li");
+        row.textContent = `${item.actor} ${item.verb} ${item.target}: ${item.outcome} — ${item.choiceLabel}`;
+        list.appendChild(row);
+      }
+      section.appendChild(list);
+    }
+    hostEl.appendChild(section);
+  }
+}
+
 const registry = new Registry();
 for (const [id, node] of Object.entries(GAME_DATA.nodes)) registry.registerNode(id, node);
 for (const [id, act] of Object.entries(GAME_DATA.actions)) registry.registerAction(id, act);
@@ -58,6 +104,17 @@ const voyage = new Voyage(registry, GAME_DATA.config, conduit, undefined, {
   random: () => Math.random(),
 });
 
+const storylines = {
+  register: (pluginId: string, def: unknown): void => {
+    if (!storylineService) throw new Error("storyline service unavailable");
+    storylineService.register(pluginId, def);
+  },
+  removePlugin: (pluginId: string): void => {
+    storylineService?.removePlugin(pluginId);
+    cutscene.cancelPluginStories(pluginId);
+  },
+};
+
 const host = new PluginHost({
   voyage: {
     getSnapshot: () => voyage.getSnapshot() as never,
@@ -75,6 +132,7 @@ const host = new PluginHost({
       for (const id of registry.listNodeIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterNode(id);
     },
   },
+  storylines,
   log: (msg) => appendLog(msg, GAME_DATA.dom.classes.logSystem ?? "log-system"),
   events: bus,
 });
@@ -207,7 +265,7 @@ const motion = new RiftMotionService({
 });
 let engine!: EngineService;
 
-const cutscene = new CutsceneEngine({
+cutscene = new CutsceneEngine({
   registry,
   voyage,
   transitionTo: (phase) => engine.transitionTo(phase),
@@ -231,6 +289,19 @@ const cutscene = new CutsceneEngine({
     return GAME_DATA.text.tutorialExplore(node?.isHub ?? false, node?.exploreCost ?? 1);
   },
 });
+
+storylineService = new StorylineService(voyage, {
+  show: (scene, choose) => cutscene.playStory(scene, choose),
+  changed: renderStoryJournal,
+  save: () => void save.saveAsync(),
+});
+for (const event of ["afterAction", "afterJump", "onEnter"] as StoryEvent[]) {
+  bus.on(event, (payload) => {
+    const handle = (): void => storylineService?.handleEvent(event, payload);
+    if (event === "onEnter") window.setTimeout(handle, 0);
+    else handle();
+  });
+}
 
 let navChoices: Trajectory[] = [];
 let armedSlot = -1;
@@ -940,8 +1011,8 @@ function bind(): void {
   btn("btn-forge-weapon")?.addEventListener("click", () => engine.forgeUpgrade("weaponTier"));
   btn("btn-reset-save")?.addEventListener("click", () => engine.resetGame(true));
   btn("btn-start-fresh")?.addEventListener("click", () => engine.resetGame(true));
-  btn("cutscene-btn-a")?.addEventListener("click", () => cutscene.advance());
-  btn("cutscene-btn-b")?.addEventListener("click", () => cutscene.advance());
+  btn("cutscene-btn-a")?.addEventListener("click", () => cutscene.advance(0));
+  btn("cutscene-btn-b")?.addEventListener("click", () => cutscene.advance(1));
   document.addEventListener("keydown", (e) => cutscene.trapFocus(e));
   document.addEventListener("focusin", (e) => cutscene.trapFocus(e));
 
@@ -977,6 +1048,7 @@ function bind(): void {
     // SoundFXService.init(): void — creates context, calls startActiveSoundscape().
     sound.init();
     engine.ignite();
+    window.setTimeout(() => storylineService?.start(), 180);
   });
 
   // Inspect is bound once via inline onclick attrs on .hud-cell (index.html).

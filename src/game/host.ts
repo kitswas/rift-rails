@@ -23,6 +23,7 @@ import type {
   HostMessage,
   RegisteredAction,
   RegisteredNode,
+  RegisteredStoryline,
   StateSnapshot,
   WorkerMessage,
 } from "./workerProtocol";
@@ -72,6 +73,11 @@ function __applySandbox() {
 }
 const __listeners = new Map();
 function __post(m) { self.postMessage(m); }
+function __trace(method, args, phase) {
+  let safeArgs = args;
+  try { safeArgs = __clone(args); } catch (e) { safeArgs = "[unserializable arguments]"; }
+  __post({ type: "api-call", method: method, args: safeArgs, phase: phase || "call" });
+}
 function __call(m) {
   return new Promise(function (res) {
     const id = ++__reqId;
@@ -104,7 +110,7 @@ self.onmessage = function (e) {
     if (m.snapshot) __snapshot = m.snapshot;
     const fns = __listeners.get(m.event) || [];
     for (const fn of fns) {
-      try { fn(m.payload); }
+      try { __trace("event:" + m.event, m.payload, "event"); fn(m.payload); }
       catch (err) { __post({ type: "log", msg: "handler error: " + ((err && err.message) || err) }); }
     }
   } else if (m.type === "grant-result" || m.type === "storage-result") {
@@ -119,32 +125,51 @@ try { Object.defineProperty(self, "onerror", { value: self.onerror, writable: fa
 try { Object.defineProperty(self, "onunhandledrejection", { value: self.onunhandledrejection, writable: false, configurable: false }); } catch (e) {}
 const __storage = Object.freeze({
   get: function (key) {
-    return __call({ type: "storage-get", key: String(key) }).then(function (m) {
-      return m.value === undefined ? undefined : __clone(m.value);
+    key = String(key);
+    __trace("storage.get", { key: key });
+    return __call({ type: "storage-get", key: key }).then(function (m) {
+      const value = m.value === undefined ? undefined : __clone(m.value);
+      __trace("storage.get", { key: key, value: value }, "result");
+      return value;
     });
   },
   set: function (key, value) {
-    return __call({ type: "storage-set", key: String(key), value: __clone(value) }).then(function (m) {
-      return !!m.value;
+    key = String(key);
+    value = __clone(value);
+    __trace("storage.set", { key: key, value: value });
+    return __call({ type: "storage-set", key: key, value: value }).then(function (m) {
+      const ok = !!m.value;
+      __trace("storage.set", { key: key, ok: ok }, "result");
+      return ok;
     });
   }
 });
 const __api = {
   on: function (event, fn) {
+    __trace("on", { event: event, callback: typeof fn });
     if (typeof fn !== "function" || typeof event !== "string") return;
     const list = __listeners.get(event) || [];
     list.push(fn);
     __listeners.set(event, list);
   },
-  registerAction: function (def) { __post({ type: "register-action", def: def }); },
-  registerNode: function (def) { __post({ type: "register-node", def: def }); },
+  registerAction: function (def) { __trace("registerAction", def); __post({ type: "register-action", def: def }); },
+  registerNode: function (def) { __trace("registerNode", def); __post({ type: "register-node", def: def }); },
+  registerStoryline: function (def) { __trace("registerStoryline", def); __post({ type: "register-storyline", def: def }); },
   grant: function (op) {
+    __trace("grant", op);
     return __call({ type: "grant", op: op }).then(function (m) {
-      return { ok: !!m.ok, reason: m.reason };
+      const result = { ok: !!m.ok, reason: m.reason };
+      __trace("grant", result, "result");
+      return result;
     });
   },
-  state: function () { return __frozen(__clone(__snapshot)); },
-  log: function (msg) { __post({ type: "log", msg: String(msg) }); },
+  state: function () {
+    __trace("state", undefined);
+    const state = __frozen(__clone(__snapshot));
+    __trace("state", state, "result");
+    return state;
+  },
+  log: function (msg) { __trace("log", msg); __post({ type: "log", msg: String(msg) }); },
   storage: __storage
 };
 return Object.freeze(__api);
@@ -616,6 +641,7 @@ export class PluginHost {
     record.worker.terminate();
     URL.revokeObjectURL(record.blobUrl);
     this.deps.registry.removePlugin(id);
+    this.deps.storylines?.removePlugin(id);
     this.deps.log(`plugin disabled: ${id} (${reason})`);
   }
 
@@ -662,6 +688,12 @@ export class PluginHost {
       case "fatal":
         this.disable(id, msg.message);
         break;
+      case "api-call":
+        console.log(`[plugin-api] ${id}.${msg.method}`, {
+          phase: msg.phase ?? "call",
+          args: msg.args,
+        });
+        break;
       case "log":
         this.deps.log(`[${id}] ${msg.msg}`);
         break;
@@ -670,6 +702,9 @@ export class PluginHost {
         break;
       case "register-node":
         this.registerOne(id, "node", msg.def);
+        break;
+      case "register-storyline":
+        this.registerStoryline(id, msg.def);
         break;
       case "grant":
         this.handleGrant(id, msg.reqId, msg.op);
@@ -711,6 +746,20 @@ export class PluginHost {
     } catch (err) {
       this.deps.log(
         `[${id}] ${kind} registration failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  private registerStoryline(id: string, def: RegisteredStoryline): void {
+    if (!this.deps.storylines) {
+      this.deps.log(`[${id}] rejected storyline: host support unavailable`);
+      return;
+    }
+    try {
+      this.deps.storylines.register(id, def);
+    } catch (err) {
+      this.deps.log(
+        `[${id}] storyline registration failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

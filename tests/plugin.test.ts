@@ -117,6 +117,7 @@ function makeHost(permissions: string[]) {
   };
   const actions = new Map<string, unknown>();
   const nodes = new Map<string, unknown>();
+  const registeredStories: { pluginId: string; definition: unknown }[] = [];
   const registry: RegistryLike & { getAction: (id: string) => unknown } = {
     registerAction: (pluginId, def) => void actions.set(`${pluginId}:${def.id}`, def),
     registerNode: (pluginId, def) => void nodes.set(`${pluginId}:${def.id}`, def),
@@ -129,6 +130,10 @@ function makeHost(permissions: string[]) {
   const deps: HostDeps = {
     voyage,
     registry,
+    storylines: {
+      register: (pluginId, definition) => registeredStories.push({ pluginId, definition }),
+      removePlugin: () => {},
+    },
     log: () => {},
     events: { on: () => {} },
   };
@@ -156,7 +161,7 @@ function makeHost(permissions: string[]) {
     (host as unknown as { registerOne(id: string, kind: "action" | "node", def: unknown): void })
       .registerOne(id, kind, def);
   };
-  return { grant, voyageState, voyage, registerOne, actions, nodes };
+  return { grant, voyageState, voyage, registerOne, actions, nodes, registeredStories, host };
 }
 
 describe("plugin registration", () => {
@@ -188,6 +193,37 @@ describe("plugin registration", () => {
     registerOne("test-plugin", "action", { id: "trade", label: "Trade" });
     grant({ kind: "executeAction", actionId: "trade" });
     expect(voyage.executeAction).toHaveBeenCalledWith("test-plugin:trade");
+  });
+
+  it("forwards worker storyline registrations to the host storyline service", () => {
+    const { host, registeredStories } = makeHost([]);
+    const definition = { id: "short-story", title: "Short Story" };
+    (host as unknown as {
+      handleMessage(id: string, message: { type: string; def: unknown }): void;
+    }).handleMessage("test-plugin", { type: "register-storyline", def: definition });
+    expect(registeredStories).toEqual([{ pluginId: "test-plugin", definition }]);
+  });
+
+  it("writes plugin API calls to the browser console", () => {
+    const { host } = makeHost([]);
+    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      (host as unknown as {
+        handleMessage(id: string, message: { type: string; method: string; phase: string; args: unknown }): void;
+      }).handleMessage("test-plugin", {
+        type: "api-call",
+        method: "registerStoryline",
+        phase: "call",
+        args: { id: "lost-lantern" },
+      });
+
+      expect(consoleLog).toHaveBeenCalledWith("[plugin-api] test-plugin.registerStoryline", {
+        phase: "call",
+        args: { id: "lost-lantern" },
+      });
+    } finally {
+      consoleLog.mockRestore();
+    }
   });
 });
 

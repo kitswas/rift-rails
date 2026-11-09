@@ -2,6 +2,7 @@ import type { Cutscene, CutsceneId, Phase } from "./types";
 import type { Registry } from "./registry";
 import type { Voyage } from "./voyage";
 import type { SoundFXService } from "./audio";
+import type { StoryScene } from "./storyline";
 
 export interface CutsceneRefGetter {
   get: (key: string) => HTMLElement | null;
@@ -34,6 +35,16 @@ export class CutsceneEngine {
   activeCutscene: Cutscene | null = null;
   beatIndex = 0;
   returnFocus: Element | null = null;
+  private readonly pending: {
+    cutscene: Cutscene;
+    speaker: string;
+    onChoice?: (choiceIndex: number) => void;
+    pluginId?: string;
+  }[] = [];
+  private activeChoice: ((choiceIndex: number) => void) | null = null;
+  private activeSpeaker = "MASTER CORVUS // VEILED SCHOLAR";
+  private activeStory = false;
+  private activePluginId: string | null = null;
 
   private readonly registry: Registry;
   private readonly voyage: Voyage;
@@ -100,7 +111,18 @@ export class CutsceneEngine {
     const kb = event as KeyboardEvent;
     if (kb.key === "Tab") {
       event.preventDefault();
-      this.el("cutsceneBtnA")?.focus();
+      const first = this.el("cutsceneBtnA");
+      const second = this.el("cutsceneBtnB");
+      const hasSecond = !!second && !second.hidden;
+      const active = this.refs.getActiveElement?.();
+      if (kb.shiftKey) {
+        if (active === first && hasSecond) second?.focus();
+        else first?.focus();
+      } else if (active === second || !hasSecond) {
+        first?.focus();
+      } else {
+        second?.focus();
+      }
       return;
     }
     const target = (event as FocusEvent).target as Node | null;
@@ -126,10 +148,66 @@ export class CutsceneEngine {
       if (firstId) resolved = this.registry.getCutscene(firstId);
     }
     if (!resolved) return;
-    this.activeCutscene = resolved;
+    this.enqueue({ cutscene: resolved, speaker: "MASTER CORVUS // VEILED SCHOLAR" });
+  }
+
+  playStory(scene: StoryScene, onChoice: (choiceIndex: number) => void): void {
+    const choices = scene.node.choices;
+    this.enqueue({
+      cutscene: {
+        id: `story:${scene.pluginId}:${scene.storyId}:${scene.node.id}`,
+        beats: [
+          {
+            text: scene.node.text,
+            choiceA: choices[0]?.label ?? "Continue",
+            choiceB: choices[1]?.label ?? "",
+          },
+        ],
+      },
+      speaker: `${scene.node.actor} // ${scene.title}`,
+      onChoice,
+      pluginId: scene.pluginId,
+    });
+  }
+
+  cancelPluginStories(pluginId: string): void {
+    for (let i = this.pending.length - 1; i >= 0; i--) {
+      if (this.pending[i]?.pluginId === pluginId) this.pending.splice(i, 1);
+    }
+    if (this.activePluginId === pluginId) {
+      this.activeChoice = null;
+      this.close();
+    }
+  }
+
+  private enqueue(scene: {
+    cutscene: Cutscene;
+    speaker: string;
+    onChoice?: (choiceIndex: number) => void;
+    pluginId?: string;
+  }): void {
+    if (this.activeCutscene) {
+      this.pending.push(scene);
+      return;
+    }
+    this.start(scene);
+  }
+
+  private start(scene: {
+    cutscene: Cutscene;
+    speaker: string;
+    onChoice?: (choiceIndex: number) => void;
+    pluginId?: string;
+  }): void {
+    const { cutscene, speaker, onChoice } = scene;
+    this.activeCutscene = cutscene;
     this.beatIndex = 0;
     this.returnFocus = this.refs.getActiveElement?.() ?? null;
-    this.voyage.markCutsceneSeen(resolved.id);
+    this.activeChoice = onChoice ?? null;
+    this.activeSpeaker = speaker;
+    this.activeStory = !!onChoice;
+    this.activePluginId = scene.pluginId ?? null;
+    if (!this.activeStory) this.voyage.markCutsceneSeen(cutscene.id);
     const game = this.el("gameContainer");
     if (game) (game as HTMLElement & { inert: boolean }).inert = true;
     const overlay = this.el("cutsceneOverlay");
@@ -147,26 +225,38 @@ export class CutsceneEngine {
     this.sound.playDialogueChime();
     const total = cutscene.beats.length;
     let pips = "";
-    for (let i = 0; i < total; i++) {
-      pips += i <= this.beatIndex ? "✦ " : "✧ ";
-    }
+    for (let i = 0; i < total; i++) pips += i <= this.beatIndex ? "✦ " : "✧ ";
     this.el("cutsceneProgress")?.setAttribute(
       "aria-label",
-      this.formatProgress(this.beatIndex + 1, total),
+      this.activeStory ? "Story dialogue" : this.formatProgress(this.beatIndex + 1, total),
     );
     const progressEl = this.el("cutsceneProgress");
-    if (progressEl) progressEl.innerText = pips.trim();
+    if (progressEl) progressEl.innerText = this.activeStory ? "STORY" : pips.trim();
+    const speaker = this.el("cutsceneSpeaker");
+    if (speaker) speaker.textContent = this.activeSpeaker;
+    const portrait = this.el("cutscenePortrait");
+    if (portrait) portrait.hidden = this.activeStory;
     const body = this.el("cutsceneBody");
     if (body) body.innerText = beat.text;
     const btnA = this.el("cutsceneBtnA");
     if (btnA) btnA.innerText = `[A] "${beat.choiceA}"`;
     const btnB = this.el("cutsceneBtnB");
-    if (btnB) btnB.innerText = `[B] "${beat.choiceB}"`;
+    if (btnB) {
+      btnB.innerText = beat.choiceB ? `[B] "${beat.choiceB}"` : "";
+      btnB.hidden = !beat.choiceB;
+    }
   }
 
-  advance(): void {
+  advance(choiceIndex = 0): void {
     const cutscene = this.activeCutscene;
     if (!cutscene) return;
+    if (this.activeChoice) {
+      const choose = this.activeChoice;
+      this.activeChoice = null;
+      choose(choiceIndex);
+      this.close();
+      return;
+    }
     this.beatIndex++;
     if (this.beatIndex < cutscene.beats.length) {
       this.renderCurrentBeat();
@@ -186,6 +276,9 @@ export class CutsceneEngine {
     }
     this.activeCutscene = null;
     this.beatIndex = 0;
+    this.activeChoice = null;
+    this.activeStory = false;
+    this.activePluginId = null;
     this.transitionTo(this.idlePhase);
     const next = this.voyage.evaluateSurvival();
     if (next) this.transitionTo(next);
@@ -210,6 +303,8 @@ export class CutsceneEngine {
       }
     }
     this.returnFocus = null;
+    const nextScene = this.pending.shift();
+    if (nextScene) this.start(nextScene);
   }
 }
 

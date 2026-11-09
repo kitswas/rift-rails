@@ -18,6 +18,8 @@ export const SAVE_VERSION = 1;
 const MAX_ARRAY_LEN = 1000;
 const MAX_PLUGIN_KEYS = 200;
 const MAX_PLUGIN_BYTES = 64 * 1024;
+const MAX_STORY_KEYS = 32;
+const MAX_STORY_TRACE = 16;
 
 export interface SaveDeps {
   storage: StorageLike;
@@ -64,6 +66,30 @@ function isValidPayload(v: unknown): v is PersistedPayload {
   } catch {
     return false;
   }
+  const storyProgress = v["storyProgress"];
+  if (storyProgress !== undefined) {
+    if (!isRecord(storyProgress) || Object.keys(storyProgress).length > MAX_STORY_KEYS) return false;
+    for (const [key, progress] of Object.entries(storyProgress)) {
+      if (key.length > 100) return false;
+      if (!isRecord(progress)) return false;
+      if (progress["status"] !== "active" && progress["status"] !== "complete") return false;
+      if (typeof progress["nodeId"] !== "string" || progress["nodeId"].length > 32) return false;
+      if (typeof progress["waiting"] !== "boolean") return false;
+      if (!Array.isArray(progress["trace"]) || progress["trace"].length > MAX_STORY_TRACE) return false;
+      if (!progress["trace"].every((entry) =>
+        isRecord(entry) &&
+        typeof entry["nodeId"] === "string" &&
+        typeof entry["choiceId"] === "string" &&
+        entry["nodeId"].length <= 32 &&
+        entry["choiceId"].length <= 32
+      )) return false;
+    }
+    try {
+      if ((JSON.stringify(storyProgress) ?? "").length > MAX_PLUGIN_BYTES) return false;
+    } catch {
+      return false;
+    }
+  }
   if (v["version"] !== undefined && !isFiniteInRange(v["version"], 1, SAVE_VERSION + 10)) return false;
   return true;
 }
@@ -79,6 +105,7 @@ function migrate(parsed: unknown): PersistedPayload | null {
   }
   const cloned = deepClonePayload(parsed) as Record<string, unknown>;
   cloned["pluginState"] ??= {};
+  cloned["storyProgress"] ??= {};
   if (!isValidPayload(cloned)) return null;
   const rawState: unknown = cloned["pluginState"];
   const pluginState: Record<string, unknown> = isRecord(rawState) ? { ...rawState } : {};

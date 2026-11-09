@@ -2,7 +2,7 @@
 // core game types (SaveState, GameAction, NodeDefinition) so this file
 // stays independent of the core module layout; keep in sync manually.
 
-export const HOST_API_VERSION = 1;
+export const HOST_API_VERSION = 2;
 
 /** Frozen game-state snapshot (SaveState shape, JSON-only). */
 export type StateSnapshot = {
@@ -79,11 +79,17 @@ export interface RegisteredNode {
   [key: string]: unknown;
 }
 
+export interface RegisteredStoryline {
+  id: string;
+  [key: string]: unknown;
+}
+
 /** Worker-facing plugin API (implemented by the in-blob bridge). */
 export interface PluginApi {
   on(event: PluginEventName, fn: (payload: unknown) => void): void;
   registerAction(def: RegisteredAction): void;
   registerNode(def: RegisteredNode): void;
+  registerStoryline(def: RegisteredStoryline): void;
   grant(op: GrantOp): Promise<{ ok: boolean; reason?: string }>;
   /** Frozen snapshot of the latest known state (cached from host pushes). */
   state(): Readonly<StateSnapshot>;
@@ -99,9 +105,11 @@ export interface PluginApi {
 export type WorkerMessage =
   | { type: "ready" }
   | { type: "fatal"; message: string }
+  | { type: "api-call"; method: string; args?: unknown; phase?: "call" | "result" | "event" }
   | { type: "log"; msg: string }
   | { type: "register-action"; def: RegisteredAction }
   | { type: "register-node"; def: RegisteredNode }
+  | { type: "register-storyline"; def: RegisteredStoryline }
   | { type: "grant"; reqId: number; op: GrantOp }
   | { type: "storage-get"; reqId: number; key: string }
   | { type: "storage-set"; reqId: number; key: string; value: unknown };
@@ -136,6 +144,11 @@ export interface RegistryLike {
   removePlugin(pluginId: string): void;
 }
 
+export interface StorylineRegistryLike {
+  register(pluginId: string, def: unknown): void;
+  removePlugin(pluginId: string): void;
+}
+
 export interface GameEventSource {
   on(event: string, cb: (payload: unknown) => void): void;
 }
@@ -143,6 +156,7 @@ export interface GameEventSource {
 export interface HostDeps {
   voyage: VoyageLike;
   registry: RegistryLike;
+  storylines?: StorylineRegistryLike;
   log: (msg: string) => void;
   events: GameEventSource;
 }

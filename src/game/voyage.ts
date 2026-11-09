@@ -56,6 +56,7 @@ export function createInitialState(config: GameConfig): SaveState {
     navChoices: [],
     yardCat: null,
     seenCutscenes: [],
+    storyProgress: {},
     isSurveyed: false,
     pluginState: {},
   };
@@ -97,6 +98,7 @@ export class Voyage {
     this.config = config;
     this.conduit = conduit;
     this.state = cloneState(initial ?? createInitialState(config));
+    this.state.storyProgress ??= {};
     this.hooks = hooks;
   }
 
@@ -422,6 +424,10 @@ export class Voyage {
       dimName: typeof saved.dimName === "string" && saved.dimName ? saved.dimName : cur.dimName,
       isSurveyed: !!saved.isSurveyed,
       seenCutscenes: Array.isArray(saved.seenCutscenes) ? saved.seenCutscenes.filter((x): x is string => typeof x === "string") : cur.seenCutscenes,
+      storyProgress:
+        typeof saved.storyProgress === "object" && saved.storyProgress !== null && !Array.isArray(saved.storyProgress)
+          ? (JSON.parse(JSON.stringify(saved.storyProgress)) as SaveState["storyProgress"])
+          : {},
       pluginState:
         typeof saved.pluginState === "object" && saved.pluginState !== null && !Array.isArray(saved.pluginState)
           ? { ...saved.pluginState }
@@ -456,6 +462,7 @@ export class Voyage {
       dimName: this.state.dimName,
       isSurveyed: !!this.state.isSurveyed,
       seenCutscenes: this.state.seenCutscenes ?? [],
+      storyProgress: JSON.parse(JSON.stringify(this.state.storyProgress ?? {})) as SaveState["storyProgress"],
       pluginState: { ...this.state.pluginState },
     };
   }

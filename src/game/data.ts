@@ -186,6 +186,8 @@ export const GAME_DATA: GameData = {
       cutsceneOverlay: "cutscene-overlay",
       cutsceneProgress: "cutscene-progress",
       cutsceneBody: "cutscene-body",
+      cutsceneSpeaker: "cutscene-speaker",
+      cutscenePortrait: "cutscene-portrait",
       cutsceneChoices: "cutscene-choices",
       cutsceneBtnA: "cutscene-btn-a",
       cutsceneBtnB: "cutscene-btn-b",

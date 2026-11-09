@@ -19,7 +19,7 @@ Fields (validated by `parseManifest`):
 | `id`          | `warp-overcharge` (1-64 chars, `[a-z0-9_-]`).                  |
 | `name`        | `Warp Overcharge`                                              |
 | `version`     | Semver `x.y.z`.                                                |
-| `minApi`      | Minimum host API required. Host is `HOST_API_VERSION = 1` (`src/game/workerProtocol.ts`); this plugin declares `1`. |
+| `minApi`      | Minimum host API required. Host is `HOST_API_VERSION = 2` (`src/game/workerProtocol.ts`); this plugin declares `1`. |
 | `entry`       | In-zip path of the entry module (`.js`/`.mjs`, no `..`).       |
 | `permissions` | Subset of: `*`, `voyage:adjustResource`, `voyage:executeAction`, `voyage:explore`, `voyage:desperate`. This plugin uses `voyage:adjustResource`. |
 

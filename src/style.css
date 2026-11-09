@@ -870,6 +870,43 @@
         color: var(--text);
       }
 
+      .story-journal-entry {
+        border-top: 1px dashed var(--border);
+        padding-top: 7px;
+        margin-top: 7px;
+      }
+
+      .story-journal-entry h4 {
+        margin: 0;
+        color: var(--info);
+      }
+
+      .story-journal-status {
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .story-complete {
+        color: var(--success) !important;
+      }
+
+      .story-active {
+        color: var(--warning) !important;
+      }
+
+      .story-waiting {
+        color: var(--text-muted) !important;
+      }
+
+      .story-journal-trace {
+        padding-left: 20px;
+        color: var(--text-muted);
+      }
+
+      .story-journal-trace li {
+        margin: 3px 0;
+      }
+
       /* Audio Controls in Settings */
       .audio-control-row {
         display: flex;
@@ -1616,4 +1653,3 @@
         outline: 2px solid rgba(245, 158, 11, 0.45);
         outline-offset: 2px;
       }
-
