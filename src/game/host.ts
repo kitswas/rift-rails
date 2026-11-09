@@ -22,6 +22,7 @@ import type {
   HostDeps,
   HostMessage,
   RegisteredAction,
+  RegisteredCutscene,
   RegisteredNode,
   RegisteredStoryline,
   StateSnapshot,
@@ -155,6 +156,7 @@ const __api = {
   registerAction: function (def) { __trace("registerAction", def); __post({ type: "register-action", def: def }); },
   registerNode: function (def) { __trace("registerNode", def); __post({ type: "register-node", def: def }); },
   registerStoryline: function (def) { __trace("registerStoryline", def); __post({ type: "register-storyline", def: def }); },
+  registerCutscene: function (def) { __trace("registerCutscene", def); __post({ type: "register-cutscene", def: def }); },
   grant: function (op) {
     __trace("grant", op);
     return __call({ type: "grant", op: op }).then(function (m) {
@@ -512,6 +514,7 @@ function applyAdjust(voyage: HostDeps["voyage"], resource: string, amount: numbe
 export class PluginHost {
   private readonly deps: HostDeps;
   private readonly plugins = new Map<string, PluginRecord>();
+  private readonly readyWaiters = new Map<string, (() => void)[]>();
   private readonly storage = new Map<string, Map<string, unknown>>();
   private grantSeq = 0;
   private readonly grantUsage = new Map<string, { seq: number; total: number; count: number }>();
@@ -639,6 +642,7 @@ export class PluginHost {
     record.active = false;
     record.ready = false;
     record.worker.terminate();
+    this.resolveReadyWaiters(id);
     URL.revokeObjectURL(record.blobUrl);
     this.deps.registry.removePlugin(id);
     this.deps.storylines?.removePlugin(id);
@@ -655,6 +659,17 @@ export class PluginHost {
 
   isPluginActive(id: string): boolean {
     return this.plugins.get(id)?.active ?? false;
+  }
+
+  waitUntilReady(id: string): Promise<void> {
+    const record = this.plugins.get(id);
+    if (!record?.active) return Promise.reject(new Error(`plugin is not active: ${id}`));
+    if (record.ready) return Promise.resolve();
+    return new Promise((resolve) => {
+      const waiters = this.readyWaiters.get(id) ?? [];
+      waiters.push(resolve);
+      this.readyWaiters.set(id, waiters);
+    });
   }
 
   listPlugins(): PluginInfo[] {
@@ -684,6 +699,7 @@ export class PluginHost {
     switch (msg.type) {
       case "ready":
         record.ready = true;
+        this.resolveReadyWaiters(id);
         break;
       case "fatal":
         this.disable(id, msg.message);
@@ -705,6 +721,9 @@ export class PluginHost {
         break;
       case "register-storyline":
         this.registerStoryline(id, msg.def);
+        break;
+      case "register-cutscene":
+        this.registerCutscene(id, msg.def);
         break;
       case "grant":
         this.handleGrant(id, msg.reqId, msg.op);
@@ -750,6 +769,13 @@ export class PluginHost {
     }
   }
 
+  private resolveReadyWaiters(id: string): void {
+    const waiters = this.readyWaiters.get(id);
+    if (!waiters) return;
+    this.readyWaiters.delete(id);
+    for (const resolve of waiters) resolve();
+  }
+
   private registerStoryline(id: string, def: RegisteredStoryline): void {
     if (!this.deps.storylines) {
       this.deps.log(`[${id}] rejected storyline: host support unavailable`);
@@ -760,6 +786,39 @@ export class PluginHost {
     } catch (err) {
       this.deps.log(
         `[${id}] storyline registration failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  private registerCutscene(id: string, def: RegisteredCutscene): void {
+    if (
+      !isRecord(def) ||
+      !isValidRegId(def.id) ||
+      !Array.isArray(def.beats) ||
+      def.beats.length < 1 ||
+      def.beats.length > 16 ||
+      !def.beats.every((beat) =>
+        isRecord(beat) &&
+        typeof beat.text === "string" &&
+        beat.text.trim().length > 0 &&
+        beat.text.length <= 2000 &&
+        typeof beat.choiceA === "string" &&
+        beat.choiceA.length <= MAX_LABEL_CHARS &&
+        typeof beat.choiceB === "string" &&
+        beat.choiceB.length <= MAX_LABEL_CHARS,
+      ) ||
+      (def.logSummary !== undefined &&
+        (typeof def.logSummary !== "string" || def.logSummary.length > MAX_LOG_CHARS)) ||
+      !isSerializable(def)
+    ) {
+      this.deps.log(`[${id}] rejected cutscene: invalid definition`);
+      return;
+    }
+    try {
+      this.deps.registry.registerCutscene(id, clone(def));
+    } catch (err) {
+      this.deps.log(
+        `[${id}] cutscene registration failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

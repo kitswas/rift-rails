@@ -436,8 +436,8 @@ export class EngineService {
       this.deps.scrollStarted?.();
     }
     const snap = this.voyage.getSnapshot();
-    if (snap.jumpCount === 1 && !(snap.seenCutscenes ?? []).includes("wp1")) {
-      const firstId = this.cutscene?.firstCutscene() ?? "wp1";
+    const firstId = this.cutscene?.firstCutscene();
+    if (snap.jumpCount === 1 && firstId && !this.cutscene?.hasSeen(firstId, snap.seenCutscenes ?? [])) {
       const play = (): void => {
         this.cutscene?.play(firstId);
       };

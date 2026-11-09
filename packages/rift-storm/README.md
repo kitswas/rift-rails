@@ -20,7 +20,7 @@ Fields (validated by `parseManifest`):
 | `id`          | `rift-storm`.                                                  |
 | `name`        | Display name (`Rift Storm`).                                   |
 | `version`     | Semver `1.0.0`.                                                |
-| `minApi`      | Minimum host API required. Host is `HOST_API_VERSION = 2` (`src/game/workerProtocol.ts`); this plugin declares `1`. |
+| `minApi`      | Minimum host API required. Host is `HOST_API_VERSION = 3` (`src/game/workerProtocol.ts`); this plugin declares `1`. |
 | `entry`       | Entry module (`main.js`).                                      |
 | `permissions` | `["voyage:adjustResource"]` (grants `adjustResource` flux +5). |
 

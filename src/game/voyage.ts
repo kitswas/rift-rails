@@ -210,7 +210,9 @@ export class Voyage {
   }
 
   hasObserverDeparted(): boolean {
-    return (this.state.seenCutscenes ?? []).includes(this.config.CORVUS_FINAL_CUTSCENE);
+    const seen = this.state.seenCutscenes ?? [];
+    return seen.includes(this.config.CORVUS_FINAL_CUTSCENE) ||
+      (this.config.CORVUS_FINAL_CUTSCENE === "corvus-tutorial:wp5" && seen.includes("wp5"));
   }
 
   assertInvariants(): string[] {

@@ -2,7 +2,7 @@
 // core game types (SaveState, GameAction, NodeDefinition) so this file
 // stays independent of the core module layout; keep in sync manually.
 
-export const HOST_API_VERSION = 2;
+export const HOST_API_VERSION = 3;
 
 /** Frozen game-state snapshot (SaveState shape, JSON-only). */
 export type StateSnapshot = {
@@ -84,12 +84,19 @@ export interface RegisteredStoryline {
   [key: string]: unknown;
 }
 
+export interface RegisteredCutscene {
+  id: string;
+  beats: { text: string; choiceA: string; choiceB: string }[];
+  logSummary?: string;
+}
+
 /** Worker-facing plugin API (implemented by the in-blob bridge). */
 export interface PluginApi {
   on(event: PluginEventName, fn: (payload: unknown) => void): void;
   registerAction(def: RegisteredAction): void;
   registerNode(def: RegisteredNode): void;
   registerStoryline(def: RegisteredStoryline): void;
+  registerCutscene(def: RegisteredCutscene): void;
   grant(op: GrantOp): Promise<{ ok: boolean; reason?: string }>;
   /** Frozen snapshot of the latest known state (cached from host pushes). */
   state(): Readonly<StateSnapshot>;
@@ -110,6 +117,7 @@ export type WorkerMessage =
   | { type: "register-action"; def: RegisteredAction }
   | { type: "register-node"; def: RegisteredNode }
   | { type: "register-storyline"; def: RegisteredStoryline }
+  | { type: "register-cutscene"; def: RegisteredCutscene }
   | { type: "grant"; reqId: number; op: GrantOp }
   | { type: "storage-get"; reqId: number; key: string }
   | { type: "storage-set"; reqId: number; key: string; value: unknown };
@@ -141,6 +149,7 @@ export interface VoyageLike {
 export interface RegistryLike {
   registerAction(pluginId: string, def: RegisteredAction): void;
   registerNode(pluginId: string, def: RegisteredNode): void;
+  registerCutscene(pluginId: string, def: RegisteredCutscene): void;
   removePlugin(pluginId: string): void;
 }
 

@@ -18,7 +18,7 @@ import { StorylineService } from "./game/storyline";
 import type { StoryEvent } from "./game/storyline";
 import { RiftMotionService } from "./game/motion";
 import { appendLog, renderActionButtons, renderForge, renderVitals } from "./ui/render";
-import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins } from "./ui/panels";
+import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins, writeEnabled } from "./ui/panels";
 
 const bus = {
   listeners: new Map<string, Set<(payload: unknown) => void>>(),
@@ -41,6 +41,31 @@ function btn(id: string): HTMLButtonElement | null {
 
 let cutscene!: CutsceneEngine;
 let storylineService: StorylineService | undefined;
+const TUTORIAL_PLUGIN_ID = "corvus-tutorial";
+const TUTORIAL_CHOICE_KEY = "rift.tutorial.next-game";
+let bundledPluginsReady: Promise<string[]> = Promise.resolve([]);
+let refreshPluginsPanel = (): void => {};
+
+async function setTutorialForNewGame(enabled: boolean): Promise<void> {
+  await bundledPluginsReady;
+  const enabledPlugins = new Set(readEnabled());
+  if (enabled) {
+    if (!host.isPluginActive(TUTORIAL_PLUGIN_ID)) {
+      const response = await fetch("./plugins/corvus-tutorial.zip");
+      if (!response.ok) throw new Error(`tutorial plugin unavailable: HTTP ${response.status}`);
+      const manifest = await host.loadZip(await response.arrayBuffer());
+      if (manifest.id !== TUTORIAL_PLUGIN_ID) throw new Error("invalid tutorial plugin package");
+    }
+    await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
+    if (!host.isPluginActive(TUTORIAL_PLUGIN_ID)) throw new Error("tutorial plugin failed to start");
+    enabledPlugins.add(TUTORIAL_PLUGIN_ID);
+  } else {
+    host.disable(TUTORIAL_PLUGIN_ID, "tutorial-disabled");
+    enabledPlugins.delete(TUTORIAL_PLUGIN_ID);
+  }
+  writeEnabled([...enabledPlugins]);
+  refreshPluginsPanel();
+}
 
 function renderStoryJournal(): void {
   const hostEl = el("story-journal");
@@ -111,7 +136,7 @@ const storylines = {
   },
   removePlugin: (pluginId: string): void => {
     storylineService?.removePlugin(pluginId);
-    cutscene.cancelPluginStories(pluginId);
+    cutscene.cancelPluginScenes(pluginId);
   },
 };
 
@@ -127,9 +152,14 @@ const host = new PluginHost({
   registry: {
     registerAction: (pluginId, def) => registry.registerAction(`${pluginId}:${def.id}`, def as never),
     registerNode: (pluginId, def) => registry.registerNode(`${pluginId}:${def.id}`, def as never),
+    registerCutscene: (pluginId, def) => {
+      const id = `${pluginId}:${def.id}`;
+      registry.registerCutscene(id, { ...def, id } as never);
+    },
     removePlugin: (pluginId) => {
       for (const id of registry.listActionIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterAction(id);
       for (const id of registry.listNodeIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterNode(id);
+      for (const id of registry.listCutsceneIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterCutscene(id);
     },
   },
   storylines,
@@ -283,11 +313,7 @@ cutscene = new CutsceneEngine({
   logLoreClass: GAME_DATA.dom.classes.logLore,
   dialoguePhase: GAME_DATA.phases.dialogue,
   idlePhase: GAME_DATA.phases.idle,
-  firstCutsceneId: "wp1",
-  tutorialCueText: () => {
-    const node = registry.getNode(voyage.getSnapshot().dimId);
-    return GAME_DATA.text.tutorialExplore(node?.isHub ?? false, node?.exploreCost ?? 1);
-  },
+  firstCutsceneId: "corvus-tutorial:wp1",
 });
 
 storylineService = new StorylineService(voyage, {
@@ -730,6 +756,13 @@ const syncSensors = (): void => {
   }
 };
 const syncSettings = (): void => {
+  try {
+    const savedTutorialChoice = sessionStorage.getItem(TUTORIAL_CHOICE_KEY);
+    const tutorialToggle = document.getElementById("enable-tutorial") as HTMLInputElement | null;
+    if (savedTutorialChoice !== null && tutorialToggle) tutorialToggle.checked = savedTutorialChoice !== "false";
+  } catch {
+    // Keep the checked-by-default option if session storage is unavailable.
+  }
   const prefs = save.loadAudioPrefs();
   if (prefs) sound.applyPrefs(prefs);
   const sel = document.getElementById("select-ambient-mode") as HTMLSelectElement | null;
@@ -871,8 +904,6 @@ const deps: EngineDeps = {
   },
   scrollStarted: () => engine.scrollToPane(2),
   onExploreSurveyed: () => {
-    const cue = el("tutorial-cue");
-    if (cue) (cue as HTMLElement & { hidden: boolean }).hidden = true;
     btn("btn-explore")?.classList.remove(GAME_DATA.dom.classes.tutorialHighlight ?? "tutorial-highlight");
   },
   readPaletteVar: (type, variable) => {
@@ -1010,7 +1041,25 @@ function bind(): void {
   btn("btn-forge-engine")?.addEventListener("click", () => engine.forgeUpgrade("engineTier"));
   btn("btn-forge-weapon")?.addEventListener("click", () => engine.forgeUpgrade("weaponTier"));
   btn("btn-reset-save")?.addEventListener("click", () => engine.resetGame(true));
-  btn("btn-start-fresh")?.addEventListener("click", () => engine.resetGame(true));
+  btn("btn-start-fresh")?.addEventListener("click", () => {
+    if (!window.confirm("Purge all voyage telemetry and restart from Waypoint 1?")) return;
+    const fresh = btn("btn-start-fresh");
+    if (fresh) fresh.disabled = true;
+    const tutorialEnabled =
+      (document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ?? true;
+    try {
+      sessionStorage.setItem(TUTORIAL_CHOICE_KEY, String(tutorialEnabled));
+    } catch {
+      // Continue this new-game reset; checkbox state may not survive reload.
+    }
+    void setTutorialForNewGame(tutorialEnabled)
+      .then(() => engine.resetGame(false))
+      .catch((err: unknown) => {
+        const error = el("start-error");
+        if (error) error.textContent = err instanceof Error ? err.message : String(err);
+        if (fresh) fresh.disabled = false;
+      });
+  });
   btn("cutscene-btn-a")?.addEventListener("click", () => cutscene.advance(0));
   btn("cutscene-btn-b")?.addEventListener("click", () => cutscene.advance(1));
   document.addEventListener("keydown", (e) => cutscene.trapFocus(e));
@@ -1045,10 +1094,34 @@ function bind(): void {
   });
 
   btn("btn-ignite")?.addEventListener("click", () => {
-    // SoundFXService.init(): void — creates context, calls startActiveSoundscape().
+    // SoundFXService.init(): void - creates context, calls startActiveSoundscape().
     sound.init();
-    engine.ignite();
-    window.setTimeout(() => storylineService?.start(), 180);
+    const ignite = btn("btn-ignite");
+    if (ignite) ignite.disabled = true;
+    void (async () => {
+      try {
+        await bundledPluginsReady;
+        if (save.hasSave()) {
+          if (host.isPluginActive(TUTORIAL_PLUGIN_ID)) await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
+        } else {
+          await setTutorialForNewGame(
+            (document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ?? true,
+          );
+          try {
+            sessionStorage.removeItem(TUTORIAL_CHOICE_KEY);
+          } catch {
+            // Ignore unavailable session storage.
+          }
+        }
+        engine.ignite();
+        window.setTimeout(() => storylineService?.start(), 180);
+      } catch (err) {
+        const error = el("start-error");
+        if (error) error.textContent = err instanceof Error ? err.message : String(err);
+      } finally {
+        if (ignite) ignite.disabled = false;
+      }
+    })();
   });
 
   // Inspect is bound once via inline onclick attrs on .hud-cell (index.html).
@@ -1140,15 +1213,15 @@ bind();
 {
   const overlay = el("cutscene-overlay") as (HTMLElement & { hidden: boolean }) | null;
   if (overlay) overlay.hidden = true;
-  const cue = el("tutorial-cue") as (HTMLElement & { hidden: boolean }) | null;
-  if (cue) cue.hidden = true;
   const tabs = getTabs();
   tabs.forEach((t, i) => t.classList.toggle("active", i === 2));
 }
 const panel = mountPluginsPanel(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system") });
+refreshPluginsPanel = panel.refresh;
 void rehydratePlugins(host);
-void loadBundledPlugins(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system") }).then((ids) => {
+bundledPluginsReady = loadBundledPlugins(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system") }).then((ids) => {
   if (ids.length) panel.refresh();
+  return ids;
 });
 engine.init();
 (globalThis as unknown as { Engine: EngineService }).Engine = engine;

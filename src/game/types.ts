@@ -238,7 +238,6 @@ export interface TextStrings {
   exploreName: (isHub: boolean) => string;
   btnExploreClosed: (cost: number) => string;
   btnExploreHub: (cost: number) => string;
-  tutorialExplore: (isHub: boolean, cost: number) => string;
   formatCutsceneProgress: (beat: number, total: number) => string;
   btnJump: (cost: number) => string;
   btnDesperate: (cost: number, yieldAmount: number) => string;

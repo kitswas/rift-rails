@@ -98,18 +98,21 @@ export async function rehydratePlugins(host: PluginHost): Promise<string[]> {
 }
 
 // Vite copies public/ to dist/; keep bundled zips in public/plugins/ (not dist/plugins/).
-const BUNDLED_PLUGINS: readonly { id: string; url: string }[] = [
+const BUNDLED_PLUGINS: readonly { id: string; url: string; defaultEnabled?: boolean }[] = [
   { id: "black-market", url: "./plugins/black-market.zip" },
   { id: "rift-storm", url: "./plugins/rift-storm.zip" },
   { id: "contract-board", url: "./plugins/contract-board.zip" },
   { id: "salvage-scanner", url: "./plugins/salvage-scanner.zip" },
   { id: "warp-overcharge", url: "./plugins/warp-overcharge.zip" },
+  { id: "corvus-tutorial", url: "./plugins/corvus-tutorial.zip", defaultEnabled: false },
 ];
 
 export async function loadBundledPlugins(host: PluginHost, hooks: PanelsHooks): Promise<string[]> {
   const enabled = readEnabled();
   const firstRun = enabled.length === 0; // first run: enable all bundled by default
-  const targets = BUNDLED_PLUGINS.filter((p) => firstRun || enabled.includes(p.id));
+  const targets = BUNDLED_PLUGINS.filter((p) =>
+    firstRun ? p.defaultEnabled !== false : enabled.includes(p.id),
+  );
   const results = await Promise.allSettled(
     targets.map(async (p) => {
       if (host.isPluginActive(p.id)) return p.id;

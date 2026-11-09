@@ -121,6 +121,12 @@ describe("voyage serialize", () => {
     expect(voyage.hasObserverDeparted()).toBe(false);
     voyage.markCutsceneSeen(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
     expect(voyage.hasObserverDeparted()).toBe(true);
-    expect(voyage.getSnapshot().seenCutscenes).toContain("wp5");
+    expect(voyage.getSnapshot().seenCutscenes).toContain(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
+  });
+
+  it("recognizes legacy saves containing the old final cutscene id", () => {
+    const { voyage } = makeVoyage();
+    voyage.markCutsceneSeen("wp5");
+    expect(voyage.hasObserverDeparted()).toBe(true);
   });
 });

@@ -2,7 +2,7 @@
   "id": "sample-plugin",
   "name": "Sample Plugin",
   "version": "1.0.0",
-  "minApi": 2,
+  "minApi": 3,
   "entry": "main.js",
   "permissions": ["voyage:adjustResource"]
 }

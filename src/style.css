@@ -29,7 +29,6 @@
 
         --layer-scene: 0;
         --layer-game-ui: 10;
-        --layer-tutorial: 20;
         --layer-narrative: 30;
         --layer-route-selection: 40;
         --layer-start-screen: 50;
@@ -142,6 +141,27 @@
         color: var(--text);
         margin-bottom: 12px;
         font-size: 0.9em;
+      }
+
+      .start-option {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        color: var(--text);
+        font-size: 0.9em;
+        cursor: pointer;
+      }
+
+      .start-option input {
+        accent-color: var(--action);
+      }
+
+      .start-error {
+        min-height: 1.2em;
+        color: var(--danger) !important;
+        font-size: 0.8em !important;
       }
 
       .briefing-box {
@@ -569,10 +589,6 @@
       }
 
       #cutscene-overlay[hidden],
-      #tutorial-cue[hidden] {
-        display: none !important;
-      }
-
       .cutscene-frame {
         position: relative;
         isolation: isolate;
@@ -685,25 +701,6 @@
         transform: translateX(2px);
         outline: 2px solid rgba(245, 158, 11, 0.45);
         outline-offset: 2px;
-      }
-
-      #tutorial-cue {
-        position: fixed;
-        z-index: var(--layer-tutorial);
-        left: 50%;
-        bottom: calc(var(--safe-bottom) + 60px);
-        transform: translateX(-50%);
-        width: min(calc(100vw - 24px), 390px);
-        padding: 9px 12px;
-        border: 1px solid var(--action);
-        border-radius: 5px;
-        background: rgba(9, 13, 21, 0.94);
-        color: var(--text);
-        text-align: center;
-        font-size: 0.82em;
-        line-height: 1.35;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-        pointer-events: none;
       }
 
       #btn-explore.tutorial-highlight {

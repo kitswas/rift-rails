@@ -19,7 +19,7 @@ Fields (validated by `parseManifest`):
 | `id`          | 1-64 chars, `[a-z0-9_-]` (e.g. `sample-plugin`).               |
 | `name`        | Display name.                                                  |
 | `version`     | Semver `x.y.z`.                                                |
-| `minApi`      | Minimum host API required. Host is `HOST_API_VERSION = 2` (`src/game/workerProtocol.ts`); this plugin declares `2` for storyline registration. |
+| `minApi`      | Minimum host API required. Host is `HOST_API_VERSION = 3` (`src/game/workerProtocol.ts`); this plugin declares `3` for storyline and cutscene registration. |
 | `entry`       | In-zip path of the entry module (`.js`/`.mjs`, no `..`).       |
 | `permissions` | Subset of: `*`, `voyage:adjustResource`, `voyage:executeAction`, `voyage:explore`, `voyage:desperate`. |
 
@@ -28,6 +28,9 @@ Fields (validated by `parseManifest`):
 `activate(api)` is called once with a sandboxed `api`:
 
 - `api.registerAction({ id, label })` / `api.registerNode({ id, label })`
+- `api.registerCutscene({ id, beats, logSummary })` adds dialogue to the
+  shared cutscene UI (host API v3); disabling its plugin removes those
+  cutscenes.
 - `api.registerStoryline(definition)` registers an auto-starting story. Story
   definitions are data-only and survive save/load through the host journal.
 - `api.on(event, fn)` for `afterJump`, `onSave`, `afterAction`, ...

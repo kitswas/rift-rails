@@ -117,14 +117,18 @@ function makeHost(permissions: string[]) {
   };
   const actions = new Map<string, unknown>();
   const nodes = new Map<string, unknown>();
+  const cutscenes = new Map<string, unknown>();
   const registeredStories: { pluginId: string; definition: unknown }[] = [];
   const registry: RegistryLike & { getAction: (id: string) => unknown } = {
     registerAction: (pluginId, def) => void actions.set(`${pluginId}:${def.id}`, def),
     registerNode: (pluginId, def) => void nodes.set(`${pluginId}:${def.id}`, def),
+    registerCutscene: (pluginId, def) =>
+      void cutscenes.set(`${pluginId}:${def.id}`, { ...def, id: `${pluginId}:${def.id}` }),
     getAction: (id) => actions.get(id),
     removePlugin: (pluginId) => {
       for (const key of [...actions.keys()]) if (key.startsWith(`${pluginId}:`)) actions.delete(key);
       for (const key of [...nodes.keys()]) if (key.startsWith(`${pluginId}:`)) nodes.delete(key);
+      for (const key of [...cutscenes.keys()]) if (key.startsWith(`${pluginId}:`)) cutscenes.delete(key);
     },
   };
   const deps: HostDeps = {
@@ -161,7 +165,7 @@ function makeHost(permissions: string[]) {
     (host as unknown as { registerOne(id: string, kind: "action" | "node", def: unknown): void })
       .registerOne(id, kind, def);
   };
-  return { grant, voyageState, voyage, registerOne, actions, nodes, registeredStories, host };
+  return { grant, voyageState, voyage, registerOne, actions, nodes, cutscenes, registeredStories, host };
 }
 
 describe("plugin registration", () => {
@@ -202,6 +206,18 @@ describe("plugin registration", () => {
       handleMessage(id: string, message: { type: string; def: unknown }): void;
     }).handleMessage("test-plugin", { type: "register-storyline", def: definition });
     expect(registeredStories).toEqual([{ pluginId: "test-plugin", definition }]);
+  });
+
+  it("registers plugin-owned cutscenes under the plugin namespace", () => {
+    const { host, cutscenes } = makeHost([]);
+    const definition = {
+      id: "wp1",
+      beats: [{ text: "Welcome aboard.", choiceA: "Continue", choiceB: "Later" }],
+    };
+    (host as unknown as {
+      handleMessage(id: string, message: { type: string; def: unknown }): void;
+    }).handleMessage("test-plugin", { type: "register-cutscene", def: definition });
+    expect(cutscenes.get("test-plugin:wp1")).toMatchObject({ id: "test-plugin:wp1", beats: definition.beats });
   });
 
   it("writes plugin API calls to the browser console", () => {

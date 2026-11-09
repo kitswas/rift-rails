@@ -38,7 +38,6 @@
 
         --layer-scene: 0;
         --layer-game-ui: 10;
-        --layer-tutorial: 20;
         --layer-narrative: 30;
         --layer-route-selection: 40;
         --layer-start-screen: 50;
@@ -577,8 +576,7 @@
         animation: cutsceneFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
-      #cutscene-overlay[hidden],
-      #tutorial-cue[hidden] {
+      #cutscene-overlay[hidden] {
         display: none !important;
       }
 
@@ -694,25 +692,6 @@
         transform: translateX(2px);
         outline: 2px solid rgba(245, 158, 11, 0.45);
         outline-offset: 2px;
-      }
-
-      #tutorial-cue {
-        position: fixed;
-        z-index: var(--layer-tutorial);
-        left: 50%;
-        bottom: calc(var(--safe-bottom) + 60px);
-        transform: translateX(-50%);
-        width: min(calc(100vw - 24px), 390px);
-        padding: 9px 12px;
-        border: 1px solid var(--action);
-        border-radius: 5px;
-        background: rgba(9, 13, 21, 0.94);
-        color: var(--text);
-        text-align: center;
-        font-size: 0.82em;
-        line-height: 1.35;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-        pointer-events: none;
       }
 
       #btn-explore.tutorial-highlight {
@@ -1614,6 +1593,11 @@
         <p style="font-size: 0.82em; color: var(--text-muted)">
           Select a HUD stat for help. Progress auto-saves after each Rift Jump.
         </p>
+        <label class="start-option" for="enable-tutorial">
+          <input id="enable-tutorial" type="checkbox" checked />
+          Enable Corvus tutorial for new games
+        </label>
+        <p id="start-error" class="start-error" role="alert"></p>
         <button class="btn-start" id="btn-ignite"></button>
         <button
           id="btn-start-fresh"
@@ -2017,8 +2001,6 @@
         </div>
       </section>
     </div>
-    <div id="tutorial-cue" role="status" hidden></div>
-
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

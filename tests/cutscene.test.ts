@@ -50,7 +50,6 @@ function makeEngine(voyage: Voyage): CutsceneEngine {
     cutsceneBtnA: "cutscene-btn-a",
     cutsceneBtnB: "cutscene-btn-b",
     btnExplore: "btn-explore",
-    tutorialCue: "tutorial-cue",
     locationName: "location-name",
   };
   document.body.innerHTML = Object.entries(ids)
@@ -83,6 +82,11 @@ function makeEngine(voyage: Voyage): CutsceneEngine {
 }
 
 describe("interactive story dialogue", () => {
+  it("recognizes legacy unnamespaced Corvus cutscene saves", () => {
+    const engine = makeEngine(makeVoyage());
+    expect(engine.hasSeen("corvus-tutorial:wp1", ["wp1"])).toBe(true);
+  });
+
   it("routes the selected button to the story and does not mark it as a Corvus cutscene", () => {
     const voyage = makeVoyage();
     const engine = makeEngine(voyage);
@@ -120,7 +124,7 @@ describe("interactive story dialogue", () => {
     engine.playStory(makeScene(), () => {
       selected = true;
     });
-    engine.cancelPluginStories("sample-plugin");
+    engine.cancelPluginScenes("sample-plugin");
 
     expect(engine.activeCutscene).toBeNull();
     expect(document.getElementById("cutscene-overlay")?.hidden).toBe(true);

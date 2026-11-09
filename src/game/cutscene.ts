@@ -18,7 +18,6 @@ export interface CutsceneDeps {
   refs: CutsceneRefGetter;
   formatProgress?: (beat: number, total: number) => string;
   tutorialHighlightClass?: string;
-  tutorialCueText?: () => string;
   logLoreClass?: string;
   dialoguePhase?: Phase;
   idlePhase?: Phase;
@@ -54,7 +53,6 @@ export class CutsceneEngine {
   private readonly refs: CutsceneRefGetter;
   private readonly formatProgress: (beat: number, total: number) => string;
   private readonly tutorialHighlightClass: string;
-  private readonly tutorialCueText: (() => string) | undefined;
   private readonly logLoreClass: string;
   private readonly dialoguePhase: Phase;
   private readonly idlePhase: Phase;
@@ -70,7 +68,6 @@ export class CutsceneEngine {
     this.formatProgress =
       deps.formatProgress ?? ((beat: number, total: number) => `Beat ${beat} of ${total}`);
     this.tutorialHighlightClass = deps.tutorialHighlightClass ?? "tutorial-highlight";
-    this.tutorialCueText = deps.tutorialCueText;
     this.logLoreClass = deps.logLoreClass ?? "log-lore";
     this.dialoguePhase = deps.dialoguePhase ?? "DIALOGUE";
     this.idlePhase = deps.idlePhase ?? "IDLE";
@@ -82,14 +79,20 @@ export class CutsceneEngine {
   }
 
   /** Registry-driven waypoint lookup; baseline order is only a fallback. */
+  hasSeen(cutsceneId: string, seen: readonly string[] = this.voyage.state.seenCutscenes ?? []): boolean {
+    if (seen.includes(cutsceneId)) return true;
+    const prefix = "corvus-tutorial:";
+    return cutsceneId.startsWith(prefix) && seen.includes(cutsceneId.slice(prefix.length));
+  }
+
   cutsceneForJump(jumpCount: number, seen?: readonly string[]): string | null {
     const seenList = seen ?? [];
     const ids = this.registry.listCutsceneIds();
     const idx = jumpCount - 1;
     const candidate = ids[idx];
-    if (candidate && !seenList.includes(candidate)) return candidate;
+    if (candidate && !this.hasSeen(candidate, seenList)) return candidate;
     const fallback = FALLBACK_ORDER[idx];
-    if (fallback && !seenList.includes(fallback) && this.registry.getCutscene(fallback)) {
+    if (fallback && !this.hasSeen(fallback, seenList) && this.registry.getCutscene(fallback)) {
       return fallback;
     }
     return null;
@@ -134,11 +137,6 @@ export class CutsceneEngine {
 
   showExploreHint(): void {
     this.el("btnExplore")?.classList.add(this.tutorialHighlightClass);
-    const cue = this.el("tutorialCue");
-    if (cue) {
-      cue.textContent = this.tutorialCueText?.() ?? "";
-      cue.hidden = false;
-    }
   }
 
   play(cutsceneId: string): void {
@@ -148,7 +146,11 @@ export class CutsceneEngine {
       if (firstId) resolved = this.registry.getCutscene(firstId);
     }
     if (!resolved) return;
-    this.enqueue({ cutscene: resolved, speaker: "MASTER CORVUS // VEILED SCHOLAR" });
+    this.enqueue({
+      cutscene: resolved,
+      speaker: "MASTER CORVUS // VEILED SCHOLAR",
+      ...(cutsceneId.includes(":") ? { pluginId: cutsceneId.slice(0, cutsceneId.indexOf(":")) } : {}),
+    });
   }
 
   playStory(scene: StoryScene, onChoice: (choiceIndex: number) => void): void {
@@ -170,7 +172,7 @@ export class CutsceneEngine {
     });
   }
 
-  cancelPluginStories(pluginId: string): void {
+  cancelPluginScenes(pluginId: string): void {
     for (let i = this.pending.length - 1; i >= 0; i--) {
       if (this.pending[i]?.pluginId === pluginId) this.pending.splice(i, 1);
     }
