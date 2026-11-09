@@ -19,7 +19,7 @@ function activate(api) {
     id: "lost-lantern",
     title: "The Lost Lantern",
     description: "A faint rail signal asks the Conductor to choose whether to answer.",
-    start: { event: "afterJump", jumpCount: 2 },
+    start: { event: "afterJump", jumpCount: 3 },
     first: "signal",
     nodes: [
       {

@@ -85,6 +85,9 @@ api.registerStoryline({
 
 ## Zip + install
 
+The sample story triggers after the second actual Rift Jump: `jumpCount`
+starts at 1.
+
 ```sh
 cd packages/sample-plugin && zip -r sample-plugin.zip manifest.json main.js
 ```
