@@ -3,18 +3,39 @@ import type { PluginHost } from "../game/host";
 
 export const ENABLED_KEY = "rift.plugins.enabled";
 export const ZIPS_KEY = "rift.plugins.zips";
+// Prevent saved selections from reactivating retired package IDs.
+const REMOVED_BUNDLED_PLUGINS = new Set([
+  "black-market",
+  "contract-board",
+  "rift-storm",
+  "salvage-scanner",
+  "sample-plugin",
+  "warp-overcharge",
+]);
 const MAX_STORED_ZIP_BYTES = 1 * 1024 * 1024;
 const MAX_STORED_ZIPS_TOTAL = 4 * 1024 * 1024;
 
-export function readEnabled(): string[] {
+function parseEnabled(): { ids: string[]; retiredSelection: boolean } {
   try {
     const raw = localStorage.getItem(ENABLED_KEY);
-    if (!raw) return [];
+    if (!raw) return { ids: [], retiredSelection: false };
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+    if (!Array.isArray(parsed)) return { ids: [], retiredSelection: false };
+    const ids: string[] = [];
+    let retiredSelection = false;
+    for (const id of parsed) {
+      if (typeof id !== "string") continue;
+      if (REMOVED_BUNDLED_PLUGINS.has(id)) retiredSelection = true;
+      else ids.push(id);
+    }
+    return { ids, retiredSelection };
   } catch {
-    return [];
+    return { ids: [], retiredSelection: false };
   }
+}
+
+export function readEnabled(): string[] {
+  return parseEnabled().ids;
 }
 
 export function writeEnabled(ids: string[]): void {
@@ -84,7 +105,14 @@ export function getStoredZip(id: string): ArrayBuffer | null {
 export async function rehydratePlugins(host: PluginHost): Promise<string[]> {
   const loaded: string[] = [];
   for (const id of readEnabled()) {
-    if (host.isPluginActive(id)) continue;
+    if (host.isPluginActive(id)) {
+      try {
+        await host.waitUntilReady(id);
+      } catch {
+        // Plugin failed to mount; leave it disabled.
+      }
+      continue;
+    }
     const buf = getStoredZip(id);
     if (!buf) continue;
     try {
@@ -99,23 +127,23 @@ export async function rehydratePlugins(host: PluginHost): Promise<string[]> {
 
 // Vite copies public/ to dist/; keep bundled zips in public/plugins/ (not dist/plugins/).
 const BUNDLED_PLUGINS: readonly { id: string; url: string; defaultEnabled?: boolean }[] = [
-  { id: "black-market", url: "./plugins/black-market.zip" },
-  { id: "rift-storm", url: "./plugins/rift-storm.zip" },
-  { id: "contract-board", url: "./plugins/contract-board.zip" },
-  { id: "salvage-scanner", url: "./plugins/salvage-scanner.zip" },
-  { id: "warp-overcharge", url: "./plugins/warp-overcharge.zip" },
+  { id: "rift-salvager", url: "./plugins/rift-salvager.zip" },
+  { id: "field-repair", url: "./plugins/field-repair.zip" },
   { id: "corvus-tutorial", url: "./plugins/corvus-tutorial.zip", defaultEnabled: false },
 ];
 
 export async function loadBundledPlugins(host: PluginHost, hooks: PanelsHooks): Promise<string[]> {
-  const enabled = readEnabled();
-  const firstRun = enabled.length === 0; // first run: enable all bundled by default
-  const targets = BUNDLED_PLUGINS.filter((p) =>
-    firstRun ? p.defaultEnabled !== false : enabled.includes(p.id),
+  const { ids: enabled, retiredSelection } = parseEnabled();
+  const firstRun = enabled.length === 0 || retiredSelection;
+  const targets = BUNDLED_PLUGINS.filter(
+    (p) => (firstRun && p.defaultEnabled !== false) || enabled.includes(p.id),
   );
   const results = await Promise.allSettled(
     targets.map(async (p) => {
-      if (host.isPluginActive(p.id)) return p.id;
+      if (host.isPluginActive(p.id)) {
+        await host.waitUntilReady(p.id);
+        return p.id;
+      }
       const res = await fetch(p.url);
       if (res.status === 404) return null; // missing zip: ignore silently
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -1,6 +1,6 @@
 // Plugin manifest (manifest.json inside a plugin zip): shape + validation.
 
-import { HOST_API_VERSION } from "./workerProtocol";
+import { HOST_API_VERSION, MIN_SUPPORTED_API_VERSION } from "./workerProtocol";
 
 export interface PluginManifest {
   id: string;
@@ -38,7 +38,7 @@ export const KNOWN_PERMISSIONS: ReadonlySet<string> = new Set([
 
 /** True when the host API is new enough for the manifest's minApi. */
 export function isCompatible(manifest: Pick<PluginManifest, "minApi">): boolean {
-  return manifest.minApi <= HOST_API_VERSION;
+  return manifest.minApi >= MIN_SUPPORTED_API_VERSION && manifest.minApi <= HOST_API_VERSION;
 }
 
 /** True when path stays inside the zip (no traversal, no absolute paths). */
@@ -78,14 +78,12 @@ export function parseManifest(raw: unknown): PluginManifest {
   const minApi = raw.minApi;
   if (typeof minApi !== "number" || !Number.isInteger(minApi) || minApi < 1) {
     issues.push("minApi must be a positive integer");
+  } else if (minApi < MIN_SUPPORTED_API_VERSION) {
+    issues.push(`minApi must be at least ${MIN_SUPPORTED_API_VERSION}`);
   }
 
   const entry = raw.entry;
-  if (
-    typeof entry !== "string" ||
-    !isSafeZipPath(entry) ||
-    !/\.m?js$/i.test(entry)
-  ) {
+  if (typeof entry !== "string" || !isSafeZipPath(entry) || !/\.m?js$/i.test(entry)) {
     issues.push("entry must be a safe in-zip .js/.mjs path");
   }
 
@@ -111,9 +109,7 @@ export function parseManifest(raw: unknown): PluginManifest {
     permissions: [...(permissions as string[])],
   };
   if (!isCompatible(manifest)) {
-    throw new ManifestError([
-      `requires host API >= ${manifest.minApi}, host is ${HOST_API_VERSION}`,
-    ]);
+    throw new ManifestError([`requires host API ${manifest.minApi}, host is ${HOST_API_VERSION}`]);
   }
   return manifest;
 }

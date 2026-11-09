@@ -18,7 +18,13 @@ import { StorylineService } from "./game/storyline";
 import type { StoryEvent } from "./game/storyline";
 import { RiftMotionService } from "./game/motion";
 import { appendLog, renderActionButtons, renderForge, renderVitals } from "./ui/render";
-import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins, writeEnabled } from "./ui/panels";
+import {
+  loadBundledPlugins,
+  mountPluginsPanel,
+  readEnabled,
+  rehydratePlugins,
+  writeEnabled,
+} from "./ui/panels";
 
 const bus = {
   listeners: new Map<string, Set<(payload: unknown) => void>>(),
@@ -57,7 +63,8 @@ async function setTutorialForNewGame(enabled: boolean): Promise<void> {
       if (manifest.id !== TUTORIAL_PLUGIN_ID) throw new Error("invalid tutorial plugin package");
     }
     await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
-    if (!host.isPluginActive(TUTORIAL_PLUGIN_ID)) throw new Error("tutorial plugin failed to start");
+    if (!host.isPluginActive(TUTORIAL_PLUGIN_ID))
+      throw new Error("tutorial plugin failed to start");
     enabledPlugins.add(TUTORIAL_PLUGIN_ID);
   } else {
     host.disable(TUTORIAL_PLUGIN_ID, "tutorial-disabled");
@@ -87,7 +94,12 @@ function renderStoryJournal(): void {
     description.textContent = entry.description;
     const status = document.createElement("p");
     status.className = `story-journal-status story-${entry.status}`;
-    status.textContent = entry.status === "complete" ? "Complete" : entry.status === "active" ? "In progress" : "Waiting for signal";
+    status.textContent =
+      entry.status === "complete"
+        ? "Complete"
+        : entry.status === "active"
+          ? "In progress"
+          : "Waiting for signal";
     section.append(title, description, status);
     if (entry.step) {
       const step = document.createElement("p");
@@ -122,6 +134,7 @@ const conduit = new ConduitDeck({
   adjectives: GAME_DATA.procedural.adjectives,
   nouns: GAME_DATA.procedural.nouns,
   random: () => Math.random(),
+  getExtraNodeIds: () => registry.listNodeIds().filter((id) => id.includes(":")),
 });
 conduit.init();
 
@@ -150,16 +163,20 @@ const host = new PluginHost({
     enforceStateBounds: () => voyage.enforceStateBounds(),
   },
   registry: {
-    registerAction: (pluginId, def) => registry.registerAction(`${pluginId}:${def.id}`, def as never),
+    registerAction: (pluginId, def) =>
+      registry.registerAction(`${pluginId}:${def.id}`, def as never),
     registerNode: (pluginId, def) => registry.registerNode(`${pluginId}:${def.id}`, def as never),
     registerCutscene: (pluginId, def) => {
       const id = `${pluginId}:${def.id}`;
       registry.registerCutscene(id, { ...def, id } as never);
     },
     removePlugin: (pluginId) => {
-      for (const id of registry.listActionIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterAction(id);
-      for (const id of registry.listNodeIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterNode(id);
-      for (const id of registry.listCutsceneIds()) if (id.startsWith(`${pluginId}:`)) registry.unregisterCutscene(id);
+      for (const id of registry.listActionIds())
+        if (id.startsWith(`${pluginId}:`)) registry.unregisterAction(id);
+      for (const id of registry.listNodeIds())
+        if (id.startsWith(`${pluginId}:`)) registry.unregisterNode(id);
+      for (const id of registry.listCutsceneIds())
+        if (id.startsWith(`${pluginId}:`)) registry.unregisterCutscene(id);
     },
   },
   storylines,
@@ -216,7 +233,9 @@ const sound = new SoundFXService({
     return AC ? new AC() : null;
   },
   getPhase: () => voyage.getPhase(),
-  isTerminalPhase: (phase) => phase === (GAME_DATA.phases.dead ?? "DEAD") || phase === (GAME_DATA.phases.stranded ?? "STRANDED"),
+  isTerminalPhase: (phase) =>
+    phase === (GAME_DATA.phases.dead ?? "DEAD") ||
+    phase === (GAME_DATA.phases.stranded ?? "STRANDED"),
   onPrefsChanged: (prefs) => save.saveAudioPrefs(prefs),
   random: () => Math.random(),
   timers: {
@@ -299,7 +318,7 @@ cutscene = new CutsceneEngine({
   registry,
   voyage,
   transitionTo: (phase) => engine.transitionTo(phase),
-  log: (text, cls) => appendLog(text, cls ?? (GAME_DATA.dom.classes.logSystem ?? "log-system")),
+  log: (text, cls) => appendLog(text, cls ?? GAME_DATA.dom.classes.logSystem ?? "log-system"),
   sound,
   refs: {
     get: (key: string) => {
@@ -449,9 +468,14 @@ function lift(index: number): void {
 }
 
 function markCoupler(index: number): void {
-  el("nav-choices")?.querySelectorAll(".board-coupler").forEach((node) => {
-    node.setAttribute("data-active", Number(node.getAttribute("data-slot")) === index ? "true" : "false");
-  });
+  el("nav-choices")
+    ?.querySelectorAll(".board-coupler")
+    .forEach((node) => {
+      node.setAttribute(
+        "data-active",
+        Number(node.getAttribute("data-slot")) === index ? "true" : "false",
+      );
+    });
 }
 
 function lockNavSlot(index: number): void {
@@ -583,7 +607,9 @@ const setChoices = (choices: Trajectory[]): void => {
       name.textContent = GAME_DATA.text.formatDimName(choice.name);
       const type = document.createElement("span");
       type.className = "carriage-type";
-      type.textContent = GAME_DATA.text.formatDimType(registry.getNode(choice.id)?.label ?? choice.id);
+      type.textContent = GAME_DATA.text.formatDimType(
+        registry.getNode(choice.id)?.label ?? choice.id,
+      );
       const axis = document.createElement("span");
       axis.className = "carriage-axis";
       axis.textContent = "TAP TO ARM";
@@ -685,17 +711,27 @@ const syncActiveMenu = (): void => {
       const reqStrs: string[] = [];
       for (const [rKey, rVal] of Object.entries(act.requires ?? {})) {
         reqStrs.push(
-          typeof rVal === "number" ? `Req: ${rVal} ${GAME_DATA.resources[rKey] ?? rKey}` : `Req: ${String(rVal)}`,
+          typeof rVal === "number"
+            ? `Req: ${rVal} ${GAME_DATA.resources[rKey] ?? rKey}`
+            : `Req: ${String(rVal)}`,
         );
       }
       const costStrs = act.consumes.map((rule) =>
-        GAME_DATA.text.formatResVal(voyage.getActualCost(rule), GAME_DATA.resources[rule.res] ?? rule.res),
+        GAME_DATA.text.formatResVal(
+          voyage.getActualCost(rule),
+          GAME_DATA.resources[rule.res] ?? rule.res,
+        ),
       );
       if (act.probability) {
-        costStrs.push(GAME_DATA.text.formatChance(Math.floor(act.probability(snap, GAME_DATA.config) * 100)));
+        costStrs.push(
+          GAME_DATA.text.formatChance(Math.floor(act.probability(snap, GAME_DATA.config) * 100)),
+        );
       }
       const prodStrs = (act.produces ?? []).map((rule) =>
-        GAME_DATA.text.formatResVal(rule.amount(snap, GAME_DATA.config), GAME_DATA.resources[rule.res] ?? rule.res),
+        GAME_DATA.text.formatResVal(
+          rule.amount(snap, GAME_DATA.config),
+          GAME_DATA.resources[rule.res] ?? rule.res,
+        ),
       );
       b.textContent = GAME_DATA.text.formatActionBtn(act.label, costStrs, prodStrs, reqStrs);
       b.disabled = !voyage.canAffordAction(act);
@@ -708,12 +744,14 @@ const syncActiveMenu = (): void => {
       const item = registry.getYardItem(yardId);
       if (!item) continue;
       let label = GAME_DATA.text.yardItemLabelMenu(item.name, item.desc, item.cost);
-      const currentEq = (snap as unknown as Record<string, string>)[item.type] ?? GAME_DATA.text.noneState;
+      const currentEq =
+        (snap as unknown as Record<string, string>)[item.type] ?? GAME_DATA.text.noneState;
       if (currentEq === item.name) {
         label += `\n${GAME_DATA.text.yardOwned}`;
         b.disabled = true;
       } else {
-        if (currentEq !== GAME_DATA.text.noneState) label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
+        if (currentEq !== GAME_DATA.text.noneState)
+          label += `\n${GAME_DATA.text.yardReplaceWarning(currentEq)}`;
         b.disabled = snap.flux < item.cost;
       }
       b.textContent = label;
@@ -759,7 +797,8 @@ const syncSettings = (): void => {
   try {
     const savedTutorialChoice = sessionStorage.getItem(TUTORIAL_CHOICE_KEY);
     const tutorialToggle = document.getElementById("enable-tutorial") as HTMLInputElement | null;
-    if (savedTutorialChoice !== null && tutorialToggle) tutorialToggle.checked = savedTutorialChoice !== "false";
+    if (savedTutorialChoice !== null && tutorialToggle)
+      tutorialToggle.checked = savedTutorialChoice !== "false";
   } catch {
     // Keep the checked-by-default option if session storage is unavailable.
   }
@@ -843,10 +882,14 @@ const schedule = (fn: () => void, ms: number): void => {
 const paneIds = ["pane-settings", "pane-sensors", "pane-bridge", "pane-forge", "pane-manual"];
 const tabIds = ["tab-settings", "tab-sensors", "tab-bridge", "tab-forge", "tab-manual"];
 function getPanes(): HTMLElement[] {
-  return paneIds.map((id) => document.getElementById(id)).filter((e): e is HTMLElement => e !== null);
+  return paneIds
+    .map((id) => document.getElementById(id))
+    .filter((e): e is HTMLElement => e !== null);
 }
 function getTabs(): HTMLElement[] {
-  return tabIds.map((id) => document.getElementById(id)).filter((e): e is HTMLElement => e !== null);
+  return tabIds
+    .map((id) => document.getElementById(id))
+    .filter((e): e is HTMLElement => e !== null);
 }
 const onScrollToPane = (index: number): void => {
   const container = el("snap-slider");
@@ -904,7 +947,9 @@ const deps: EngineDeps = {
   },
   scrollStarted: () => engine.scrollToPane(2),
   onExploreSurveyed: () => {
-    btn("btn-explore")?.classList.remove(GAME_DATA.dom.classes.tutorialHighlight ?? "tutorial-highlight");
+    btn("btn-explore")?.classList.remove(
+      GAME_DATA.dom.classes.tutorialHighlight ?? "tutorial-highlight",
+    );
   },
   readPaletteVar: (type, variable) => {
     const classes: Record<string, string> = {
@@ -1003,7 +1048,10 @@ engine.attachHooks(phaseMachine.hooks);
       lastPhase = phase;
       bus.emit("onEnter", { phase });
       bus.emit(`onEnter:${phase}`, { phase });
-      if (phase === (GAME_DATA.phases.dead ?? "DEAD") || phase === (GAME_DATA.phases.stranded ?? "STRANDED")) {
+      if (
+        phase === (GAME_DATA.phases.dead ?? "DEAD") ||
+        phase === (GAME_DATA.phases.stranded ?? "STRANDED")
+      ) {
         bus.emit("onDeath", { phase });
       }
     } else {
@@ -1032,7 +1080,19 @@ engine.attachHooks(phaseMachine.hooks);
 fx.bindCanvas(document.getElementById("fx-canvas") as HTMLCanvasElement | null);
 fx.bindArtGlyph(el("art-glyph"));
 fx.bindChrome(el("game-container"), el("bridge-scene"));
-export const app = { registry, conduit, voyage, engine, host, save, sound, art, fx, cutscene, motion };
+export const app = {
+  registry,
+  conduit,
+  voyage,
+  engine,
+  host,
+  save,
+  sound,
+  art,
+  fx,
+  cutscene,
+  motion,
+};
 
 function bind(): void {
   btn("btn-explore")?.addEventListener("click", () => engine.exploreNode());
@@ -1069,7 +1129,10 @@ function bind(): void {
   sel?.addEventListener("change", (e) => {
     const t = e.target as HTMLSelectElement;
     sound.setAmbientMode(t.value as AmbientMode);
-    engine.log(`[ACOUSTICS] Soundscape shifted to: ${t.options[t.selectedIndex]?.text ?? t.value}`, GAME_DATA.dom.classes.logSystem ?? "log-system");
+    engine.log(
+      `[ACOUSTICS] Soundscape shifted to: ${t.options[t.selectedIndex]?.text ?? t.value}`,
+      GAME_DATA.dom.classes.logSystem ?? "log-system",
+    );
   });
   const ambSlider = document.getElementById("slider-ambient-vol") as HTMLInputElement | null;
   ambSlider?.addEventListener("input", (e) => {
@@ -1102,10 +1165,12 @@ function bind(): void {
       try {
         await bundledPluginsReady;
         if (save.hasSave()) {
-          if (host.isPluginActive(TUTORIAL_PLUGIN_ID)) await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
+          if (host.isPluginActive(TUTORIAL_PLUGIN_ID))
+            await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
         } else {
           await setTutorialForNewGame(
-            (document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ?? true,
+            (document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ??
+              true,
           );
           try {
             sessionStorage.removeItem(TUTORIAL_CHOICE_KEY);
@@ -1130,7 +1195,9 @@ function bind(): void {
   tabIds.forEach((id, idx) => {
     el(id)?.addEventListener("click", () => engine.scrollToPane(idx));
   });
-  el("snap-slider")?.addEventListener("scroll", () => engine.syncTabsWithScroll(), { passive: true });
+  el("snap-slider")?.addEventListener("scroll", () => engine.syncTabsWithScroll(), {
+    passive: true,
+  });
 
   const dial = el("nav-vector");
   if (dial) {
@@ -1154,7 +1221,8 @@ function bind(): void {
       const count = navChoices.length;
       if (!count) return;
       const pe = e as PointerEvent;
-      if (Math.hypot(pe.clientX - vectorDownX, pe.clientY - vectorDownY) > 4) vectorDragMoved = true;
+      if (Math.hypot(pe.clientX - vectorDownX, pe.clientY - vectorDownY) > 4)
+        vectorDragMoved = true;
       const angle = vectorAngle(pe);
       const slot = nearestSlot(angle, count);
       setNeedle(angle);
@@ -1216,10 +1284,14 @@ bind();
   const tabs = getTabs();
   tabs.forEach((t, i) => t.classList.toggle("active", i === 2));
 }
-const panel = mountPluginsPanel(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system") });
+const panel = mountPluginsPanel(host, {
+  onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
+});
 refreshPluginsPanel = panel.refresh;
 void rehydratePlugins(host);
-bundledPluginsReady = loadBundledPlugins(host, { onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system") }).then((ids) => {
+bundledPluginsReady = loadBundledPlugins(host, {
+  onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
+}).then((ids) => {
   if (ids.length) panel.refresh();
   return ids;
 });

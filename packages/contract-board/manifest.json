@@ -1,8 +1,0 @@
-{
-  "id": "contract-board",
-  "name": "Contract Board",
-  "version": "1.0.0",
-  "minApi": 1,
-  "entry": "main.js",
-  "permissions": []
-}

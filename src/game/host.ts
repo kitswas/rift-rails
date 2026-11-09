@@ -2,8 +2,8 @@
 //
 // The worker script is a Blob source string built here (bootstrap + the
 // plugin's entry module + kickoff) and spawned with { type: "module" }.
-// A plugin entry must define `activate(api)` and be a single self-contained
-// module: relative imports inside the zip do not resolve from a blob URL.
+// A plugin entry must define `const plugin = { mount(api), unmount() }` and be
+// a single self-contained module: relative imports do not resolve from a blob.
 // The game never appears in the worker: no DOM/window/localStorage, and all
 // mutations flow through api.grant(), validated against manifest permissions.
 
@@ -45,6 +45,8 @@ export const MAX_REQUIRES = 20;
 export const MAX_RESOURCE_VALUE = 100000;
 export const MAX_GRANT_PER_PLUGIN_PER_EVENT = 10000;
 export const MAX_GRANTS_PER_PLUGIN_PER_EVENT = 50;
+export const PLUGIN_MOUNT_TIMEOUT_MS = 5000;
+export const PLUGIN_SHUTDOWN_TIMEOUT_MS = 1000;
 
 // ---- Worker source (plain JS; no backticks / ${ so this template is safe) --
 
@@ -56,11 +58,21 @@ const WORKER_BOOTSTRAP = `
 // The host sends the granted permission list on "init"; we capture it in
 // __permissions and re-apply the block at init. Globals are then frozen
 // so plugin code cannot un-shadow, delete, or reassign them.
-const pluginApi = (() => {
+const __runtime = (() => {
 const __pending = new Map();
 let __reqId = 0;
 let __snapshot = null;
 let __permissions = [];
+let __resolveInit;
+const __initialized = new Promise(function (resolve) { __resolveInit = resolve; });
+let __mounted = false;
+let __mountAttempted = false;
+let __shutdownRequested = false;
+let __shutdownStarted = false;
+let __startCalled = false;
+let __mountPromise = Promise.resolve();
+let __plugin = null;
+const __queuedEvents = [];
 function __netStub(name) {
   return function () { throw new Error(name + " blocked: missing net:fetch permission"); };
 }
@@ -94,6 +106,48 @@ function __frozen(v) {
   }
   return v;
 }
+function __dispatchEvent(m) {
+  if (m.snapshot) __snapshot = m.snapshot;
+  const fns = __listeners.get(m.event) || [];
+  for (const fn of fns) {
+    try { __trace("event:" + m.event, m.payload, "event"); fn(m.payload); }
+    catch (err) { __post({ type: "log", msg: "handler error: " + ((err && err.message) || err) }); }
+  }
+}
+function __start(plugin) {
+  if (__startCalled) return;
+  __startCalled = true;
+  __plugin = plugin;
+  __mountPromise = (async function () {
+    await __initialized;
+    if (__shutdownRequested) return;
+    if (!plugin || typeof plugin !== "object" || typeof plugin.mount !== "function" || typeof plugin.unmount !== "function") {
+      throw new Error("entry must define plugin.mount(api) and plugin.unmount()");
+    }
+    __mountAttempted = true;
+    await plugin.mount(__api);
+    __mounted = true;
+    self.postMessage({ type: "ready" });
+    const queued = __queuedEvents.splice(0);
+    for (const event of queued) __dispatchEvent(event);
+  })().catch(function (err) {
+    self.postMessage({ type: "fatal", message: String((err && err.message) || err) });
+  });
+}
+async function __shutdownPlugin() {
+  if (__shutdownStarted) return;
+  __shutdownStarted = true;
+  __shutdownRequested = true;
+  try {
+    await __mountPromise;
+    if (__mountAttempted) await __plugin.unmount();
+    self.postMessage({ type: "unmounted" });
+  } catch (err) {
+    self.postMessage({ type: "unmount-error", message: String((err && err.message) || err) });
+  } finally {
+    if (typeof self.close === "function") self.close();
+  }
+}
 self.onerror = function (e) {
   __post({ type: "fatal", message: String((e && e.message) || "worker error") });
 };
@@ -107,18 +161,16 @@ self.onmessage = function (e) {
     __snapshot = m.snapshot || null;
     __permissions = Array.isArray(m.permissions) ? m.permissions : [];
     __applySandbox();
+    __resolveInit();
   } else if (m.type === "event") {
-    if (m.snapshot) __snapshot = m.snapshot;
-    const fns = __listeners.get(m.event) || [];
-    for (const fn of fns) {
-      try { __trace("event:" + m.event, m.payload, "event"); fn(m.payload); }
-      catch (err) { __post({ type: "log", msg: "handler error: " + ((err && err.message) || err) }); }
-    }
+    if (__shutdownRequested) return;
+    if (__mounted) __dispatchEvent(m);
+    else __queuedEvents.push(m);
   } else if (m.type === "grant-result" || m.type === "storage-result") {
     const r = __pending.get(m.reqId);
     if (r) { __pending.delete(m.reqId); r(m); }
   } else if (m.type === "shutdown") {
-    if (typeof self.close === "function") self.close();
+    __shutdownPlugin();
   }
 };
 try { Object.defineProperty(self, "onmessage", { value: self.onmessage, writable: false, configurable: false }); } catch (e) {}
@@ -174,15 +226,14 @@ const __api = {
   log: function (msg) { __trace("log", msg); __post({ type: "log", msg: String(msg) }); },
   storage: __storage
 };
-return Object.freeze(__api);
+return Object.freeze({ api: Object.freeze(__api), start: __start });
 })();
+const pluginApi = __runtime.api;
 `;
 
 const WORKER_KICKOFF = `
 try {
-  if (typeof activate !== "function") throw new Error("entry must define activate(api)");
-  activate(pluginApi);
-  self.postMessage({ type: "ready" });
+  __runtime.start(typeof plugin === "undefined" ? undefined : plugin);
 } catch (err) {
   self.postMessage({ type: "fatal", message: String((err && err.message) || err) });
 }
@@ -196,6 +247,9 @@ interface PluginRecord {
   blobUrl: string;
   active: boolean;
   ready: boolean;
+  stopping: boolean;
+  shutdownTimer: ReturnType<typeof setTimeout> | null;
+  unloadAfterShutdown: boolean;
 }
 
 export interface PluginInfo {
@@ -358,7 +412,9 @@ function parseNodeDef(def: unknown): RegisteredNode | null {
   }
   if (
     def.exploreCost !== undefined &&
-    (typeof def.exploreCost !== "number" || !Number.isFinite(def.exploreCost) || def.exploreCost < 0)
+    (typeof def.exploreCost !== "number" ||
+      !Number.isFinite(def.exploreCost) ||
+      def.exploreCost < 0)
   ) {
     return null;
   }
@@ -390,7 +446,12 @@ function zipFileSize(file: JSZip.JSZipObject | null): number | null {
 function maxHullFor(voyage: HostDeps["voyage"]): number {
   const any = voyage as unknown as Record<string, unknown>;
   const config = any["config"] as { MAX_HULL?: unknown } | undefined;
-  if (config && typeof config.MAX_HULL === "number" && Number.isFinite(config.MAX_HULL) && config.MAX_HULL > 0) {
+  if (
+    config &&
+    typeof config.MAX_HULL === "number" &&
+    Number.isFinite(config.MAX_HULL) &&
+    config.MAX_HULL > 0
+  ) {
     return config.MAX_HULL;
   }
   if (typeof any["getMaxHull"] === "function") {
@@ -514,7 +575,10 @@ function applyAdjust(voyage: HostDeps["voyage"], resource: string, amount: numbe
 export class PluginHost {
   private readonly deps: HostDeps;
   private readonly plugins = new Map<string, PluginRecord>();
-  private readonly readyWaiters = new Map<string, (() => void)[]>();
+  private readonly readyWaiters = new Map<
+    string,
+    { resolve: () => void; reject: (error: Error) => void }[]
+  >();
   private readonly storage = new Map<string, Map<string, unknown>>();
   private grantSeq = 0;
   private readonly grantUsage = new Map<string, { seq: number; total: number; count: number }>();
@@ -537,7 +601,7 @@ export class PluginHost {
     }
   }
 
-  /** Load, validate and activate a plugin from a zip file. */
+  /** Load, validate, and mount a plugin from a zip file. */
   async loadZip(input: File | ArrayBuffer): Promise<PluginManifest> {
     const buf: ArrayBuffer =
       typeof File !== "undefined" && input instanceof File
@@ -579,6 +643,7 @@ export class PluginHost {
       throw new ManifestError([`requires host API >= ${manifest.minApi}`]);
     }
     const existing = this.plugins.get(manifest.id);
+    if (existing?.stopping) throw new Error(`plugin is shutting down: ${manifest.id}`);
     if (existing?.active) throw new Error(`plugin already loaded: ${manifest.id}`);
 
     const entryFile = zip.file(manifest.entry);
@@ -604,14 +669,18 @@ export class PluginHost {
       blobUrl,
       active: true,
       ready: false,
+      stopping: false,
+      shutdownTimer: null,
+      unloadAfterShutdown: false,
     };
     this.plugins.set(manifest.id, record);
     if (!this.storage.has(manifest.id)) this.storage.set(manifest.id, new Map());
 
     worker.onmessage = (e: MessageEvent<WorkerMessage>) =>
-      this.handleMessage(manifest.id, e.data);
-    worker.onerror = (e: ErrorEvent) => this.disable(manifest.id, `worker error: ${e.message}`);
-    worker.onmessageerror = () => this.disable(manifest.id, "message decode error");
+      this.handleMessage(manifest.id, e.data, record);
+    worker.onerror = (e: ErrorEvent) =>
+      this.stopRecord(manifest.id, record, `worker error: ${e.message}`);
+    worker.onmessageerror = () => this.stopRecord(manifest.id, record, "message decode error");
 
     const init: HostMessage = {
       type: "init",
@@ -619,7 +688,24 @@ export class PluginHost {
       permissions: manifest.permissions,
       snapshot: clone(this.deps.voyage.getSnapshot()),
     };
-    worker.postMessage(init);
+    const ready = this.waitUntilReady(manifest.id);
+    const mountTimer = setTimeout(() => {
+      this.stopRecord(manifest.id, record, "mount timed out");
+    }, PLUGIN_MOUNT_TIMEOUT_MS);
+    try {
+      worker.postMessage(init);
+      await ready;
+    } catch (err) {
+      this.stopRecord(
+        manifest.id,
+        record,
+        `mount failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
+    } finally {
+      clearTimeout(mountTimer);
+    }
+    if (!record.active) throw new Error(`plugin failed to mount: ${manifest.id}`);
     this.deps.log(`plugin loaded: ${manifest.id} (${manifest.name} ${manifest.version})`);
     return manifest;
   }
@@ -629,32 +715,64 @@ export class PluginHost {
     this.grantSeq += 1;
     const snapshot: StateSnapshot = clone(this.deps.voyage.getSnapshot());
     for (const record of this.plugins.values()) {
-      if (!record.active) continue;
+      if (!record.active || record.stopping) continue;
       const msg: HostMessage = { type: "event", event: event as never, payload, snapshot };
       record.worker.postMessage(msg);
     }
   }
 
-  /** Disable + terminate a plugin (crash path); storage is kept for resume. */
+  /** Disable a plugin, run unmount, then terminate; storage is kept for resume. */
   disable(id: string, reason: string): void {
     const record = this.plugins.get(id);
-    if (!record?.active) return;
+    if (!record) return;
+    this.stopRecord(id, record, reason);
+  }
+
+  private stopRecord(id: string, record: PluginRecord, reason: string): void {
+    if (!record.active || record.stopping) return;
     record.active = false;
     record.ready = false;
-    record.worker.terminate();
-    this.resolveReadyWaiters(id);
-    URL.revokeObjectURL(record.blobUrl);
+    record.stopping = true;
+    this.resolveReadyWaiters(id, new Error(reason));
     this.deps.registry.removePlugin(id);
     this.deps.storylines?.removePlugin(id);
     this.deps.log(`plugin disabled: ${id} (${reason})`);
+    record.shutdownTimer = setTimeout(() => {
+      this.finishShutdown(id, record, "unmount timed out");
+    }, PLUGIN_SHUTDOWN_TIMEOUT_MS);
+    try {
+      record.worker.postMessage({ type: "shutdown" });
+    } catch (err) {
+      this.finishShutdown(id, record, `shutdown message failed: ${String(err)}`);
+    }
+  }
+
+  private finishShutdown(id: string, record: PluginRecord, error?: string): void {
+    if (!record.stopping) return;
+    if (record.shutdownTimer !== null) clearTimeout(record.shutdownTimer);
+    record.shutdownTimer = null;
+    record.stopping = false;
+    record.worker.terminate();
+    if (typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(record.blobUrl);
+    if (error) this.deps.log(`plugin unmount incomplete: ${id} (${error})`);
+    if (record.unloadAfterShutdown && this.plugins.get(id) === record) {
+      this.plugins.delete(id);
+      this.storage.delete(id);
+      this.grantUsage.delete(id);
+    }
   }
 
   /** Disable a plugin and drop its namespaced storage. */
   unload(id: string): void {
-    this.disable(id, "unloaded");
-    this.plugins.delete(id);
-    this.storage.delete(id);
-    this.grantUsage.delete(id);
+    const record = this.plugins.get(id);
+    if (!record) return;
+    record.unloadAfterShutdown = true;
+    if (record.active) this.stopRecord(id, record, "unloaded");
+    else if (!record.stopping) {
+      this.plugins.delete(id);
+      this.storage.delete(id);
+      this.grantUsage.delete(id);
+    }
   }
 
   isPluginActive(id: string): boolean {
@@ -663,11 +781,13 @@ export class PluginHost {
 
   waitUntilReady(id: string): Promise<void> {
     const record = this.plugins.get(id);
-    if (!record?.active) return Promise.reject(new Error(`plugin is not active: ${id}`));
+    if (!record?.active || record.stopping) {
+      return Promise.reject(new Error(`plugin is not active: ${id}`));
+    }
     if (record.ready) return Promise.resolve();
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const waiters = this.readyWaiters.get(id) ?? [];
-      waiters.push(resolve);
+      waiters.push({ resolve, reject });
       this.readyWaiters.set(id, waiters);
     });
   }
@@ -693,16 +813,38 @@ export class PluginHost {
 
   // ---- Worker message handling ---------------------------------------------
 
-  private handleMessage(id: string, msg: WorkerMessage): void {
-    const record = this.plugins.get(id);
-    if (!record || !record.active) return;
+  private handleMessage(id: string, msg: WorkerMessage, source?: PluginRecord): void {
+    const record = source ?? this.plugins.get(id);
+    if (!record) return;
+    if (this.plugins.get(id) !== record && !record.stopping) return;
+    if (msg.type === "unmounted") {
+      this.finishShutdown(id, record);
+      return;
+    }
+    if (msg.type === "unmount-error") {
+      this.finishShutdown(id, record, msg.message);
+      return;
+    }
+    if (!record.active && !record.stopping) return;
+    if (record.stopping && msg.type === "grant") {
+      record.worker.postMessage({
+        type: "grant-result",
+        reqId: msg.reqId,
+        ok: false,
+        reason: "plugin is shutting down",
+      });
+      return;
+    }
+    if (record.stopping && !["api-call", "log", "storage-get", "storage-set"].includes(msg.type)) {
+      return;
+    }
     switch (msg.type) {
       case "ready":
         record.ready = true;
         this.resolveReadyWaiters(id);
         break;
       case "fatal":
-        this.disable(id, msg.message);
+        this.stopRecord(id, record, msg.message);
         break;
       case "api-call":
         console.log(`[plugin-api] ${id}.${msg.method}`, {
@@ -759,7 +901,9 @@ export class PluginHost {
         const actions = node.actions;
         this.deps.registry.registerNode(id, {
           ...node,
-          ...(Array.isArray(actions) ? { actions: actions.map((actionId) => `${id}:${actionId}`) } : {}),
+          ...(Array.isArray(actions)
+            ? { actions: actions.map((actionId) => `${id}:${actionId}`) }
+            : {}),
         });
       }
     } catch (err) {
@@ -769,11 +913,14 @@ export class PluginHost {
     }
   }
 
-  private resolveReadyWaiters(id: string): void {
+  private resolveReadyWaiters(id: string, error?: Error): void {
     const waiters = this.readyWaiters.get(id);
     if (!waiters) return;
     this.readyWaiters.delete(id);
-    for (const resolve of waiters) resolve();
+    for (const waiter of waiters) {
+      if (error) waiter.reject(error);
+      else waiter.resolve();
+    }
   }
 
   private registerStoryline(id: string, def: RegisteredStoryline): void {
@@ -797,15 +944,16 @@ export class PluginHost {
       !Array.isArray(def.beats) ||
       def.beats.length < 1 ||
       def.beats.length > 16 ||
-      !def.beats.every((beat) =>
-        isRecord(beat) &&
-        typeof beat.text === "string" &&
-        beat.text.trim().length > 0 &&
-        beat.text.length <= 2000 &&
-        typeof beat.choiceA === "string" &&
-        beat.choiceA.length <= MAX_LABEL_CHARS &&
-        typeof beat.choiceB === "string" &&
-        beat.choiceB.length <= MAX_LABEL_CHARS,
+      !def.beats.every(
+        (beat) =>
+          isRecord(beat) &&
+          typeof beat.text === "string" &&
+          beat.text.trim().length > 0 &&
+          beat.text.length <= 2000 &&
+          typeof beat.choiceA === "string" &&
+          beat.choiceA.length <= MAX_LABEL_CHARS &&
+          typeof beat.choiceB === "string" &&
+          beat.choiceB.length <= MAX_LABEL_CHARS,
       ) ||
       (def.logSummary !== undefined &&
         (typeof def.logSummary !== "string" || def.logSummary.length > MAX_LOG_CHARS)) ||
@@ -1026,7 +1174,7 @@ export class PluginHost {
   private handleStorageSet(id: string, reqId: number, key: string, value: unknown): void {
     const reply = (ok: boolean) => {
       const record = this.plugins.get(id);
-      if (!record?.active) return;
+      if (!record || (!record.active && !record.stopping)) return;
       const msg: HostMessage = { type: "storage-result", reqId, value: ok };
       record.worker.postMessage(msg);
     };

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PluginHost } from "../src/game/host";
+import { PluginHost, PLUGIN_SHUTDOWN_TIMEOUT_MS } from "../src/game/host";
 import { isCompatible, ManifestError, parseManifest } from "../src/game/manifest";
 import { Registry } from "../src/game/registry";
 import { HOST_API_VERSION, MAX_GRANT_AMOUNT } from "../src/game/workerProtocol";
@@ -11,7 +11,7 @@ import type {
   VoyageLike,
 } from "../src/game/workerProtocol";
 import type { GameAction, NodeDefinition } from "../src/game/types";
-import sampleManifest from "../packages/sample-plugin/manifest.json";
+import corvusManifest from "../packages/corvus-tutorial/manifest.json";
 
 const VALID_MANIFEST = {
   id: "test-plugin",
@@ -36,9 +36,9 @@ describe("manifest validation", () => {
     ]);
   });
 
-  it("accepts the sample-plugin manifest.json targeting HOST_API_VERSION", () => {
-    const manifest = parseManifest(sampleManifest);
-    expect(manifest.id).toBe("sample-plugin");
+  it("accepts the bundled Corvus tutorial manifest targeting HOST_API_VERSION", () => {
+    const manifest = parseManifest(corvusManifest);
+    expect(manifest.id).toBe("corvus-tutorial");
     expect(manifest.entry).toBe("main.js");
     expect(manifest.minApi).toBe(HOST_API_VERSION);
     expect(isCompatible(manifest)).toBe(true);
@@ -51,12 +51,17 @@ describe("manifest validation", () => {
     expect(isCompatible({ minApi: HOST_API_VERSION + 1 })).toBe(false);
   });
 
+  it("rejects plugins using the removed pre-lifecycle API", () => {
+    expect(() => parseManifest({ ...VALID_MANIFEST, minApi: 3 })).toThrow(
+      /minApi must be at least 4/,
+    );
+    expect(isCompatible({ minApi: 3 })).toBe(false);
+  });
+
   it("rejects bad id, version, entry and permissions", () => {
     expect(() => parseManifest({ ...VALID_MANIFEST, id: "bad id!" })).toThrow(ManifestError);
     expect(() => parseManifest({ ...VALID_MANIFEST, version: "1.0" })).toThrow(ManifestError);
-    expect(() => parseManifest({ ...VALID_MANIFEST, entry: "../main.js" })).toThrow(
-      ManifestError,
-    );
+    expect(() => parseManifest({ ...VALID_MANIFEST, entry: "../main.js" })).toThrow(ManifestError);
     expect(() => parseManifest({ ...VALID_MANIFEST, permissions: ["voyage:fly"] })).toThrow(
       ManifestError,
     );
@@ -88,8 +93,10 @@ describe("registry duplicate registration", () => {
 });
 
 // PluginHost grant handling with mocked deps (no Worker needed).
-function makeHost(permissions: string[]) {
-  const messages: { type: string; ok?: boolean; reason?: string }[] = [];
+function makeHost(permissions: string[], ready = true) {
+  const messages: { type: string; ok?: boolean; reason?: string; message?: string }[] = [];
+  const registryRemovals: string[] = [];
+  const logs: string[] = [];
   const voyageState: StateSnapshot = {
     phase: "START",
     jumpCount: 1,
@@ -126,9 +133,12 @@ function makeHost(permissions: string[]) {
       void cutscenes.set(`${pluginId}:${def.id}`, { ...def, id: `${pluginId}:${def.id}` }),
     getAction: (id) => actions.get(id),
     removePlugin: (pluginId) => {
-      for (const key of [...actions.keys()]) if (key.startsWith(`${pluginId}:`)) actions.delete(key);
+      registryRemovals.push(pluginId);
+      for (const key of [...actions.keys()])
+        if (key.startsWith(`${pluginId}:`)) actions.delete(key);
       for (const key of [...nodes.keys()]) if (key.startsWith(`${pluginId}:`)) nodes.delete(key);
-      for (const key of [...cutscenes.keys()]) if (key.startsWith(`${pluginId}:`)) cutscenes.delete(key);
+      for (const key of [...cutscenes.keys()])
+        if (key.startsWith(`${pluginId}:`)) cutscenes.delete(key);
     },
   };
   const deps: HostDeps = {
@@ -138,20 +148,25 @@ function makeHost(permissions: string[]) {
       register: (pluginId, definition) => registeredStories.push({ pluginId, definition }),
       removePlugin: () => {},
     },
-    log: () => {},
+    log: (message) => logs.push(message),
     events: { on: () => {} },
   };
   const host = new PluginHost(deps);
   const fakeWorker = {
-    postMessage: (msg: { type: string; ok?: boolean; reason?: string }) => messages.push(msg),
-    terminate: () => {},
+    postMessage: vi.fn((msg: { type: string; ok?: boolean; reason?: string; message?: string }) =>
+      messages.push(msg),
+    ),
+    terminate: vi.fn(),
   };
   (host as unknown as { plugins: Map<string, unknown> }).plugins.set("test-plugin", {
     manifest: { ...VALID_MANIFEST, permissions },
     worker: fakeWorker,
     blobUrl: "blob:fake",
     active: true,
-    ready: true,
+    ready,
+    stopping: false,
+    shutdownTimer: null,
+    unloadAfterShutdown: false,
   });
   const grant = (op: GrantOp) => {
     (host as unknown as { handleGrant(id: string, reqId: number, op: GrantOp): void }).handleGrant(
@@ -162,13 +177,81 @@ function makeHost(permissions: string[]) {
     return messages[messages.length - 1];
   };
   const registerOne = (id: string, kind: "action" | "node", def: unknown): void => {
-    (host as unknown as { registerOne(id: string, kind: "action" | "node", def: unknown): void })
-      .registerOne(id, kind, def);
+    (
+      host as unknown as { registerOne(id: string, kind: "action" | "node", def: unknown): void }
+    ).registerOne(id, kind, def);
   };
-  return { grant, voyageState, voyage, registerOne, actions, nodes, cutscenes, registeredStories, host };
+  return {
+    grant,
+    voyageState,
+    voyage,
+    registerOne,
+    actions,
+    nodes,
+    cutscenes,
+    registeredStories,
+    registryRemovals,
+    logs,
+    fakeWorker,
+    host,
+  };
 }
 
 describe("plugin registration", () => {
+  it("waits for mount readiness", async () => {
+    const { host } = makeHost([], false);
+    const ready = host.waitUntilReady("test-plugin");
+    (
+      host as unknown as {
+        handleMessage(id: string, message: { type: string }): void;
+      }
+    ).handleMessage("test-plugin", { type: "ready" });
+    await expect(ready).resolves.toBeUndefined();
+  });
+
+  it("runs unmount before terminating and removes plugin registrations immediately", async () => {
+    const { host, fakeWorker, registryRemovals } = makeHost([], false);
+    const ready = host.waitUntilReady("test-plugin");
+    host.disable("test-plugin", "user-disabled");
+    await expect(ready).rejects.toThrow("user-disabled");
+    expect(host.isPluginActive("test-plugin")).toBe(false);
+    expect(registryRemovals).toContain("test-plugin");
+    expect(fakeWorker.postMessage).toHaveBeenCalledWith({ type: "shutdown" });
+    expect(fakeWorker.terminate).not.toHaveBeenCalled();
+
+    (
+      host as unknown as {
+        handleMessage(id: string, message: { type: string }): void;
+      }
+    ).handleMessage("test-plugin", { type: "unmounted" });
+    expect(fakeWorker.terminate).toHaveBeenCalledOnce();
+  });
+
+  it("force-terminates after unmount failure and records the error", () => {
+    const { host, fakeWorker, logs } = makeHost([]);
+    host.disable("test-plugin", "user-disabled");
+    (
+      host as unknown as {
+        handleMessage(id: string, message: { type: string; message?: string }): void;
+      }
+    ).handleMessage("test-plugin", { type: "unmount-error", message: "cleanup failed" });
+    expect(fakeWorker.terminate).toHaveBeenCalledOnce();
+    expect(logs).toContain("plugin unmount incomplete: test-plugin (cleanup failed)");
+  });
+
+  it("force-terminates when unmount never acknowledges", async () => {
+    vi.useFakeTimers();
+    try {
+      const { host, fakeWorker, logs } = makeHost([]);
+      host.disable("test-plugin", "user-disabled");
+      await vi.advanceTimersByTimeAsync(PLUGIN_SHUTDOWN_TIMEOUT_MS);
+      expect(fakeWorker.terminate).toHaveBeenCalledOnce();
+      expect(logs).toContain("plugin unmount incomplete: test-plugin (unmount timed out)");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("namespaces node action references and makes numeric rules executable", () => {
     const { registerOne, actions, nodes } = makeHost(["voyage:executeAction"]);
     registerOne("test-plugin", "action", {
@@ -202,9 +285,11 @@ describe("plugin registration", () => {
   it("forwards worker storyline registrations to the host storyline service", () => {
     const { host, registeredStories } = makeHost([]);
     const definition = { id: "short-story", title: "Short Story" };
-    (host as unknown as {
-      handleMessage(id: string, message: { type: string; def: unknown }): void;
-    }).handleMessage("test-plugin", { type: "register-storyline", def: definition });
+    (
+      host as unknown as {
+        handleMessage(id: string, message: { type: string; def: unknown }): void;
+      }
+    ).handleMessage("test-plugin", { type: "register-storyline", def: definition });
     expect(registeredStories).toEqual([{ pluginId: "test-plugin", definition }]);
   });
 
@@ -214,19 +299,29 @@ describe("plugin registration", () => {
       id: "wp1",
       beats: [{ text: "Welcome aboard.", choiceA: "Continue", choiceB: "Later" }],
     };
-    (host as unknown as {
-      handleMessage(id: string, message: { type: string; def: unknown }): void;
-    }).handleMessage("test-plugin", { type: "register-cutscene", def: definition });
-    expect(cutscenes.get("test-plugin:wp1")).toMatchObject({ id: "test-plugin:wp1", beats: definition.beats });
+    (
+      host as unknown as {
+        handleMessage(id: string, message: { type: string; def: unknown }): void;
+      }
+    ).handleMessage("test-plugin", { type: "register-cutscene", def: definition });
+    expect(cutscenes.get("test-plugin:wp1")).toMatchObject({
+      id: "test-plugin:wp1",
+      beats: definition.beats,
+    });
   });
 
   it("writes plugin API calls to the browser console", () => {
     const { host } = makeHost([]);
     const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
     try {
-      (host as unknown as {
-        handleMessage(id: string, message: { type: string; method: string; phase: string; args: unknown }): void;
-      }).handleMessage("test-plugin", {
+      (
+        host as unknown as {
+          handleMessage(
+            id: string,
+            message: { type: string; method: string; phase: string; args: unknown },
+          ): void;
+        }
+      ).handleMessage("test-plugin", {
         type: "api-call",
         method: "registerStoryline",
         phase: "call",

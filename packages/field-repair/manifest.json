@@ -1,8 +1,8 @@
 {
-  "id": "rift-storm",
-  "name": "Rift Storm",
+  "id": "field-repair",
+  "name": "Field Repair",
   "version": "1.0.0",
-  "minApi": 1,
+  "minApi": 4,
   "entry": "main.js",
   "permissions": ["voyage:adjustResource"]
 }

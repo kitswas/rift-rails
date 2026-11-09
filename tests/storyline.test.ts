@@ -112,14 +112,14 @@ describe("storyline progression", () => {
         choices.push(choose);
       },
     });
-    service.register("sample-plugin", story);
+    service.register("fixture-plugin", story);
 
     service.handleEvent("afterJump", { jumpCount: 1 });
     expect(scenes).toHaveLength(0);
     service.handleEvent("afterJump", { jumpCount: 2 });
     expect(scenes.map((scene) => scene.node.id)).toEqual(["signal"]);
     choices[0]?.(0);
-    expect(voyage.state.storyProgress["sample-plugin:lost-lantern"]?.waiting).toBe(true);
+    expect(voyage.state.storyProgress["fixture-plugin:lost-lantern"]?.waiting).toBe(true);
 
     service.handleEvent("afterAction", { actionId: "res_harvest", success: false });
     expect(scenes).toHaveLength(1);
@@ -140,7 +140,7 @@ describe("storyline progression", () => {
     const service = new StorylineService(voyage, {
       show: (scene) => scenes.push(scene),
     });
-    service.register("sample-plugin", story);
+    service.register("fixture-plugin", story);
     service.handleEvent("afterJump", { jumpCount: 2 });
     expect(scenes).toHaveLength(0);
 
@@ -152,7 +152,7 @@ describe("storyline progression", () => {
   it("resumes an unfinished scene after save and plugin re-registration", () => {
     const voyage = makeVoyage();
     const first = new StorylineService(voyage, { show: () => {} });
-    first.register("sample-plugin", story);
+    first.register("fixture-plugin", story);
     first.handleEvent("afterJump", { jumpCount: 2 });
     const saved = voyage.serialize();
 
@@ -162,7 +162,7 @@ describe("storyline progression", () => {
     const resumed = new StorylineService(resumedVoyage, {
       show: (scene) => resumedScenes.push(scene),
     });
-    resumed.register("sample-plugin", story);
+    resumed.register("fixture-plugin", story);
     resumed.start();
     expect(resumedScenes.map((scene) => scene.node.id)).toEqual(["signal"]);
   });
@@ -170,13 +170,13 @@ describe("storyline progression", () => {
   it("serializes the selected branch and its outcome trace", () => {
     const voyage = makeVoyage();
     const service = new StorylineService(voyage, { show: () => {} });
-    service.register("sample-plugin", story);
+    service.register("fixture-plugin", story);
     service.handleEvent("afterJump", { jumpCount: 2 });
-    service.choose("sample-plugin", "lost-lantern", 1);
-    service.choose("sample-plugin", "lost-lantern", 0);
+    service.choose("fixture-plugin", "lost-lantern", 1);
+    service.choose("fixture-plugin", "lost-lantern", 0);
 
     const saved = voyage.serialize();
-    expect(saved.storyProgress["sample-plugin:lost-lantern"]).toMatchObject({
+    expect(saved.storyProgress["fixture-plugin:lost-lantern"]).toMatchObject({
       status: "complete",
       trace: [
         { nodeId: "signal", choiceId: "pass" },
@@ -188,12 +188,12 @@ describe("storyline progression", () => {
   it("retains completed progress when a plugin is disabled and re-enabled", () => {
     const voyage = makeVoyage();
     const service = new StorylineService(voyage, { show: () => {} });
-    service.register("sample-plugin", story);
+    service.register("fixture-plugin", story);
     service.handleEvent("afterJump", { jumpCount: 2 });
-    service.choose("sample-plugin", "lost-lantern", 1);
-    service.choose("sample-plugin", "lost-lantern", 0);
-    service.removePlugin("sample-plugin");
-    service.register("sample-plugin", story);
+    service.choose("fixture-plugin", "lost-lantern", 1);
+    service.choose("fixture-plugin", "lost-lantern", 0);
+    service.removePlugin("fixture-plugin");
+    service.register("fixture-plugin", story);
     expect(service.journal()[0]).toMatchObject({ status: "complete" });
   });
 });

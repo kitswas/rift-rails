@@ -1,8 +1,8 @@
 {
-  "id": "black-market",
-  "name": "Black Market",
+  "id": "rift-salvager",
+  "name": "Rift Salvager",
   "version": "1.0.0",
-  "minApi": 1,
+  "minApi": 4,
   "entry": "main.js",
   "permissions": []
 }

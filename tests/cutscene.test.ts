@@ -21,7 +21,7 @@ function makeVoyage() {
 
 function makeScene(choiceCount = 2): StoryScene {
   return {
-    pluginId: "sample-plugin",
+    pluginId: "fixture-plugin",
     storyId: "lost-lantern",
     title: "The Lost Lantern",
     node: {
@@ -124,7 +124,7 @@ describe("interactive story dialogue", () => {
     engine.playStory(makeScene(), () => {
       selected = true;
     });
-    engine.cancelPluginScenes("sample-plugin");
+    engine.cancelPluginScenes("fixture-plugin");
 
     expect(engine.activeCutscene).toBeNull();
     expect(document.getElementById("cutscene-overlay")?.hidden).toBe(true);

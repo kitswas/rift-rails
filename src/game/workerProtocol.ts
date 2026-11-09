@@ -2,7 +2,8 @@
 // core game types (SaveState, GameAction, NodeDefinition) so this file
 // stays independent of the core module layout; keep in sync manually.
 
-export const HOST_API_VERSION = 3;
+export const HOST_API_VERSION = 4;
+export const MIN_SUPPORTED_API_VERSION = 4;
 
 /** Frozen game-state snapshot (SaveState shape, JSON-only). */
 export type StateSnapshot = {
@@ -107,10 +108,17 @@ export interface PluginApi {
   };
 }
 
+export interface PluginLifecycle {
+  mount(api: PluginApi): void | Promise<void>;
+  unmount(): void | Promise<void>;
+}
+
 // ---- Messages (worker -> host) --------------------------------------------
 
 export type WorkerMessage =
   | { type: "ready" }
+  | { type: "unmounted" }
+  | { type: "unmount-error"; message: string }
   | { type: "fatal"; message: string }
   | { type: "api-call"; method: string; args?: unknown; phase?: "call" | "result" | "event" }
   | { type: "log"; msg: string }

@@ -2,7 +2,7 @@
   "id": "corvus-tutorial",
   "name": "Corvus Tutorial",
   "version": "1.0.0",
-  "minApi": 3,
+  "minApi": 4,
   "entry": "main.js",
   "permissions": []
 }

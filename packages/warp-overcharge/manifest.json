@@ -1,8 +1,0 @@
-{
-  "id": "warp-overcharge",
-  "name": "Warp Overcharge",
-  "version": "1.0.0",
-  "minApi": 1,
-  "entry": "main.js",
-  "permissions": ["voyage:adjustResource"]
-}
