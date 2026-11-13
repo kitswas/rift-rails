@@ -23,8 +23,18 @@ const plugin = {
 
     // `expended` is process-local; persisted truth lives in api.storage, so the
     // single charge survives save/load and plugin reloads (fresh worker).
+    // Seed it from storage once at mount so a spent charge is honoured even
+    // when the hull is healthy (e.g. the status line on afterJump).
     let expended = false;
     let inFlight = false;
+    const seeded = api.storage
+      .get(STORAGE_KEY)
+      .then((saved) => {
+        if (saved && saved.used === true) expended = true;
+      })
+      .catch((err) => {
+        api.log("field-repair: stabilizer seed error (" + ((err && err.message) || err) + ")");
+      });
 
     function isTerminal(phase) {
       return phase === "DEAD" || phase === "STRANDED";
@@ -94,6 +104,8 @@ const plugin = {
     });
 
     api.on("afterJump", async () => {
+      // Wait for the mount-time seed so the status line reflects persisted use.
+      await seeded;
       await maybeDeploy();
       if (expended) {
         const s = api.state();

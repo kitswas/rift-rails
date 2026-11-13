@@ -40,9 +40,15 @@ test.describe("plugin smoke", () => {
         .evaluateAll((inputs) =>
           inputs.map((input) => (input as HTMLInputElement).dataset.pluginId),
         );
+    // Exact set equality: only the two curated gameplay plugins may be listed.
     await expect
-      .poll(enabledIds)
-      .toEqual(expect.arrayContaining(["rift-salvager", "field-repair"]));
+      .poll(async () =>
+        (await enabledIds())
+          .filter((id): id is string => typeof id === "string")
+          .slice()
+          .sort(),
+      )
+      .toEqual(["field-repair", "rift-salvager"]);
     const retiredIds = [
       "black-market",
       "contract-board",
@@ -86,13 +92,10 @@ test.describe("plugin smoke", () => {
     await page.locator("#btn-ignite").click();
     await expect(page.locator("#game-container")).toBeVisible();
     await page.locator("#tab-settings").click();
-    const fileInput = page.locator(
-      'input[type="file"][accept*=".zip"], input#plugin-file, input[data-plugin-upload]',
-    );
-    if ((await fileInput.count()) === 0) {
-      // TODO: drop skip once plugin upload UI becomes mandatory.
-      test.skip(true, "no plugin file input in UI");
-    }
+    const fileInput = page.locator("#plugin-file");
+    // Pin the upload affordance: exactly one input must exist, else this test
+    // loses upload coverage silently. Missing UI is a failure, not a skip.
+    await expect(fileInput).toHaveCount(1);
 
     const zip = new JSZip();
     zip.file("manifest.json", JSON.stringify(TEST_MANIFEST));

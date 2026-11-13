@@ -104,6 +104,7 @@ async function makeHarness(stored?: Store): Promise<Harness> {
   let snapshot: StateSnapshot = clone(voyageState);
   let reqSeq = 0;
   const pending = new Map<number, (msg: { ok: boolean; reason?: string }) => void>();
+  const issuedGrants: Promise<{ ok: boolean; reason?: string }>[] = [];
 
   const fakeWorker = {
     postMessage: (msg: { type: string; reqId?: number; ok?: boolean; reason?: string }) => {
@@ -127,7 +128,7 @@ async function makeHarness(stored?: Store): Promise<Harness> {
 
   const grant = (op: GrantOp) => {
     grants.push(op);
-    return new Promise<{ ok: boolean; reason?: string }>((resolve) => {
+    const promise = new Promise<{ ok: boolean; reason?: string }>((resolve) => {
       pending.set(++reqSeq, resolve);
       (
         host as unknown as {
@@ -135,6 +136,8 @@ async function makeHarness(stored?: Store): Promise<Harness> {
         }
       ).handleGrant("field-repair", reqSeq, op);
     });
+    issuedGrants.push(promise);
+    return promise;
   };
 
   const api = {
@@ -162,8 +165,15 @@ async function makeHarness(stored?: Store): Promise<Harness> {
   (await loadPlugin()).mount(api);
 
   const settle = async (): Promise<void> => {
-    for (let i = 0; i < 5; i++) {
+    // Deterministic drain: the plugin's async chain (storage round-trips,
+    // host grants) resolves via microtasks, and grants resolve synchronously
+    // through the fake worker. Loop macrotask flushes and awaits every grant
+    // issued so far until none remain, instead of hoping 5 ticks suffice.
+    for (;;) {
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      const batch = issuedGrants.splice(0, issuedGrants.length);
+      if (batch.length === 0) return;
+      await Promise.all(batch);
     }
   };
 

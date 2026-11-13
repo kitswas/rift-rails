@@ -169,10 +169,7 @@ export class EngineService {
 
   verifyGraphIntegrity(): void {
     const phases = Object.values(this.phases) as Phase[];
-    const terminal: Phase[] = [
-      this.phaseOf("dead", "DEAD"),
-      this.phaseOf("stranded", "STRANDED"),
-    ];
+    const terminal: Phase[] = [this.phaseOf("dead", "DEAD"), this.phaseOf("stranded", "STRANDED")];
     for (const [phase, targets] of Object.entries(this.transitions)) {
       if (targets.length === 0 && !terminal.includes(phase)) {
         this.report(`FATAL: State Machine Deadlock. Phase '${phase}' has no valid exits.`);
@@ -191,14 +188,7 @@ export class EngineService {
     const reader = this.deps.readPaletteVar;
     if (!reader) return;
     const MIN_DELTA_E = 0.08;
-    const types = [
-      "damage",
-      "lore",
-      "success",
-      "system",
-      "event",
-      "help",
-    ];
+    const types = ["damage", "lore", "success", "system", "event", "help"];
     const colorNodes: { name: string; L: number; a: number; b: number }[] = [];
 
     for (const type of types) {
@@ -272,11 +262,11 @@ export class EngineService {
     if (next) this.transitionTo(next);
   }
 
-  executeAction(actId: ActionId): boolean {
+  executeActionResult(actId: ActionId): { isMenu: boolean; success: boolean } {
     const res = this.voyage.executeAction(actId);
     if (res.isMenu) {
       if (res.menuTarget) this.transitionTo(res.menuTarget);
-      return false;
+      return { isMenu: true, success: true };
     }
     this.log(res.logText ?? "", res.logClass ?? "");
     const snap = this.voyage.getSnapshot();
@@ -286,16 +276,27 @@ export class EngineService {
       this.transitionTo(this.phaseOf("idle", "IDLE"));
       this.evaluateSurvival();
     }
-    return res.success;
+    return { isMenu: false, success: res.success };
   }
 
-  exploreNode(): void {
+  executeAction(actId: ActionId): boolean {
+    const res = this.executeActionResult(actId);
+    return res.isMenu ? false : res.success;
+  }
+
+  /** Re-render and re-check survival after a plugin-side state mutation. */
+  notePluginMutation(): void {
+    this.updateUI();
+    this.evaluateSurvival();
+  }
+
+  exploreNode(): boolean {
     const snap = this.voyage.getSnapshot();
     const node = this.registry.getNode(snap.dimId);
-    if (!node) return;
-    if (snap.energy < node.exploreCost) return;
+    if (!node) return false;
+    if (snap.energy < node.exploreCost) return false;
     const success = this.voyage.exploreNode();
-    if (!success) return;
+    if (!success) return false;
     this.deps.onExploreSurveyed?.();
     this.log(
       this.text?.logEncounterTitle(node.label, node.desc) ?? `<b>${node.label}:</b> ${node.desc}`,
@@ -305,6 +306,7 @@ export class EngineService {
     this.transitionTo(this.phaseOf("encounter", "ENCOUNTER"));
     this.evaluateSurvival();
     this.deps.scrollEncounterChoices?.();
+    return true;
   }
 
   initiateTravel(): void {
@@ -322,15 +324,16 @@ export class EngineService {
     this.transitionTo(this.phaseOf("jumping", "JUMPING"));
   }
 
-  desperateScavenge(): void {
+  desperateScavenge(): boolean {
     const success = this.voyage.desperateScavenge();
-    if (!success) return;
+    if (!success) return false;
     this.log(
       this.text?.logDesperate ?? "DESPERATE MEASURE: Sacrificed hull plates to feed the Crucible.",
       this.logClasses.logDamage,
     );
     this.updateUI();
     this.evaluateSurvival();
+    return true;
   }
 
   buildMenuButton(
@@ -339,12 +342,7 @@ export class EngineService {
     uiClass?: string,
     dataActId?: string,
   ): string {
-    return this.deps.addMenuItem(
-      label,
-      onClick,
-      uiClass,
-      dataActId as ActionId | undefined,
-    );
+    return this.deps.addMenuItem(label, onClick, uiClass, dataActId as ActionId | undefined);
   }
 
   updateActionBtnData(_btn: string | null, _act: GameAction): void {
@@ -437,7 +435,11 @@ export class EngineService {
     }
     const snap = this.voyage.getSnapshot();
     const firstId = this.cutscene?.firstCutscene();
-    if (snap.jumpCount === 1 && firstId && !this.cutscene?.hasSeen(firstId, snap.seenCutscenes ?? [])) {
+    if (
+      snap.jumpCount === 1 &&
+      firstId &&
+      !this.cutscene?.hasSeen(firstId, snap.seenCutscenes ?? [])
+    ) {
       const play = (): void => {
         this.cutscene?.play(firstId);
       };
@@ -455,7 +457,8 @@ export class EngineService {
     const snap = this.voyage.getSnapshot();
     this.fx?.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
     this.log(
-      this.text?.initLog ?? "The Crucible Engine hums to life. The Ley-Rails stretch into infinity.",
+      this.text?.initLog ??
+        "The Crucible Engine hums to life. The Ley-Rails stretch into infinity.",
       this.logClasses.logSystem,
     );
   }

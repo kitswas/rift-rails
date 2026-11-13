@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520" role="img" aria-labelledby="title desc">
+  <title id="title">Master Corvus, veiled scholar</title>
+  <desc id="desc">A hooded raven scholar with glowing amber eyes and a curved grey-black beak on a transparent background.</desc>
+
+  <defs>
+    <linearGradient id="cloak" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#343250" />
+      <stop offset="0.4" stop-color="#2D2B4B" />
+      <stop offset="1" stop-color="#22203B" />
+    </linearGradient>
+    <linearGradient id="beak" gradientUnits="userSpaceOnUse" x1="210" y1="214" x2="294" y2="392">
+      <stop offset="0" stop-color="#262B2E" />
+      <stop offset="0.45" stop-color="#343A3D" />
+      <stop offset="1" stop-color="#282E31" />
+    </linearGradient>
+    <radialGradient id="eye">
+      <stop offset="0" stop-color="#FFD578" />
+      <stop offset="0.72" stop-color="#F6B94C" />
+      <stop offset="1" stop-color="#E6A53A" />
+    </radialGradient>
+    <filter id="eye-glow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur stdDeviation="6" />
+    </filter>
+  </defs>
+
+  <!-- y = 58 + 462((x - 200) / 200)²; both sides are exact quadratic arcs. -->
+  <path d="M200 58 Q100 58 0 520 H400 Q300 58 200 58 Z" fill="url(#cloak)" />
+
+  <!-- Oval face shadow. -->
+  <ellipse cx="204" cy="220" rx="86" ry="98" fill="#010102" />
+
+  <!-- Curved droplet beak. -->
+  <path d="M228 215 C248 211 267 218 280 233 C295 251 299 276 299 306 C299 338 300 366 297 383 C285 359 278 341 267 325 C252 303 235 288 218 276 C204 266 193 255 192 245 C190 232 204 223 216 219 C220 217 224 216 228 215 Z" fill="url(#beak)" />
+  <path d="M193 244 C186 253 189 266 199 279 C211 295 234 310 252 326 C270 343 285 364 297 383 C290 356 279 334 262 314 C243 292 220 275 203 263 C195 257 191 250 193 244 Z" fill="#1A1F22" opacity="0.78" />
+
+  <!-- Glowing amber eyes. -->
+  <g>
+    <circle cx="181" cy="201" r="20" fill="#F6B94C" opacity="0.72" filter="url(#eye-glow)" />
+    <circle cx="181" cy="201" r="18" fill="url(#eye)" />
+    <circle cx="256" cy="201" r="20" fill="#F6B94C" opacity="0.72" filter="url(#eye-glow)" />
+    <circle cx="256" cy="201" r="18" fill="url(#eye)" />
+  </g>
+</svg>

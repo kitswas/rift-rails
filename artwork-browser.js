@@ -1,0 +1,3913 @@
+/** =========================================================================
+ *  0. CONSTANTS, TONE SEMANTICS, SEEDED PRNG & UNIFIED PALETTES
+ *  ========================================================================= */
+
+const SVG_CONFIG = {
+  WIDTH: 800,
+  HEIGHT: 450,
+  BASE_Y: 450,
+  MID_X: 400,
+  VIEWBOX: "0 0 800 450",
+};
+
+const PIXEL_CONFIG = {
+  WIDTH: 160,
+  HEIGHT: 90,
+};
+
+const TONE = {
+  DEEP_DARK: 0,
+  SHADOW: 1,
+  MIDTONE: 2,
+  LIGHT: 3,
+  GLOW: 4,
+};
+
+const ENGINE_MODE = {
+  DUAL: "dual",
+  PIXEL: "pixel",
+  VECTOR: "vector",
+};
+
+const PRNG_CONSTANTS = {
+  HASH_INIT: 0xdeadbeef,
+  HASH_PRIME: 2654435761,
+  MULBERRY_STEP: 0x6d2b79f5,
+  MULBERRY_DIVISOR: 4294967296,
+};
+
+// Ordered Bayer matrix and luminance strength from concept.html.
+const BAYER_4X4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+];
+const DITHER_CONFIG = {
+  BAYER_SIZE: 4,
+  THRESHOLD_OFFSET: 0.5,
+  DIVISOR: 16,
+  STRENGTH: 64,
+};
+
+const GLITCH_CONFIG = {
+  MIN_SLICES: 3,
+  MAX_SLICES: 8,
+  MIN_HEIGHT: 1,
+  MAX_HEIGHT: 4,
+  MIN_OFFSET: -5,
+  MAX_OFFSET: 5,
+};
+
+function createEnumArray(items) {
+  const arr = [...items];
+  for (const item of items) {
+    arr[item] = item;
+    arr[item.toUpperCase()] = item;
+  }
+  return Object.freeze(arr);
+}
+
+const ADJECTIVES = createEnumArray([
+  "Fractured",
+  "Shattered",
+  "Overgrown",
+  "Clockwork",
+  "Frozen",
+  "Crimson",
+  "Rusting",
+  "Eldritch",
+  "Neon",
+]);
+
+const ADJECTIVE_EFFECTS = {
+  Fractured: {
+    svgFilter: "filter-glitch",
+    glitchPixel: true,
+    cssClass: null,
+    selectiveSurface: false,
+  },
+  Shattered: {
+    svgFilter: "filter-shatter",
+    glitchPixel: true,
+    cssClass: null,
+    selectiveSurface: false,
+  },
+  Overgrown: {
+    svgFilter: "filter-wobble",
+    glitchPixel: false,
+    cssClass: null,
+    selectiveSurface: true,
+    hasPattern: true,
+    patternPrefix: "vine",
+    patternBlendMode: "difference",
+    layerOpacities: { layer2: 0.48, layer3: 0.62, layer4: 0.72 },
+    getFrameOverlay: (rng) => getOvergrownFrameVines(rng),
+  },
+  Clockwork: {
+    svgFilter: null,
+    glitchPixel: false,
+    cssClass: null,
+    selectiveSurface: true,
+    hasPattern: true,
+    patternPrefix: "circuit",
+    patternBlendMode: "color-dodge",
+    layerOpacities: { layer2: 0.4, layer3: 0.55, layer4: 0.65 },
+  },
+  Frozen: {
+    svgFilter: "filter-frost",
+    glitchPixel: false,
+    cssClass: null,
+    selectiveSurface: true,
+    getFrameOverlay: (rng) => getFrozenFrameSnowflakes(rng),
+  },
+  Crimson: {
+    svgFilter: "filter-heathaze",
+    glitchPixel: false,
+    cssClass: null,
+    selectiveSurface: false,
+  },
+  Rusting: {
+    svgFilter: "filter-corrosion",
+    glitchPixel: false,
+    cssClass: null,
+    selectiveSurface: true,
+  },
+  Eldritch: {
+    svgFilter: "filter-eldritch",
+    glitchPixel: false,
+    cssClass: "anim-eldritch",
+    selectiveSurface: false,
+  },
+  Neon: {
+    svgFilter: "filter-neon",
+    glitchPixel: false,
+    cssClass: "anim-neon",
+    selectiveSurface: false,
+  },
+};
+
+function generateSeed(str) {
+  let h = PRNG_CONSTANTS.HASH_INIT;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), PRNG_CONSTANTS.HASH_PRIME);
+  }
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+function mulberry32(seed) {
+  return function () {
+    let t = (seed += PRNG_CONSTANTS.MULBERRY_STEP);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / PRNG_CONSTANTS.MULBERRY_DIVISOR;
+  };
+}
+
+class SeededRNG {
+  constructor(seedString) {
+    this.seed =
+      typeof seedString === "number"
+        ? seedString
+        : generateSeed(String(seedString));
+    this.random = mulberry32(this.seed);
+  }
+  next() {
+    return this.random();
+  }
+  range(min, max) {
+    return Math.floor(this.random() * (max - min + 1)) + min;
+  }
+  rangeFloat(min, max) {
+    return this.random() * (max - min) + min;
+  }
+  chance(prob) {
+    return this.random() < prob;
+  }
+}
+
+const CATEGORY = createEnumArray(["hub", "hunt", "res", "maze"]);
+
+const PALETTES = {
+  Crimson: ["#120407", "#330913", "#831325", "#e32649", "#ff6f41"],
+  Fractured: ["#080a0f", "#1a1d26", "#3c6f99", "#73acce", "#f0f3ff"],
+  Clockwork: ["#120d04", "#301d05", "#9a510b", "#de9314", "#fdc63c"],
+  Overgrown: ["#031109", "#08422d", "#118051", "#26b068", "#85d964"],
+  Frozen: ["#030c14", "#0c304b", "#157396", "#38acd8", "#b9ddfe"],
+  Neon: ["#0a0317", "#2e0954", "#7a1897", "#f6338d", "#04deea"],
+  Shattered: ["#0b0813", "#211f3a", "#4b4272", "#9885d0", "#dfa4cc"],
+  Eldritch: ["#0a0314", "#2e074f", "#661ba9", "#9341df", "#6ee7b7"],
+  Rusting: ["#120804", "#2e1408", "#6e3313", "#cf5b20", "#f6954b"],
+};
+
+const NOUN_DATA = {
+  hub: ["Station", "Bazaar", "Outpost", "Nexus", "Sanctuary"],
+  hunt: ["Wilds", "Expanse", "Tundra", "Jungle", "Dominion"],
+  res: [
+    "Wastes",
+    "Quarry",
+    "Nebula",
+    "Crags",
+    "Fields",
+    "Vale",
+    "Canyon",
+    "Dunes",
+  ],
+  maze: ["Catacombs", "Labyrinth", "Spire", "Ruins", "Abyss", "Woods"],
+};
+
+const NOUNS = createEnumArray(Object.values(NOUN_DATA).flat());
+
+/** =========================================================================
+ *  ENGINE 1: PROCEDURAL PIXEL ART (CANVAS DITHER)
+ *  ========================================================================= */
+class PixelRenderer {
+  constructor(width = PIXEL_CONFIG.WIDTH, height = PIXEL_CONFIG.HEIGHT) {
+    this.w = width;
+    this.h = height;
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = this.w;
+    this.canvas.height = this.h;
+    this.ctx = this.canvas.getContext("2d");
+    this.imageData = this.ctx.createImageData(this.w, this.h);
+    this.buf = new Uint32Array(this.imageData.data.buffer);
+    this.bayer = BAYER_4X4;
+  }
+  setPalette(hexColors) {
+    const OPAQUE_ALPHA_SHIFT = 24;
+    const FULL_ALPHA = 255;
+    const BLUE_SHIFT = 16;
+    const GREEN_SHIFT = 8;
+    const HEX_RADIX = 16;
+
+    this.palette = hexColors.map((hex) => {
+      const r = parseInt(hex.slice(1, 3), HEX_RADIX),
+        g = parseInt(hex.slice(3, 5), HEX_RADIX),
+        b = parseInt(hex.slice(5, 7), HEX_RADIX);
+      return (
+        (FULL_ALPHA << OPAQUE_ALPHA_SHIFT) |
+        (b << BLUE_SHIFT) |
+        (g << GREEN_SHIFT) |
+        r
+      );
+    });
+  }
+  setPixel(x, y, toneIndex) {
+    if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
+      this.buf[y * this.w + x] =
+        this.palette[
+          Math.min(Math.max(toneIndex, TONE.DEEP_DARK), TONE.GLOW)
+        ];
+    }
+  }
+  setPixelDither(x, y, toneA, toneB, ratio) {
+    if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
+      const threshold =
+        (this.bayer[y % DITHER_CONFIG.BAYER_SIZE][
+          x % DITHER_CONFIG.BAYER_SIZE
+        ] +
+          DITHER_CONFIG.THRESHOLD_OFFSET) /
+        DITHER_CONFIG.DIVISOR;
+      this.buf[y * this.w + x] =
+        this.palette[ratio > threshold ? toneB : toneA];
+    }
+  }
+  fill(tone = TONE.DEEP_DARK) {
+    this.buf.fill(
+      this.palette[Math.min(Math.max(tone, TONE.DEEP_DARK), TONE.GLOW)],
+    );
+  }
+  fillSkyDither(toneA = TONE.DEEP_DARK, toneB = TONE.SHADOW, mult = 1.0) {
+    for (let y = 0; y < this.h; y++) {
+      const ratio = (y / this.h) * mult;
+      for (let x = 0; x < this.w; x++) {
+        this.setPixelDither(x, y, toneA, toneB, ratio);
+      }
+    }
+  }
+  applyGlitch(rng) {
+    const slices = rng.range(
+      GLITCH_CONFIG.MIN_SLICES,
+      GLITCH_CONFIG.MAX_SLICES,
+    );
+    const BYTES_PER_PIXEL = 4;
+    for (let i = 0; i < slices; i++) {
+      const y = rng.range(0, this.h),
+        h = rng.range(GLITCH_CONFIG.MIN_HEIGHT, GLITCH_CONFIG.MAX_HEIGHT),
+        offset = rng.range(
+          GLITCH_CONFIG.MIN_OFFSET,
+          GLITCH_CONFIG.MAX_OFFSET,
+        );
+      if (offset === 0) continue;
+      for (let yy = y; yy < y + h && yy < this.h; yy++) {
+        const row = new Uint32Array(
+          this.buf.buffer,
+          yy * this.w * BYTES_PER_PIXEL,
+          this.w,
+        );
+        const shifted = new Uint32Array(this.w);
+        if (offset > 0)
+          shifted.set(row.subarray(0, this.w - offset), offset);
+        else shifted.set(row.subarray(-offset), 0);
+        row.set(shifted);
+      }
+    }
+  }
+  present() {
+    this.ctx.putImageData(this.imageData, 0, 0);
+    return this.canvas;
+  }
+}
+
+const GenPixel = {
+  Station: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.2);
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        if (rng.chance(0.008)) r.setPixel(x, y, 4);
+      }
+    }
+    const cx = r.w / 2,
+      cy = 42;
+    for (let deg = 0; deg < 360; deg += 3) {
+      const rad = (deg * Math.PI) / 180;
+      const px = Math.floor(cx + Math.cos(rad) * 28);
+      const py = Math.floor(cy + Math.sin(rad) * 28);
+      r.setPixel(px, py, 3);
+      r.setPixel(px + 1, py, 2);
+    }
+    for (let y = 30; y < 55; y++) {
+      for (let x = cx - 12; x <= cx + 12; x++) {
+        if (Math.hypot(x - cx, y - cy) < 16) r.setPixel(x, y, 4);
+      }
+    }
+    for (let y = 60; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
+    }
+  },
+  Bazaar: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let b = 0; b < 5; b++) {
+      const bx = 10 + b * 30,
+        by = 42 + rng.range(0, 10);
+      for (let x = bx; x < bx + 28; x++) {
+        const th = Math.sin(((x - bx) / 28) * Math.PI) * 10;
+        for (let y = Math.floor(by - th); y < r.h; y++) {
+          r.setPixel(x, y, (x + y) % 4 === 0 ? 3 : 2);
+        }
+      }
+      r.setPixel(bx + 14, by + 4, 4);
+    }
+  },
+  Outpost: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.2);
+    for (let x = 20; x < r.w - 20; x++) {
+      for (let y = 50; y < r.h; y++) r.setPixel(x, y, 1);
+    }
+    for (let x = 60; x < 100; x++) {
+      const h = x % 8 < 4 ? 28 : 34;
+      for (let y = h; y < 50; y++) r.setPixel(x, y, 2);
+    }
+    for (let y = 14; y < 45; y++) {
+      r.setPixel(80, y, 3);
+      r.setPixel(81, y, 4);
+    }
+  },
+  Nexus: (r, rng) => {
+    const cx = r.w / 2,
+      cy = r.h / 2;
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+        r.setPixelDither(x, y, 0, 1, Math.min(1, d / 60));
+      }
+    }
+    for (let y = cy - 25; y <= cy + 25; y++) {
+      const w = 25 - Math.abs(y - cy);
+      for (let x = cx - w; x <= cx + w; x++) {
+        r.setPixel(x, y, Math.abs(x - cx) < 2 ? 4 : 3);
+      }
+    }
+  },
+  Sanctuary: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    const cx = r.w / 2;
+    for (let y = 10; y < r.h; y++) {
+      const archW = Math.sin((y / r.h) * Math.PI) * 35;
+      for (let x = cx - archW; x <= cx + archW; x++) {
+        if (
+          Math.abs(x - (cx - archW)) < 3 ||
+          Math.abs(x - (cx + archW)) < 3
+        ) {
+          r.setPixel(Math.floor(x), y, 3);
+        }
+      }
+    }
+    r.setPixel(cx, 35, 4);
+  },
+  Wilds: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let i = 0; i < 35; i++) {
+      const tx = rng.range(10, r.w - 10),
+        ty = rng.range(45, r.h - 10),
+        th = rng.range(15, 30),
+        bw = Math.floor(th * 0.45);
+      for (let y = ty; y < ty + 4 && y < r.h; y++) r.setPixel(tx, y, 1);
+      for (let y = ty; y > ty - th; y--) {
+        const progress = (y - (ty - th)) / th;
+        const tw = Math.max(0, Math.floor(progress * bw));
+        for (let x = tx - tw; x <= tx + tw; x++) {
+          r.setPixel(x, y, x === tx || y % 2 === 0 ? 3 : 2);
+        }
+      }
+    }
+  },
+  Expanse: (r, rng) => {
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        r.setPixelDither(x, y, 0, 1, y < 45 ? y / 45 : (y - 45) / 45);
+      }
+    }
+    const cx = r.w / 2;
+    for (let deg = 0; deg <= 180; deg += 4) {
+      const rad = (deg * Math.PI) / 180;
+      const px = Math.floor(cx + Math.cos(rad) * 40);
+      const py = Math.floor(55 - Math.sin(rad) * 28);
+      r.setPixel(px, py, 4);
+      r.setPixel(px, py + 1, 3);
+    }
+  },
+  Tundra: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    const waterY = 52;
+    for (let b = 0; b < 4; b++) {
+      const bx = 15 + b * 36,
+        bw = rng.range(26, 42),
+        bh = rng.range(16, 28);
+      const peakX = bx + Math.floor(bw * 0.4);
+      for (let y = waterY - bh; y <= waterY; y++) {
+        const prog = (waterY - y) / bh;
+        const xL = bx + Math.floor((peakX - bx) * (1 - prog));
+        const xR = bx + bw - Math.floor((bx + bw - peakX) * (1 - prog));
+        for (let x = xL; x <= xR; x++) {
+          r.setPixel(x, y, x < peakX ? 4 : 3);
+        }
+      }
+    }
+    for (let y = waterY; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        r.setPixelDither(x, y, 1, 2, (y - waterY) / (r.h - waterY));
+        if (y === waterY && x % 4 === 0) r.setPixel(x, y, 4);
+      }
+    }
+  },
+  Jungle: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let i = 0; i < 25; i++) {
+      const tx = rng.range(10, r.w - 10),
+        ty = rng.range(35, r.h - 5),
+        rad = rng.range(8, 16);
+      for (let y = ty; y < ty + 8 && y < r.h; y++) r.setPixel(tx, y, 1);
+      for (let dy = -rad; dy <= rad; dy++) {
+        for (let dx = -rad; dx <= rad; dx++) {
+          if (dx * dx + dy * dy <= rad * rad) {
+            r.setPixel(tx + dx, ty - rad + dy, dy < 0 ? 3 : 2);
+          }
+        }
+      }
+    }
+  },
+  Dominion: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let x = 20; x < r.w - 20; x++) {
+      const isMerlon = x % 8 < 4;
+      const wallTop = isMerlon ? 48 : 54;
+      for (let y = wallTop; y < r.h; y++) r.setPixel(x, y, 1);
+    }
+    for (let x = 32; x < 52; x++) {
+      for (let y = 30; y < 60; y++) r.setPixel(x, y, x < 42 ? 3 : 2);
+    }
+    for (let x = r.w - 52; x < r.w - 32; x++) {
+      for (let y = 30; y < 60; y++)
+        r.setPixel(x, y, x < r.w - 42 ? 3 : 2);
+    }
+    const cx = r.w / 2;
+    for (let x = cx - 14; x <= cx + 14; x++) {
+      for (let y = 20; y < 65; y++) r.setPixel(x, y, x < cx ? 4 : 2);
+    }
+    for (let y = 5; y < 20; y++) {
+      const w = Math.floor(((20 - y) / 15) * 10);
+      for (let x = cx - w; x <= cx + w; x++) r.setPixel(x, y, 3);
+    }
+  },
+  Wastes: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let l = 0; l < 4; l++) {
+      const sy = 35 + l * 14;
+      for (let x = 0; x < r.w; x++) {
+        const y = Math.floor(sy + Math.sin(x * 0.05 + l) * 6);
+        for (let yy = y; yy < r.h; yy++)
+          r.setPixelDither(x, yy, l, l + 1, (yy - y) / (r.h - y));
+      }
+    }
+  },
+  Quarry: (r, rng) => {
+    r.fill(0);
+    for (let s = 0; s < 5; s++) {
+      const inset = s * 14,
+        y = 30 + s * 11;
+      for (let x = inset; x < r.w - inset; x++) {
+        for (let yy = y; yy < r.h; yy++) {
+          r.setPixel(
+            x,
+            yy,
+            x === inset || x === r.w - inset - 1 || yy === y
+              ? 3
+              : s % 2 === 0
+                ? 1
+                : 2,
+          );
+        }
+      }
+    }
+  },
+  Nebula: (r, rng) => {
+    const gw = 20,
+      gh = 12,
+      noise = new Array(gw * gh);
+    for (let i = 0; i < noise.length; i++) noise[i] = rng.next();
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const gx = (x / r.w) * (gw - 1),
+          gy = (y / r.h) * (gh - 1);
+        const gxi = Math.floor(gx),
+          gyi = Math.floor(gy);
+        const tx = gx - gxi,
+          ty = gy - gyi;
+        const top =
+          noise[gyi * gw + gxi] * (1 - tx) +
+          noise[gyi * gw + gxi + 1] * tx;
+        const bot =
+          noise[(gyi + 1) * gw + gxi] * (1 - tx) +
+          noise[(gyi + 1) * gw + gxi + 1] * tx;
+        let v = (top * (1 - ty) + bot * ty) * 1.5;
+        if (v < 0.3) r.setPixelDither(x, y, 0, 1, v / 0.3);
+        else if (v < 0.6) r.setPixelDither(x, y, 1, 2, (v - 0.3) / 0.3);
+        else if (v < 0.9) r.setPixelDither(x, y, 2, 3, (v - 0.6) / 0.3);
+        else r.setPixelDither(x, y, 3, 4, Math.min(1, (v - 0.9) / 0.3));
+        if (rng.chance(0.003)) r.setPixel(x, y, 4);
+      }
+    }
+  },
+  Crags: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.4);
+    for (let i = 0; i < 5; i++) {
+      const peakX = 18 + i * 32 + rng.range(-6, 6),
+        peakY = rng.range(12, 28);
+      const baseL = peakX - rng.range(12, 20),
+        baseR = peakX + rng.range(10, 18);
+      const ridgeX = peakX - rng.range(2, 6);
+      for (let y = peakY; y < r.h; y++) {
+        const prog = (y - peakY) / (r.h - peakY);
+        const curL = peakX - Math.floor((peakX - baseL) * prog);
+        const curR = peakX + Math.floor((baseR - peakX) * prog);
+        const curRidge = peakX - Math.floor((peakX - ridgeX) * prog);
+        for (let x = curL; x <= curR; x++) {
+          r.setPixel(
+            x,
+            y,
+            x < curRidge ? 4 : x === curRidge ? 3 : y % 3 === 0 ? 1 : 2,
+          );
+        }
+      }
+    }
+  },
+  Fields: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let y = 45; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const stripe = (x * 2 + y * 3) % 8 < 4;
+        r.setPixel(x, y, stripe ? 2 : 3);
+      }
+    }
+  },
+  Vale: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.5);
+    for (let x = 0; x < r.w; x++) {
+      const my = Math.floor(25 + Math.abs(Math.sin(x * 0.03)) * 25);
+      for (let y = my; y < r.h; y++) r.setPixel(x, y, 2);
+    }
+    for (let y = 52; y < 68; y++) {
+      for (let x = 0; x < r.w; x++)
+        r.setPixel(x, y, (x + y) % 6 === 0 ? 3 : 4);
+    }
+    for (let x = 0; x < r.w; x++) {
+      const fy = Math.floor(65 + Math.sin(x * 0.05) * 8);
+      for (let y = fy; y < r.h; y++) r.setPixel(x, y, 0);
+    }
+    for (let i = 0; i < 15; i++) {
+      const tx = 10 + i * 11,
+        ty = 70 + rng.range(-3, 8),
+        th = rng.range(10, 18),
+        tw = Math.floor(th * 0.45);
+      for (let y = ty; y > ty - th; y--) {
+        const progress = (y - (ty - th)) / th;
+        const w = Math.max(0, Math.floor(progress * tw));
+        for (let x = tx - w; x <= tx + w; x++) r.setPixel(x, y, 1);
+      }
+    }
+  },
+  Canyon: (r, rng) => {
+    r.fill(0);
+    for (let l = 0; l < 4; l++) {
+      const y = 30 + l * 15;
+      for (let x = 0; x < r.w; x++) {
+        if (Math.abs(x - r.w / 2) > 15 + l * 8) {
+          for (let yy = y; yy < r.h; yy++) r.setPixel(x, yy, l + 1);
+        }
+      }
+    }
+  },
+  Dunes: (r, rng) => {
+    r.fill(0);
+    for (let l = 0; l < 3; l++) {
+      const by = 42 + l * 18,
+        f1 = rng.next() * 0.05 + 0.02,
+        p = rng.next() * 10;
+      for (let x = 0; x < r.w; x++) {
+        const ys = Math.floor(by + Math.sin(x * f1 + p) * 10);
+        for (let y = ys; y < r.h; y++) {
+          r.setPixelDither(x, y, l + 1, l, ((y - ys) / (r.h - ys)) * 1.5);
+        }
+      }
+    }
+  },
+  Catacombs: (r, rng) => {
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const wall = Math.sin(x * 0.1) * 15 + 20;
+        if (y < wall || y > r.h - wall) r.setPixel(x, y, 1);
+        else r.setPixelDither(x, y, 0, 2, (y - wall) / (r.h - wall * 2));
+      }
+    }
+  },
+  Labyrinth: (r, rng) => {
+    const cx = r.w / 2,
+      cy = r.h / 2;
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const dx = Math.abs(x - cx),
+          dy = Math.abs(y - cy);
+        let d = dy * (r.w / r.h) < dx ? r.w / (dx + 1) : r.h / (dy + 1);
+        let nd = Math.max(0, Math.min(1, 1 - d / 10));
+        if (dy * (r.w / r.h) < dx) {
+          const seg = Math.floor(d * 4) % 2 === 0;
+          r.setPixelDither(x, y, seg ? 1 : 2, seg ? 2 : 3, nd);
+        } else {
+          if (y > cy) r.setPixelDither(x, y, 0, 2, nd);
+          else r.setPixel(x, y, 0);
+        }
+      }
+    }
+  },
+  Spire: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.5);
+    const cx = r.w / 2;
+    for (let y = 8; y < r.h; y++) {
+      const w = Math.floor(((y - 8) / (r.h - 8)) ** 2 * 35 + 4);
+      for (let x = cx - w; x <= cx + w; x++)
+        r.setPixel(x, y, x < cx ? 2 : 3);
+    }
+  },
+  Ruins: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let c = 0; c < 5; c++) {
+      const cx = 20 + c * 28,
+        top = 25 + (c % 3) * 12;
+      for (let x = cx; x < cx + 10; x++) {
+        for (let y = top; y < r.h; y++)
+          r.setPixel(x, y, x === cx ? 4 : 2);
+      }
+    }
+  },
+  Abyss: (r, rng) => {
+    for (let y = 0; y < r.h; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const riftW = (y / r.h) * 40 + 10;
+        const distToEdge = Math.abs(x - r.w / 2);
+        if (distToEdge < riftW) r.setPixelDither(x, y, 0, 4, y / r.h);
+        else r.setPixel(x, y, distToEdge < riftW + 6 ? 2 : 1);
+      }
+    }
+  },
+  Woods: (r, rng) => {
+    r.fillSkyDither(0, 1, 1.0);
+    for (let i = 0; i < 40; i++) {
+      const tx = rng.range(0, r.w),
+        ty = rng.range(20, 50);
+      for (let y = ty; y < r.h; y++) {
+        r.setPixel(tx, y, rng.chance(0.5) ? 2 : 3);
+        r.setPixel(tx + 1, y, 1);
+      }
+    }
+  },
+};
+
+/** =========================================================================
+ *  ENGINE 2: FACETED VECTOR DIORAMA
+ *  ========================================================================= */
+const EFFECT_PRESETS = {
+  shadows: {
+    paper: "drop-shadow(0 -6px 12px rgba(0,0,0,0.55))",
+    paperDeep: "drop-shadow(0 -10px 20px rgba(0,0,0,0.85))",
+    paperHeavy: "drop-shadow(0 -16px 26px rgba(0,0,0,0.95))",
+    paperOmni: "drop-shadow(0 0 25px rgba(0,0,0,0.85))",
+    subtle: "drop-shadow(0 -4px 8px rgba(0,0,0,0.45))",
+    dune1: "drop-shadow(0 -4px 8px rgba(0,0,0,0.4))",
+    dune2: "drop-shadow(0 -6px 11px rgba(0,0,0,0.5))",
+    dune3: "drop-shadow(0 -8px 14px rgba(0,0,0,0.6))",
+    dune4: "drop-shadow(0 -10px 18px rgba(0,0,0,0.7))",
+    duneFg: "drop-shadow(0 -12px 22px rgba(0,0,0,0.85))",
+    penrose: "drop-shadow(0 14px 26px rgba(0,0,0,0.85))",
+    crypt: "drop-shadow(0 0 10px rgba(0,0,0,0.8))",
+    chasmLeft: "drop-shadow(10px 0 15px rgba(0,0,0,0.9))",
+    chasmRight: "drop-shadow(-10px 0 15px rgba(0,0,0,0.9))",
+    waterSubtle: "drop-shadow(0px -3px 6px rgba(0,0,0,0.3))",
+  },
+  glows: {
+    halo: (col) => `drop-shadow(0 0 25px ${col})`,
+    core: (col) => `drop-shadow(0 0 20px ${col})`,
+    pylon: (col) => `drop-shadow(0 0 10px ${col})`,
+    star: (col) => `drop-shadow(0 0 3px ${col})`,
+  },
+};
+
+const normalizeLayerContent = (content) =>
+  typeof content === "string"
+    ? content
+    : content
+      ? content.toString()
+      : "";
+
+class DioramaLayer {
+  constructor(index, content = "") {
+    this.index = index;
+    this.content = normalizeLayerContent(content);
+    this.effects = [];
+    this.opacityVal = null;
+  }
+
+  set(content) {
+    this.content = normalizeLayerContent(content);
+    return this;
+  }
+
+  append(content) {
+    this.content += normalizeLayerContent(content);
+    return this;
+  }
+
+  apply_shadow(type = "paper", customStyle = null) {
+    if (customStyle) {
+      this.effects.push({
+        kind: "shadow",
+        value: customStyle,
+        isStyle: true,
+      });
+    } else if (EFFECT_PRESETS.shadows[type]) {
+      const val = EFFECT_PRESETS.shadows[type];
+      this.effects.push({
+        kind: "shadow",
+        value: val,
+        isStyle: val.startsWith("drop-shadow"),
+      });
+    } else {
+      this.effects.push({
+        kind: "shadow",
+        value: type,
+        isStyle: type.startsWith("drop-shadow"),
+      });
+    }
+    return this;
+  }
+
+  apply_glow(color = "#ffffff", radius = 10, intensity = null) {
+    if (typeof color === "string" && EFFECT_PRESETS.glows[color]) {
+      const glowFn = EFFECT_PRESETS.glows[color];
+      this.effects.push({ kind: "style", value: glowFn(radius) });
+    } else {
+      this.effects.push({ kind: "glow", color, radius, intensity });
+    }
+    return this;
+  }
+
+  apply_blur(radius = 3, opacity = null) {
+    this.effects.push({ kind: "blur", radius });
+    if (opacity !== null) this.opacityVal = opacity;
+    return this;
+  }
+
+  apply_filter(filterRef) {
+    this.effects.push({ kind: "filter", value: filterRef });
+    return this;
+  }
+
+  opacity(val) {
+    this.opacityVal = val;
+    return this;
+  }
+
+  render() {
+    if (!this.content || !this.content.trim()) return "";
+    const styleFilters = [];
+    let svgFilterAttr = "";
+
+    for (const eff of this.effects) {
+      if (eff.kind === "blur") {
+        styleFilters.push(`blur(${eff.radius}px)`);
+      } else if (eff.kind === "glow") {
+        styleFilters.push(
+          `drop-shadow(0 0 ${eff.radius}px ${eff.color})`,
+        );
+      } else if (eff.kind === "shadow") {
+        if (eff.isStyle || eff.value.startsWith("drop-shadow")) {
+          styleFilters.push(eff.value);
+        } else if (eff.value.startsWith("url(")) {
+          svgFilterAttr = `filter="${eff.value}"`;
+        } else {
+          svgFilterAttr = `filter="url(#${eff.value})"`;
+        }
+      } else if (eff.kind === "style") {
+        styleFilters.push(eff.value);
+      } else if (eff.kind === "filter") {
+        if (
+          eff.value.startsWith("url(") ||
+          eff.value.startsWith("filter-")
+        ) {
+          svgFilterAttr = `filter="${eff.value.startsWith("url(") ? eff.value : "url(#" + eff.value + ")"}"`;
+        } else {
+          styleFilters.push(eff.value);
+        }
+      }
+    }
+
+    const styleParts = [];
+    if (styleFilters.length > 0)
+      styleParts.push(`filter: ${styleFilters.join(" ")};`);
+    if (this.opacityVal !== null)
+      styleParts.push(`opacity: ${this.opacityVal};`);
+
+    const styleAttr =
+      styleParts.length > 0 ? `style="${styleParts.join(" ")}"` : "";
+    return `<g class="layer-${this.index}" data-layer="${this.index}" ${svgFilterAttr} ${styleAttr}>${this.content}</g>`;
+  }
+}
+
+class UnifiedPathAccumulator {
+  constructor() {
+    this.channels = new Map();
+  }
+  add(channel, pathData) {
+    if (!pathData) return;
+    const trimmed = pathData.trim();
+    if (!trimmed) return;
+    if (!this.channels.has(channel)) {
+      this.channels.set(channel, []);
+    }
+    this.channels.get(channel).push(trimmed);
+  }
+  get(channel) {
+    return (this.channels.get(channel) || []).join(" ");
+  }
+  renderPath(channel, attributes = "") {
+    const d = this.get(channel);
+    if (!d) return "";
+    return `<path d="${d}" ${attributes} />`;
+  }
+}
+
+class UnifiedConiferEngine {
+  constructor() {
+    this.lit = [];
+    this.shadow = [];
+  }
+  addPine(tx, ty, th, tiers = 3) {
+    for (let t = 0; t < tiers; t++) {
+      const tierApexY = ty - th + t * (th * 0.25);
+      const tierBotY = ty - th * 0.45 + t * (th * 0.28);
+      const halfW = th * 0.18 + t * (th * 0.12);
+      this.lit.push(
+        `M ${(tx - halfW).toFixed(1)},${tierBotY.toFixed(1)} L ${tx.toFixed(1)},${tierApexY.toFixed(1)} L ${tx.toFixed(1)},${tierBotY.toFixed(1)} Z`,
+      );
+      this.shadow.push(
+        `M ${tx.toFixed(1)},${tierBotY.toFixed(1)} L ${tx.toFixed(1)},${tierApexY.toFixed(1)} L ${(tx + halfW).toFixed(1)},${tierBotY.toFixed(1)} Z`,
+      );
+    }
+  }
+  render(colLit, colDark, strokeCol = null) {
+    if (!this.lit.length && !this.shadow.length) return "";
+    return `
+      <g class="unified-conifers" stroke-linejoin="round">
+        ${this.lit.length ? `<path d="${this.lit.join(" ")}" fill="${colLit}" ${VectorHelpers.microStroke(strokeCol || colLit)} />` : ""}
+        ${this.shadow.length ? `<path d="${this.shadow.join(" ")}" fill="${colDark}" ${VectorHelpers.microStroke(strokeCol || colDark)} />` : ""}
+      </g>
+    `;
+  }
+}
+
+class UnifiedCragEngine {
+  constructor() {
+    this.lit = [];
+    this.mid = [];
+    this.dark = [];
+  }
+  addCrag(cx, topY, width, botY = 450) {
+    const midY = topY + (botY - topY) * 0.45;
+    const spineX = cx - width * 0.12;
+    const leftX = cx - width / 2;
+    const rightX = cx + width / 2;
+    const shelfX = cx + width * 0.25;
+
+    // Lit side
+    this.lit.push(
+      `M ${leftX.toFixed(1)},${botY} L ${cx.toFixed(1)},${topY.toFixed(1)} L ${spineX.toFixed(1)},${midY.toFixed(1)} Z`,
+    );
+    // Mid side
+    this.mid.push(
+      `M ${leftX.toFixed(1)},${botY} L ${spineX.toFixed(1)},${midY.toFixed(1)} L ${cx.toFixed(1)},${botY} Z`,
+    );
+    // Dark sides (shelf + crevices)
+    this.dark.push(
+      `M ${cx.toFixed(1)},${topY.toFixed(1)} L ${rightX.toFixed(1)},${botY} L ${shelfX.toFixed(1)},${midY.toFixed(1)} Z M ${spineX.toFixed(1)},${midY.toFixed(1)} L ${shelfX.toFixed(1)},${midY.toFixed(1)} L ${cx.toFixed(1)},${botY} Z M ${shelfX.toFixed(1)},${midY.toFixed(1)} L ${rightX.toFixed(1)},${botY} L ${cx.toFixed(1)},${botY} Z`,
+    );
+  }
+  render(colLit, colMid, colDark) {
+    return `
+      <g class="unified-crags" stroke-linejoin="round">
+        ${this.lit.length ? `<path d="${this.lit.join(" ")}" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />` : ""}
+        ${this.mid.length ? `<path d="${this.mid.join(" ")}" fill="${colMid}" ${VectorHelpers.microStroke(colMid)} />` : ""}
+        ${this.dark.length ? `<path d="${this.dark.join(" ")}" fill="${colDark}" ${VectorHelpers.microStroke(colDark)} />` : ""}
+      </g>
+    `;
+  }
+}
+
+const VectorHelpers = {
+  microStroke: (color, width = 0.5) => {
+    return `stroke="${color}" stroke-width="${width}" stroke-linejoin="round"`;
+  },
+  facetedPine: (tx, ty, th, colLit, colDark, tiers = 3) => {
+    const pine = new UnifiedConiferEngine();
+    pine.addPine(tx, ty, th, tiers);
+    return pine.render(colLit, colDark);
+  },
+  layer: (index, content = "") => new DioramaLayer(index, content),
+  sky: (skyId, topColor, botColor) =>
+    `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${topColor}"/><stop offset="100%" stop-color="${botColor}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#${skyId})" />`,
+  shadow: (markup, type = "paper") => {
+    const val = EFFECT_PRESETS.shadows[type] || type;
+    return `<g style="filter: ${val};">${markup}</g>`;
+  },
+  glow: (markup, color = "#ffffff", radius = 10) => {
+    return `<g style="filter: drop-shadow(0 0 ${radius}px ${color});">${markup}</g>`;
+  },
+  blur: (markup, radius = 3, opacity = null) => {
+    const opStyle = opacity !== null ? ` opacity: ${opacity};` : "";
+    return `<g style="filter: blur(${radius}px);${opStyle}">${markup}</g>`;
+  },
+};
+
+const GenVectorBG = {
+  Station: (rng, p) => {
+    const skyId = `stnSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `${VectorHelpers.sky(skyId, p[1], p[3])}
+      <circle cx="400" cy="160" r="140" fill="${p[4]}" opacity="0.3" style="filter: blur(25px);" />
+      <circle cx="400" cy="160" r="70" fill="${p[4]}" />
+      <circle cx="430" cy="150" r="60" fill="${p[1]}" />`,
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,450 180,220 380,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+      <polygon points="420,450 620,200 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(3, 0.7);
+
+    let torus = `<g stroke-linejoin="round" stroke-linecap="round">`;
+    torus += `<ellipse cx="400" cy="200" rx="190" ry="190" fill="none" stroke="${p[1]}" stroke-width="32" />`;
+    torus += `<ellipse cx="400" cy="200" rx="190" ry="190" fill="none" stroke="${p[3]}" stroke-width="8" stroke-dasharray="24 16" />`;
+    torus += `</g>`;
+    const layer2 = VectorHelpers.layer(2, torus).apply_shadow(
+      "paperOmni",
+    );
+
+    let base = `<polygon points="150,450 250,320 550,320 650,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    base += `<polygon points="220,320 240,160 260,320" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    base += `<polygon points="540,320 560,160 580,320" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    const layer3 = VectorHelpers.layer(3, base).apply_shadow("paperDeep");
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Bazaar: (rng, p) => {
+    const skyId = `bazSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      VectorHelpers.sky(skyId, p[4], p[1]),
+    );
+
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,0 260,0 110,450 0,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+      <polygon points="800,0 540,0 690,450 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(4, 0.65);
+
+    const farCount = rng.range(3, 4);
+    let farTents = `<g stroke-linejoin="round">`;
+    for (let i = 0; i < farCount; i++) {
+      const tx =
+        90 + i * (480 / Math.max(1, farCount - 1)) + rng.range(-12, 12);
+      const ty = rng.range(195, 225);
+      const tw = rng.range(75, 95);
+      farTents += `<polygon points="${tx},450 ${tx + tw * 0.45},${ty} ${tx + tw},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+      farTents += `<polygon points="${tx + tw * 0.45},${ty} ${tx + tw},450 ${tx + tw * 0.6},${ty + (450 - ty) * 0.3}" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      farTents += `<circle cx="${tx + tw * 0.45}" cy="${ty + 8}" r="4" fill="${p[4]}" />`;
+    }
+    farTents += `</g>`;
+    const layer2 = VectorHelpers.layer(2, farTents)
+      .apply_blur(1.5)
+      .apply_shadow("subtle");
+
+    const midCount = rng.range(3, 4);
+    let midTents = `<g stroke-linejoin="round">`;
+    let prevApex = null;
+    for (let i = 0; i < midCount; i++) {
+      const tw = rng.range(100, 130);
+      const tx =
+        75 + i * (480 / Math.max(1, midCount - 1)) + rng.range(-15, 15);
+      const ty = rng.range(245, 285);
+      const apexX = tx + tw * (0.45 + (i % 2) * 0.1);
+
+      midTents += `<polygon points="${tx},450 ${apexX},${ty} ${apexX},450" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+      midTents += `<polygon points="${apexX},${ty} ${tx + tw},450 ${apexX},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      midTents += `<circle cx="${apexX}" cy="${ty + 10}" r="5.5" fill="${p[4]}" />`;
+
+      if (prevApex) {
+        const midSagY = Math.max(prevApex.y, ty) + rng.range(25, 40);
+        midTents += `<path d="M ${prevApex.x},${prevApex.y + 12} Q ${(prevApex.x + apexX) / 2},${midSagY} ${apexX},${ty + 12}" fill="none" stroke="${p[4]}" stroke-width="1.8" stroke-dasharray="6 6" />`;
+      }
+      prevApex = { x: apexX, y: ty };
+    }
+    midTents += `</g>`;
+    const layer3 = VectorHelpers.layer(3, midTents).apply_shadow("paper");
+
+    let fore = `<g stroke-linejoin="round">`;
+    fore += `<polygon points="0,450 0,360 210,380 400,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    fore += `<polygon points="800,450 800,360 590,380 400,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    fore += `<line x1="120" y1="450" x2="120" y2="290" stroke="${p[0]}" stroke-width="6" />`;
+    fore += `<line x1="120" y1="300" x2="155" y2="300" stroke="${p[0]}" stroke-width="4" />`;
+    fore += `<circle cx="155" cy="315" r="14" fill="${p[4]}" opacity="0.4" style="filter: blur(8px);" />`;
+    fore += `<circle cx="155" cy="315" r="6" fill="${p[4]}" />`;
+    fore += `<line x1="680" y1="450" x2="680" y2="290" stroke="${p[0]}" stroke-width="6" />`;
+    fore += `<line x1="680" y1="300" x2="645" y2="300" stroke="${p[0]}" stroke-width="4" />`;
+    fore += `<circle cx="645" cy="315" r="14" fill="${p[4]}" opacity="0.4" style="filter: blur(8px);" />`;
+    fore += `<circle cx="645" cy="315" r="6" fill="${p[4]}" />`;
+    fore += `</g>`;
+    const layer4 = VectorHelpers.layer(4, fore).apply_shadow("paperDeep");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Outpost: (rng, p) => {
+    const skyId = `outSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      VectorHelpers.sky(skyId, p[4], p[1]),
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,450 220,180 500,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(3, 0.6);
+    const layer2 = VectorHelpers.layer(
+      2,
+      `<polygon points="120,450 200,240 600,240 680,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`,
+    );
+    let cliff = `<polygon points="260,240 280,120 380,120 400,240" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    cliff += `<polygon points="420,240 440,80 500,80 520,240" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    cliff += `<polygon points="440,80 470,20 500,80" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+    cliff += `<polygon points="280,120 330,60 380,120" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    const layer3 = VectorHelpers.layer(3, cliff).apply_shadow(
+      "paperDeep",
+    );
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Nexus: (rng, p) => {
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<rect width="100%" height="100%" fill="${p[0]}" />
+      <circle cx="400" cy="200" r="160" fill="${p[3]}" opacity="0.3" style="filter: blur(30px);" />`,
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<g>
+        <circle cx="400" cy="200" r="180" fill="none" stroke="${p[2]}" stroke-width="3" stroke-dasharray="12 24" />
+        <circle cx="400" cy="200" r="130" fill="none" stroke="${p[2]}" stroke-width="2" />
+      </g>`,
+    ).apply_blur(3, 0.7);
+
+    let pylons = "";
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      pylons += `<line x1="400" y1="200" x2="${400 + Math.cos(a) * 450}" y2="${200 + Math.sin(a) * 300}" stroke="${p[3]}" stroke-width="3" />`;
+    }
+    const layer2 = VectorHelpers.layer(2, pylons).apply_glow(p[4], 10);
+
+    let core = `<g>`;
+    core += `<polygon points="400,60 480,200 400,340 320,200" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+    core += `<polygon points="400,60 400,340 320,200" fill="${p[1]}" opacity="0.5" />`;
+    core += `<polygon points="400,100 440,200 400,300 360,200" fill="#ffffff" />`;
+    core += `</g>`;
+    const layer3 = VectorHelpers.layer(3, core).apply_glow(p[4], 20);
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Sanctuary: (rng, p) => {
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<rect width="100%" height="100%" fill="${p[0]}" />
+      <circle cx="400" cy="180" r="120" fill="${p[4]}" opacity="0.4" style="filter: blur(25px);" />`,
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<g>
+        <circle cx="400" cy="180" r="100" fill="none" stroke="${p[3]}" stroke-width="3" />
+        <polygon points="400,80 486,230 314,230" fill="none" stroke="${p[2]}" stroke-width="2" />
+        <polygon points="400,280 486,130 314,130" fill="none" stroke="${p[2]}" stroke-width="2" />
+      </g>`,
+    ).apply_blur(2, 0.8);
+
+    let archOuter = "";
+    for (let i = 4; i >= 2; i--) {
+      const pad = i * 42,
+        col = p[i];
+      archOuter += `<path d="M ${pad},450 L ${pad},${160 + i * 20} Q 400,${i * 20} ${800 - pad},${160 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" />`;
+    }
+    const layer2 = VectorHelpers.layer(2, archOuter).apply_shadow(
+      "crypt",
+    );
+
+    let archInner = "";
+    for (let i = 1; i >= 0; i--) {
+      const pad = i * 42,
+        col = p[i];
+      archInner += `<path d="M ${pad},450 L ${pad},${160 + i * 20} Q 400,${i * 20} ${800 - pad},${160 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="16" />`;
+    }
+    const layer3 = VectorHelpers.layer(3, archInner).apply_shadow(
+      "crypt",
+    );
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Wilds: (rng, p) => {
+    const skyId = `wildsSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs>
+        <linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${p[4]}"/>
+          <stop offset="100%" stop-color="${p[2]}"/>
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+    );
+
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,450 0,220 200,160 420,230 620,150 800,240 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(4, 0.65);
+
+    const midForest = new UnifiedConiferEngine();
+    for (let i = 0; i < 20; i++) {
+      const tx = i * 42 + rng.range(-4, 4);
+      const ty = 280 - (i < 12 ? i * 5 : (24 - i) * 6);
+      const th = rng.range(30, 52);
+      midForest.addPine(tx, ty, th, 3);
+    }
+    const mid = `<polygon points="0,450 0,280 500,210 800,300 800,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />${midForest.render(p[2], p[0])}`;
+    const layer2 = VectorHelpers.layer(2, mid).apply_shadow("paper");
+    const layer3 = "";
+
+    const foreForest = new UnifiedConiferEngine();
+    for (let i = 0; i < 11; i++) {
+      const tx = i * 76 + rng.range(-8, 8);
+      const ty = 360 + rng.range(-5, 25);
+      const th = rng.range(55, 95);
+      foreForest.addPine(tx, ty, th, 3);
+    }
+    const fore = `<polygon points="0,450 0,360 800,335 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />${foreForest.render(p[1], p[0])}`;
+    const layer4 = VectorHelpers.layer(4, fore).apply_shadow("paperDeep");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Expanse: (rng, p) => {
+    const skyId = `expSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `${VectorHelpers.sky(skyId, p[4], p[1])}
+      <circle cx="400" cy="180" r="90" fill="${p[3]}" opacity="0.35" style="filter: blur(20px);" />`,
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,450 0,250 800,250 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(3, 0.8);
+
+    let arch = `<g stroke-linejoin="round">`;
+    arch += `<path d="M 240,320 Q 400,60 560,320 L 590,320 Q 400,30 210,320 Z" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+    arch += `<polygon points="160,320 180,180 200,320" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+    arch += `<polygon points="600,320 620,180 640,320" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+    arch += `</g>`;
+    const layer2 = VectorHelpers.layer(2, arch).apply_shadow("paper");
+    const layer3 = "";
+    const layer4 = VectorHelpers.layer(
+      4,
+      `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`,
+    ).apply_shadow("paperDeep");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Tundra: (rng, p) => {
+    const skyId = `tunSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="70%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />
+      <path d="M 0,80 Q 200,20 400,90 T 800,60 L 800,180 L 0,180 Z" fill="${p[4]}" opacity="0.3" style="filter: blur(16px);" />`,
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,450 0,220 200,150 450,230 650,140 800,210 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(4, 0.65);
+
+    const waterY = 270;
+    let water = `<g filter="url(#waterShimmer)">`;
+    water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[1]}" />`;
+    for (let i = 0; i < 5; i++) {
+      water += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(8, 45)}" width="${rng.range(30, 100)}" height="2" fill="${p[3]}" opacity="0.5" />`;
+    }
+    water += `</g>`;
+    const layer2 = VectorHelpers.layer(2, water);
+
+    let icebergs = `<g stroke-linejoin="round">`;
+    const bergs = [
+      { x: 130, w: 180, h: 130, peakOffset: -20 },
+      { x: 400, w: 260, h: 170, peakOffset: 15 },
+      { x: 670, w: 190, h: 125, peakOffset: -10 },
+    ];
+    for (const b of bergs) {
+      const bx = b.x,
+        bw = b.w,
+        bh = b.h;
+      const px = bx + b.peakOffset,
+        py = waterY - bh;
+      const ridgeX = px + bw * 0.12;
+      const subL = bx - bw / 2,
+        subR = bx + bw / 2;
+      const midL = subL + (px - subL) * 0.5,
+        midY = py + bh * 0.45;
+
+      icebergs += `<polygon points="${subL},${waterY} ${px},${py} ${ridgeX},${waterY}" fill="#ffffff" ${VectorHelpers.microStroke("#ffffff")} />`;
+      icebergs += `<polygon points="${midL},${midY} ${px},${py} ${ridgeX},${py + bh * 0.35}" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+      icebergs += `<polygon points="${ridgeX},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+      icebergs += `<polygon points="${ridgeX + (subR - ridgeX) * 0.4},${waterY} ${px},${py} ${subR},${waterY}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    }
+    icebergs += `</g>`;
+    const layer3 = VectorHelpers.layer(3, icebergs).apply_shadow(
+      "subtle",
+    );
+
+    let floe = `<polygon points="0,450 0,345 280,310 520,355 800,315 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    floe += `<polygon points="0,345 280,310 520,355 800,315 800,330 520,370 280,325 0,360" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+    const layer4 = VectorHelpers.layer(4, floe).apply_shadow("paperDeep");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Jungle: (rng, p) => {
+    const isLeftDominant = rng.chance(0.5);
+    const sunX = isLeftDominant
+      ? rng.range(600, 680)
+      : rng.range(120, 200);
+    const sunY = rng.range(55, 80);
+    const skyId = `junSky-${rng.seed}`;
+    const waterId = `junWater-${rng.seed}`;
+
+    let layer0Markup = `<defs>
+      <linearGradient id="${skyId}" x1="${isLeftDominant ? 0 : 1}" y1="0" x2="${isLeftDominant ? 1 : 0}" y2="1">
+        <stop offset="0%" stop-color="${p[4]}"/>
+        <stop offset="50%" stop-color="${p[3]}"/>
+        <stop offset="100%" stop-color="${p[1]}"/>
+      </linearGradient>
+      <linearGradient id="${waterId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${p[3]}"/>
+        <stop offset="100%" stop-color="${p[0]}"/>
+      </linearGradient>
+    </defs>`;
+    layer0Markup += `<rect width="100%" height="100%" fill="url(#${skyId})" />`;
+    layer0Markup += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(130, 160)}" fill="${p[4]}" opacity="0.3" style="filter: blur(36px);" />`;
+    layer0Markup += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(70, 90)}" fill="${p[4]}" opacity="0.55" style="filter: blur(18px);" />`;
+    layer0Markup += `<circle cx="${sunX}" cy="${sunY}" r="${rng.range(40, 50)}" fill="${p[4]}" opacity="0.8" style="filter: blur(10px);" />`;
+
+    const rayCount = rng.range(7, 10);
+    let rays = `<g filter="url(#volumetricGlow)" style="filter: blur(6px); opacity: 0.38;">`;
+    for (let r = 0; r < rayCount; r++) {
+      const ang = isLeftDominant
+        ? Math.PI * 0.58 + (r / (rayCount - 1)) * (Math.PI * 0.42)
+        : Math.PI * 0.42 - (r / (rayCount - 1)) * (Math.PI * 0.42);
+      const xFar = sunX - Math.cos(ang) * 850;
+      const yFar = sunY + Math.sin(ang) * 650;
+      const w = rng.range(28, 45);
+      rays += `<polygon points="${sunX},${sunY} ${xFar - w},${yFar} ${xFar + w},${yFar}" fill="${p[4]}" />`;
+    }
+    rays += `</g>`;
+    layer0Markup += rays;
+
+    const birdCount = rng.range(2, 5);
+    let birdSvg = `<g stroke-linejoin="round">`;
+    for (let b = 0; b < birdCount; b++) {
+      const startX = isLeftDominant ? 340 : 460;
+      const dirX = isLeftDominant ? 1 : -1;
+      const bx =
+        startX +
+        dirX * b * (170 / Math.max(1, birdCount - 1)) +
+        rng.range(-15, 15);
+      const by = 55 + b * 22 + rng.range(-8, 8);
+      const bs = rng.range(14, 19);
+      const bang = isLeftDominant
+        ? -14 - b * 4 + rng.range(-6, 6)
+        : 14 + b * 4 + rng.range(-6, 6);
+      birdSvg += `<g transform="translate(${bx},${by}) rotate(${bang})">`;
+      birdSvg += `<polygon points="0,0 -${bs * 0.9},-${bs * 0.55} 0,-${bs * 0.25} ${bs * 0.9},-${bs * 0.55}" fill="${p[0]}" />`;
+      birdSvg += `<polygon points="0,0 -${bs * 0.75},-${bs * 0.65} 0,-${bs * 0.35}" fill="${p[1]}" />`;
+      birdSvg += `<polygon points="0,0 ${bs * 0.75},-${bs * 0.65} 0,-${bs * 0.35}" fill="${p[2]}" />`;
+      birdSvg += `<polygon points="0,-${bs * 0.35} ${bs * 0.12},${bs * 0.3} 0,${bs * 1.0} -${bs * 0.12},${bs * 0.3}" fill="${p[0]}" />`;
+      birdSvg += `<polygon points="0,-${bs * 0.35} ${bs * 0.1},-${bs * 0.55} 0,-${bs * 0.5}" fill="${p[4]}" />`;
+      birdSvg += `</g>`;
+    }
+    birdSvg += `</g>`;
+    layer0Markup += birdSvg;
+    const layer0 = VectorHelpers.layer(0, layer0Markup);
+
+    let distRidge = `<g style="filter: blur(5px); opacity: 0.65;">`;
+    const ridgeCount = 7;
+    for (let i = 0; i < ridgeCount; i++) {
+      const rx = (i / (ridgeCount - 1)) * 760 + 20 + rng.range(-10, 10);
+      const t = isLeftDominant
+        ? i / (ridgeCount - 1)
+        : (ridgeCount - 1 - i) / (ridgeCount - 1);
+      const ry = 135 + t * 70 + rng.range(-8, 8);
+      const rr = rng.range(65, 95);
+      distRidge += `<ellipse cx="${rx}" cy="${ry + 10}" rx="${rr}" ry="${rr * 0.45}" fill="${p[1]}" />`;
+      distRidge += `<circle cx="${rx}" cy="${ry}" r="${rr}" fill="${p[2]}" />`;
+      distRidge += `<ellipse cx="${rx}" cy="${ry - rr * 0.35}" rx="${rr * 0.8}" ry="${rr * 0.38}" fill="${p[3]}" />`;
+    }
+    distRidge += `</g>`;
+    distRidge += `<path d="M -50,160 Q 250,135 520,185 T 850,170 L 850,240 Q 550,260 250,225 T -50,240 Z" fill="${p[4]}" opacity="0.32" style="filter: blur(14px);" />`;
+    const layer1 = VectorHelpers.layer(1, distRidge);
+
+    const fallX = isLeftDominant
+      ? rng.range(230, 290)
+      : rng.range(510, 570);
+    let farMid = `<g stroke-linejoin="round" style="filter: blur(1.8px);">`;
+    farMid += `<polygon points="${fallX - 30},180 ${fallX + 30},180 ${fallX + 35},205 ${fallX - 35},205" fill="${p[4]}" />`;
+    farMid += `<polygon points="${fallX - 38},205 ${fallX + 38},205 ${fallX + 44},235 ${fallX - 44},235" fill="#ffffff" opacity="0.92" />`;
+    farMid += `<polygon points="${fallX - 48},235 ${fallX + 48},235 ${fallX + 55},268 ${fallX - 55},268" fill="${p[3]}" />`;
+    farMid += `</g>`;
+    farMid += `<ellipse cx="${fallX}" cy="268" rx="72" ry="18" fill="#ffffff" opacity="0.45" style="filter: blur(8px);" />`;
+
+    const waterY = rng.range(270, 285);
+    let water = `<g filter="url(#waterShimmer)">`;
+    water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="url(#${waterId})" />`;
+    for (let i = 0; i < 6; i++) {
+      const gy = waterY + 16 + i * 26 + rng.range(-3, 3);
+      const gx = 220 + (i % 3) * 80 + rng.range(-20, 30);
+      const gw = rng.range(50, 95);
+      water += `<rect x="${gx}" y="${gy}" width="${gw}" height="2.2" rx="1.1" fill="#ffffff" opacity="${(0.4 + (i % 3) * 0.15).toFixed(2)}" />`;
+    }
+    water += `</g>`;
+
+    let landmasses = `<g stroke-linejoin="round">`;
+    if (isLeftDominant) {
+      landmasses += `<polygon points="0,450 0,265 240,255 290,345 160,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      landmasses += `<polygon points="0,265 240,255 280,280 0,300" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+      landmasses += `<polygon points="800,450 800,285 530,275 450,355 590,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      landmasses += `<polygon points="800,285 530,275 490,300 800,315" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    } else {
+      landmasses += `<polygon points="800,450 800,265 560,255 510,345 640,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      landmasses += `<polygon points="800,265 560,255 520,280 800,300" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+      landmasses += `<polygon points="0,450 0,285 270,275 350,355 210,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      landmasses += `<polygon points="0,285 270,275 310,300 0,315" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    }
+    landmasses += `</g>`;
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${farMid}${water}<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.45));">${landmasses}</g>`,
+    );
+
+    const treeX = isLeftDominant
+      ? rng.range(130, 170)
+      : rng.range(630, 670);
+    const treeY = rng.range(105, 120);
+    const canopyCount = rng.range(5, 7);
+    const canopyNodes = [];
+    let canopySvg = `<g style="filter: blur(2.2px); opacity: 0.95;">`;
+    for (let c = 0; c < canopyCount; c++) {
+      const startX = isLeftDominant ? 30 : 770;
+      const spanX = isLeftDominant ? 480 : -480;
+      const cx =
+        startX + c * (spanX / (canopyCount - 1)) + rng.range(-12, 12);
+      const cy = 55 + Math.abs(c - 2) * 14 + rng.range(-8, 8);
+      const cr = rng.range(75, 105);
+      canopyNodes.push({ x: cx, y: cy, r: cr });
+
+      canopySvg += `<ellipse cx="${cx}" cy="${cy + 12}" rx="${cr}" ry="${cr * 0.6}" fill="${p[0]}" opacity="0.85" />`;
+      canopySvg += `<ellipse cx="${cx}" cy="${cy}" rx="${cr * 0.92}" ry="${cr * 0.58}" fill="${p[1]}" />`;
+      canopySvg += `<ellipse cx="${cx + (isLeftDominant ? 6 : -6)}" cy="${cy - 6}" rx="${cr * 0.78}" ry="${cr * 0.48}" fill="${p[2]}" />`;
+      canopySvg += `<ellipse cx="${cx + (isLeftDominant ? 14 : -14)}" cy="${cy - 14}" rx="${cr * 0.62}" ry="${cr * 0.38}" fill="${p[3]}" />`;
+    }
+    canopySvg += `</g>`;
+
+    let titanTrunk = `<g stroke-linejoin="round">`;
+    const dir = isLeftDominant ? 1 : -1;
+    titanTrunk += `<path d="M ${treeX - 50 * dir},${treeY} Q ${treeX - 30 * dir},240 ${treeX - 90 * dir},420 L ${treeX},420 Q ${treeX + 40 * dir},260 ${treeX + 30 * dir},${treeY} Z" fill="${p[3]}" />`;
+    titanTrunk += `<path d="M ${treeX - 10 * dir},${treeY} Q ${treeX + 10 * dir},240 ${treeX - 20 * dir},420 L ${treeX + 50 * dir},420 Q ${treeX + 70 * dir},260 ${treeX + 60 * dir},${treeY} Z" fill="${p[2]}" />`;
+    titanTrunk += `<path d="M ${treeX + 10 * dir},115 Q ${treeX + 170 * dir},105 ${treeX + 330 * dir},125 L ${treeX + 320 * dir},145 Q ${treeX + 160 * dir},130 ${treeX + 20 * dir},150 Z" fill="${p[1]}" />`;
+    titanTrunk += `<path d="M ${treeX + 20 * dir},115 Q ${treeX + 170 * dir},110 ${treeX + 325 * dir},130 L ${treeX + 320 * dir},138 Q ${treeX + 170 * dir},120 ${treeX + 30 * dir},135 Z" fill="${p[3]}" />`;
+
+    const roots = isLeftDominant
+      ? [
+          {
+            startX: treeX - 40,
+            startY: 160,
+            endX: 20 + rng.range(-10, 10),
+            midX: 40,
+            col: p[3],
+            w: 60,
+          },
+          {
+            startX: treeX,
+            startY: 170,
+            endX: 120 + rng.range(-10, 10),
+            midX: 110,
+            col: p[4],
+            w: 55,
+          },
+          {
+            startX: treeX + 40,
+            startY: 165,
+            endX: 260 + rng.range(-10, 10),
+            midX: 220,
+            col: p[1],
+            w: 65,
+          },
+        ]
+      : [
+          {
+            startX: treeX + 40,
+            startY: 160,
+            endX: 780 + rng.range(-10, 10),
+            midX: 760,
+            col: p[3],
+            w: 60,
+          },
+          {
+            startX: treeX,
+            startY: 170,
+            endX: 680 + rng.range(-10, 10),
+            midX: 690,
+            col: p[4],
+            w: 55,
+          },
+          {
+            startX: treeX - 40,
+            startY: 165,
+            endX: 540 + rng.range(-10, 10),
+            midX: 580,
+            col: p[1],
+            w: 65,
+          },
+        ];
+    for (const r of roots) {
+      titanTrunk += `<path d="M ${r.startX},${r.startY} Q ${r.midX},290 ${r.endX},450 L ${r.endX + r.w * dir},450 Q ${r.midX + 45 * dir},310 ${r.startX + 22 * dir},${r.startY} Z" fill="${r.col}" />`;
+    }
+
+    const stiltRoots = isLeftDominant
+      ? [
+          { x: 260, yTop: 115, yBot: 330, w: 5, col: p[2] },
+          { x: 330, yTop: 112, yBot: 350, w: 5, col: p[3] },
+          { x: 420, yTop: 120, yBot: 320, w: 4.5, col: p[1] },
+        ]
+      : [
+          { x: 540, yTop: 115, yBot: 330, w: 5, col: p[2] },
+          { x: 470, yTop: 112, yBot: 350, w: 5, col: p[3] },
+          { x: 380, yTop: 120, yBot: 320, w: 4.5, col: p[1] },
+        ];
+    for (const sr of stiltRoots) {
+      titanTrunk += `<polygon points="${sr.x - sr.w / 2},${sr.yTop} ${sr.x + sr.w / 2},${sr.yTop} ${sr.x + sr.w * 0.7},${sr.yBot} ${sr.x - sr.w * 0.7},${sr.yBot}" fill="${sr.col}" />`;
+    }
+    titanTrunk += `</g>`;
+    const layer3 = VectorHelpers.layer(
+      3,
+      `${canopySvg}<g style="filter: drop-shadow(0 -8px 20px rgba(0,0,0,0.7));">${titanTrunk}</g>`,
+    );
+
+    function drawDetailedPalm(
+      cx,
+      cy,
+      radius,
+      numBlades,
+      rotDeg,
+      curveSign,
+      colLit,
+      colDark,
+    ) {
+      let palm = `<g transform="translate(${cx},${cy}) rotate(${rotDeg})" stroke-linejoin="round">`;
+      palm += `<path d="M 0,0 Q ${curveSign * radius * 0.2},-${radius * 0.5} 0,-${radius}" fill="none" stroke="${p[0]}" stroke-width="1.8" />`;
+      for (let b = 0; b < numBlades; b++) {
+        const t = (b - (numBlades - 1) / 2) / numBlades;
+        const ang = t * (Math.PI * 0.82);
+        const tipX =
+          Math.sin(ang) * radius +
+          curveSign * (Math.pow(t, 2) * radius * 0.28);
+        const tipY =
+          -Math.cos(ang) * radius + Math.abs(t) * radius * 0.22;
+        const sideX = Math.sin(ang + 0.15) * (radius * 0.45);
+        const sideY = -Math.cos(ang + 0.15) * (radius * 0.45);
+        const col = b % 2 === 0 ? colLit : colDark;
+        palm += `<polygon points="0,0 ${sideX.toFixed(1)},${sideY.toFixed(1)} ${tipX.toFixed(1)},${tipY.toFixed(1)} 0,0" fill="${col}" stroke="${p[0]}" stroke-width="0.9" />`;
+      }
+      palm += `</g>`;
+      return palm;
+    }
+
+    let flora = `<g>`;
+    const sunnyPalmCount = rng.range(3, 5);
+    for (let i = 0; i < sunnyPalmCount; i++) {
+      const startX = isLeftDominant ? 530 : 270;
+      const spanX = isLeftDominant ? 200 : -200;
+      const px =
+        startX + i * (spanX / (sunnyPalmCount - 1)) + rng.range(-10, 10);
+      const py = 320 + i * 12 + rng.range(-8, 8);
+      const pr = rng.range(85, 115);
+      const pblades = rng.range(7, 11);
+      const prot = isLeftDominant
+        ? 16 + i * 8 + rng.range(-6, 6)
+        : -16 - i * 8 + rng.range(-6, 6);
+      const pcurve =
+        i % 2 === 0 ? (isLeftDominant ? 1 : -1) : isLeftDominant ? -1 : 1;
+      const pcolLit = i % 2 === 0 ? p[4] : p[3];
+      const pcolDark = i % 2 === 0 ? p[2] : p[1];
+      flora += drawDetailedPalm(
+        px,
+        py,
+        pr,
+        pblades,
+        prot,
+        pcurve,
+        pcolLit,
+        pcolDark,
+      );
+    }
+
+    const lilyPads = [
+      {
+        cx: 380 + rng.range(-15, 15),
+        cy: 375 + rng.range(-5, 5),
+        rx: 34,
+        ry: 10,
+        col: p[3],
+      },
+      {
+        cx: 480 + rng.range(-15, 15),
+        cy: 405 + rng.range(-5, 5),
+        rx: 42,
+        ry: 12,
+        col: p[2],
+      },
+      {
+        cx: 410 + rng.range(-15, 15),
+        cy: 435 + rng.range(-5, 5),
+        rx: 48,
+        ry: 14,
+        col: p[3],
+      },
+    ];
+    for (const lp of lilyPads) {
+      flora += `<ellipse cx="${lp.cx}" cy="${lp.cy}" rx="${lp.rx}" ry="${lp.ry}" fill="${lp.col}" stroke="${p[0]}" stroke-width="1.3" />`;
+      flora += `<ellipse cx="${lp.cx}" cy="${lp.cy - 1}" rx="${lp.rx * 0.85}" ry="${lp.ry * 0.78}" fill="${p[4]}" opacity="0.6" />`;
+      flora += `<polygon points="${lp.cx},${lp.cy - 13} ${lp.cx - 7},${lp.cy - 2} ${lp.cx + 7},${lp.cy - 2}" fill="#ffffff" />`;
+      flora += `<polygon points="${lp.cx},${lp.cy - 10} ${lp.cx - 4},${lp.cy - 2} ${lp.cx + 4},${lp.cy - 2}" fill="${p[4]}" />`;
+      flora += `<circle cx="${lp.cx}" cy="${lp.cy - 4}" r="2.2" fill="#ffffff" />`;
+    }
+    flora += `</g>`;
+
+    let vines = `<g stroke-linecap="round">`;
+    for (let i = 0; i < canopyNodes.length - 1; i += 2) {
+      const n1 = canopyNodes[i];
+      const n2 = canopyNodes[i + 1];
+      const dip = rng.range(75, 110);
+      const midX = (n1.x + n2.x) / 2;
+      const midY = (n1.y + n2.y) / 2 + dip;
+
+      vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX},${midY} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[0]}" stroke-width="4.5" />`;
+      vines += `<path d="M ${n1.x},${n1.y + n1.r * 0.4} Q ${midX + 4},${midY + 2} ${n2.x},${n2.y + n2.r * 0.4}" fill="none" stroke="${p[1]}" stroke-width="1.8" />`;
+      vines += `<path d="M ${midX - 25},${midY - 8} Q ${midX},${midY + 22} ${midX + 25},${midY - 8}" fill="none" stroke="${p[0]}" stroke-width="2" />`;
+      vines += `<circle cx="${midX}" cy="${midY}" r="16" fill="${p[4]}" opacity="0.45" style="filter: blur(5px);" />`;
+      vines += `<polygon points="${midX},${midY - 9} ${midX - 6},${midY} ${midX},${midY + 9} ${midX + 6},${midY}" fill="${p[4]}" />`;
+      vines += `<circle cx="${midX}" cy="${midY}" r="3" fill="#ffffff" />`;
+    }
+    vines += `</g>`;
+
+    let fore = `<g stroke-linejoin="round">`;
+    if (isLeftDominant) {
+      fore += `<path d="M 0,0 L 320,0 Q 210,105 0,150 Z" fill="${p[0]}" />`;
+      fore += `<path d="M 800,0 L 620,0 Q 690,75 800,105 Z" fill="${p[0]}" />`;
+      fore += drawDetailedPalm(30, 445, 185, 11, -44, -1, p[1], p[0]);
+      fore += drawDetailedPalm(95, 450, 150, 9, -28, -1, p[2], p[0]);
+      fore += drawDetailedPalm(770, 440, 160, 9, 42, 1, p[1], p[0]);
+    } else {
+      fore += `<path d="M 800,0 L 480,0 Q 590,105 800,150 Z" fill="${p[0]}" />`;
+      fore += `<path d="M 0,0 L 180,0 Q 110,75 0,105 Z" fill="${p[0]}" />`;
+      fore += drawDetailedPalm(770, 445, 185, 11, 44, 1, p[1], p[0]);
+      fore += drawDetailedPalm(705, 450, 150, 9, 28, 1, p[2], p[0]);
+      fore += drawDetailedPalm(30, 440, 160, 9, -42, -1, p[1], p[0]);
+    }
+
+    fore += `<ellipse cx="380" cy="445" rx="360" ry="28" fill="${p[2]}" opacity="0.38" style="filter: blur(14px);" />`;
+    fore += `<polygon points="0,450 0,405 220,380 380,430 540,390 800,410 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    fore += `</g>`;
+
+    const layer4 = VectorHelpers.layer(
+      4,
+      `<g style="filter: drop-shadow(0 -4px 10px rgba(0,0,0,0.55));">${flora}</g><g style="filter: drop-shadow(0 -16px 26px rgba(0,0,0,0.95));">${vines}${fore}</g>`,
+    );
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Dominion: (rng, p) => {
+    const skyId = `domSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `${VectorHelpers.sky(skyId, p[1], p[4])}
+      <circle cx="400" cy="130" r="95" fill="${p[4]}" opacity="0.45" style="filter: blur(20px);" />
+      <circle cx="400" cy="130" r="50" fill="${p[4]}" />
+      <circle cx="398.5" cy="128.5" r="48.5" fill="${p[0]}" />`,
+    );
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<polygon points="0,450 0,220 240,180 560,180 800,230 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(3, 0.75);
+
+    let citadel = `<g stroke-linejoin="round">`;
+    function drawTower(
+      baseL,
+      baseR,
+      topY,
+      roofApexY,
+      colShaftLit,
+      colShaftDark,
+      colRoof,
+    ) {
+      const midX = (baseL + baseR) / 2;
+      let t = "";
+      t += `<polygon points="${baseL},340 ${baseL},${topY} ${midX},${topY} ${midX},340" fill="${colShaftLit}" ${VectorHelpers.microStroke(colShaftLit)} />`;
+      t += `<polygon points="${midX},340 ${midX},${topY} ${baseR},${topY} ${baseR},340" fill="${colShaftDark}" ${VectorHelpers.microStroke(colShaftDark)} />`;
+      t += `<polygon points="${baseL - 2},${topY} ${midX},${roofApexY} ${baseR + 2},${topY}" fill="${colRoof}" ${VectorHelpers.microStroke(colRoof)} />`;
+      return t;
+    }
+
+    citadel += drawTower(170, 220, 230, 180, p[2], p[1], p[3]);
+    citadel += drawTower(580, 630, 230, 180, p[2], p[1], p[3]);
+    citadel += drawTower(270, 330, 210, 150, p[3], p[1], p[4]);
+    citadel += drawTower(470, 530, 210, 150, p[3], p[1], p[4]);
+
+    citadel += `<polygon points="360,340 360,185 400,185 400,340" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+    citadel += `<polygon points="400,340 400,185 440,185 440,340" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+    citadel += `<polygon points="356,185 400,105 444,185" fill="${p[4]}" ${VectorHelpers.microStroke(p[4])} />`;
+    citadel += `</g>`;
+    const layer2 = VectorHelpers.layer(2, citadel).apply_shadow("paper");
+
+    let gate = `<polygon points="0,450 0,310 800,310 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    for (let x = 40; x <= 760; x += 30) {
+      gate += `<rect x="${x}" y="290" width="16" height="20" fill="${p[0]}" />`;
+    }
+    gate += `<path d="M 360,450 L 360,360 Q 400,330 440,360 L 440,450 Z" fill="${p[4]}" opacity="0.25" />`;
+    gate += `<path d="M 370,450 L 370,370 Q 400,345 430,370 L 430,450 Z" fill="${p[1]}" />`;
+    const layer3 = VectorHelpers.layer(3, gate).apply_shadow("paperDeep");
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Wastes: (rng, p) => {
+    const skyId = `wasteSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[0]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[4]}"/></linearGradient></defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+    );
+    const layers = 6;
+    const layerPolys = ["", "", "", "", "", ""];
+    for (let l = 0; l < layers; l++) {
+      const sy = 120 + l * 45;
+      let pts = `-50,450 -50,${sy} `,
+        cx = -50;
+      while (cx < 850) {
+        cx += rng.range(80, 180);
+        pts += `${cx},${sy + rng.range(-40, 40)} `;
+      }
+      pts += `850,450`;
+      const col =
+        l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
+      layerPolys[l] =
+        `<polygon points="${pts}" fill="${col}" ${VectorHelpers.microStroke(col)} />`;
+    }
+
+    const layer1 = VectorHelpers.layer(
+      1,
+      `${layerPolys[0]}${layerPolys[1]}`,
+    ).apply_blur(5.5, 0.65);
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${layerPolys[2]}${layerPolys[3]}`,
+    ).apply_blur(2, 0.8);
+    const layer3 = VectorHelpers.layer(3, layerPolys[4]).apply_shadow(
+      "paper",
+    );
+    const layer4 = VectorHelpers.layer(4, layerPolys[5]).apply_shadow(
+      "paperDeep",
+    );
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Quarry: (rng, p) => {
+    const skyId = `quarrySky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      VectorHelpers.sky(skyId, p[4], p[1]),
+    );
+    const stepMarkup = [];
+    for (let s = 0; s < 5; s++) {
+      const pad = s * 70,
+        y = 140 + s * 55;
+      const c1 = p[Math.min(4, Math.max(0, 4 - s))];
+      const c2 = p[Math.min(3, Math.max(0, 3 - s))];
+      let step = `<polygon points="${pad},450 ${pad + 40},${y} ${800 - pad - 40},${y} ${800 - pad},450" fill="${c1}" ${VectorHelpers.microStroke(c1)} />`;
+      step += `<polygon points="${pad + 40},${y} ${pad + 70},${y + 35} ${800 - pad - 70},${y + 35} ${800 - pad - 40},${y}" fill="${c2}" ${VectorHelpers.microStroke(c2)} />`;
+      stepMarkup.push(step);
+    }
+
+    const layer1 = VectorHelpers.layer(1, stepMarkup[0]).apply_blur(
+      3,
+      0.75,
+    );
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${stepMarkup[1]}${stepMarkup[2]}`,
+    ).apply_shadow("paper");
+    const layer3 = VectorHelpers.layer(3, stepMarkup[3]).apply_shadow(
+      "paper",
+    );
+    const layer4 = VectorHelpers.layer(4, stepMarkup[4]).apply_shadow(
+      "paper",
+    );
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Nebula: (rng, p) => {
+    let deepPolys = "";
+    for (let i = 0; i < 16; i++) {
+      const cx = rng.range(40, 760),
+        cy = rng.range(30, 370),
+        r = rng.range(80, 180),
+        sides = rng.range(6, 9);
+      let pts = "";
+      for (let s = 0; s < sides; s++) {
+        const ang = (s / sides) * Math.PI * 2,
+          rad = (r * rng.range(75, 125)) / 100;
+        pts += `${cx + Math.cos(ang) * rad},${cy + Math.sin(ang) * rad} `;
+      }
+      deepPolys += `<polygon points="${pts}" fill="${p[Math.floor((i / 16) * 3) + 1]}" opacity="0.45" />`;
+    }
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<rect width="100%" height="100%" fill="${p[0]}" />
+      <g style="filter: blur(28px); opacity: 0.75;">${deepPolys}</g>`,
+    );
+
+    let midPolys = "";
+    for (let i = 0; i < 20; i++) {
+      const cx = rng.range(20, 780),
+        cy = rng.range(20, 380),
+        r = rng.range(45, 110),
+        sides = rng.range(5, 8);
+      let pts = "";
+      for (let s = 0; s < sides; s++) {
+        const ang = (s / sides) * Math.PI * 2,
+          rad = (r * rng.range(80, 120)) / 100;
+        pts += `${cx + Math.cos(ang) * rad},${cy + Math.sin(ang) * rad} `;
+      }
+      midPolys += `<polygon points="${pts}" fill="${p[Math.floor((i / 20) * 3) + 2]}" opacity="0.6" />`;
+    }
+    const layer1 = VectorHelpers.layer(1, midPolys).apply_blur(14, 0.85);
+    const layer2 = "";
+
+    let stars = "";
+    for (let i = 0; i < 55; i++) {
+      const sx = rng.range(0, 800),
+        sy = rng.range(0, 400),
+        op = rng.next() * 0.7 + 0.3;
+      if (rng.chance(0.25)) {
+        const s = rng.range(2, 5);
+        stars += `<polygon points="${sx},${sy - s} ${sx + s * 0.3},${sy} ${sx},${sy + s} ${sx - s * 0.3},${sy}" fill="${p[4]}" opacity="${op}" />`;
+      } else {
+        stars += `<circle cx="${sx}" cy="${sy}" r="${rng.next() * 1.3 + 0.4}" fill="${p[4]}" opacity="${op}" />`;
+      }
+    }
+    const layer3 = VectorHelpers.layer(3, stars).apply_glow(p[4], 3);
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Crags: (rng, p) => {
+    const skyId = `cragSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      VectorHelpers.sky(skyId, p[4], p[0]),
+    );
+
+    const distAcc = [];
+    for (let i = 0; i < 5; i++) {
+      const x = 70 + i * 160 + rng.range(-20, 20),
+        h = rng.range(200, 290),
+        w = rng.range(70, 110);
+      distAcc.push(
+        `M ${(x - w / 2).toFixed(1)},450 L ${x.toFixed(1)},${(450 - h).toFixed(1)} L ${(x + w / 2).toFixed(1)},450 Z`,
+      );
+    }
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<path d="${distAcc.join(" ")}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(4, 0.65);
+
+    const midCrags = new UnifiedCragEngine();
+    midCrags.addCrag(220, 160, 160);
+    midCrags.addCrag(580, 140, 180);
+    const layer2 = VectorHelpers.layer(
+      2,
+      midCrags.render(p[3], p[2], p[1]),
+    ).apply_shadow("paper");
+    const layer3 = "";
+
+    const foreCrags = new UnifiedCragEngine();
+    foreCrags.addCrag(100, 100, 220);
+    foreCrags.addCrag(380, 60, 260);
+    foreCrags.addCrag(700, 80, 240);
+    const layer4 = VectorHelpers.layer(
+      4,
+      foreCrags.render(p[3], p[1], p[0]),
+    ).apply_shadow("paperDeep");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Fields: (rng, p) => {
+    const skyId = `fldSky-${rng.seed}`;
+    const sunX = rng.range(250, 650),
+      sunY = rng.range(90, 150),
+      sunR = rng.range(75, 110);
+
+    const layer0 = VectorHelpers.layer(
+      0,
+      `${VectorHelpers.sky(skyId, p[4], p[2])}
+      <circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.35" style="filter: blur(25px);" />`,
+    );
+
+    const layers = 5;
+    const terraceMarkup = [];
+    for (let l = 0; l < layers; l++) {
+      const y = 145 + l * 60 + rng.range(-6, 6);
+      const freq = 0.005 + (l % 2) * 0.002 + rng.range(-1, 1) * 0.001;
+      const amp = 22 + (l % 3) * 6 + rng.range(-4, 4);
+      const phase = l * 85 + rng.range(-15, 15);
+
+      let terrace = `<g stroke-linejoin="round">`;
+      let shelfPts = `-50,450 `;
+      for (let x = -50; x <= 850; x += 50) {
+        const py = y + Math.sin((x + phase) * freq) * amp;
+        shelfPts += `${x},${py.toFixed(1)} `;
+      }
+      shelfPts += `850,450`;
+
+      let riserPts = `-50,${y + 12} `;
+      for (let x = -50; x <= 850; x += 50) {
+        const py = y + Math.sin((x + phase) * freq) * amp;
+        riserPts += `${x},${py.toFixed(1)} `;
+      }
+      riserPts += `850,${y + 12}`;
+
+      const fillCol = p[Math.min(4, Math.max(0, 4 - l))];
+      terrace += `<polygon points="${shelfPts}" fill="${fillCol}" ${VectorHelpers.microStroke(fillCol)} />`;
+      terrace += `<path d="M ${riserPts}" fill="none" stroke="${p[1]}" stroke-width="6" />`;
+
+      const furrowCount = rng.range(5, 7);
+      const furrowSpacing = 720 / Math.max(1, furrowCount - 1);
+      for (let f = 0; f < furrowCount; f++) {
+        const fx =
+          40 + f * furrowSpacing + (l % 2) * 20 + rng.range(-10, 10);
+        const fy = y + Math.sin((fx + phase) * freq) * amp;
+        const fLenX = rng.range(30, 45);
+        const fLenY = rng.range(28, 38);
+        terrace += `<line x1="${fx.toFixed(1)}" y1="${fy.toFixed(1)}" x2="${(fx + fLenX).toFixed(1)}" y2="${(fy + fLenY).toFixed(1)}" stroke="${p[0]}" stroke-width="1.8" stroke-dasharray="6 8" />`;
+      }
+      terrace += `</g>`;
+      terraceMarkup.push(terrace);
+    }
+
+    const layer1 = VectorHelpers.layer(1, terraceMarkup[0]).apply_blur(
+      2.5,
+    );
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${terraceMarkup[1]}${terraceMarkup[2]}`,
+    ).apply_shadow("paper");
+    const layer3 = VectorHelpers.layer(3, terraceMarkup[3]).apply_shadow(
+      "paper",
+    );
+    const layer4 = VectorHelpers.layer(4, terraceMarkup[4]).apply_shadow(
+      "paper",
+    );
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Vale: (rng, p) => {
+    const skyId = `vSky-${rng.seed}`;
+    let layer0Markup = `<defs>
+      <linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${p[4]}" stop-opacity="0.8"/>
+        <stop offset="50%" stop-color="${p[3]}"/>
+        <stop offset="100%" stop-color="${p[1]}"/>
+      </linearGradient>
+    </defs>`;
+    layer0Markup += `<rect width="100%" height="100%" fill="url(#${skyId})" />`;
+    layer0Markup += `<g style="filter: blur(4px); opacity: 0.4;">`;
+    for (let i = 0; i < 3; i++) {
+      const cy = rng.range(15, 75),
+        cx = rng.range(80, 720),
+        cw = rng.range(160, 320);
+      layer0Markup += `<polygon points="${cx - cw / 2},${cy} ${cx + cw / 2},${cy} ${cx + cw / 2 - 25},${cy + 14} ${cx - cw / 2 + 25},${cy + 14}" fill="#ffffff" />`;
+    }
+    layer0Markup += `</g>`;
+    const layer0 = VectorHelpers.layer(0, layer0Markup);
+
+    const distPeaks = [
+      { x: 450, y: rng.range(50, 90), w: rng.range(400, 500) },
+      { x: 280, y: rng.range(80, 120), w: rng.range(300, 400) },
+      { x: 650, y: rng.range(90, 130), w: rng.range(300, 400) },
+      { x: 100, y: rng.range(120, 160), w: rng.range(250, 350) },
+      { x: 850, y: rng.range(120, 160), w: rng.range(250, 350) },
+    ];
+
+    let distMarkup = "";
+    for (const peak of distPeaks) {
+      const px = peak.x + rng.range(-15, 15),
+        py = peak.y,
+        pw = peak.w,
+        botY = 450;
+      const ridgeBotX = px + rng.range(-pw * 0.1, pw * 0.1);
+      distMarkup += `<polygon points="${px - pw / 2},${botY} ${px},${py} ${ridgeBotX},${botY}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+      distMarkup += `<polygon points="${ridgeBotX},${botY} ${px},${py} ${px + pw / 2},${botY}" fill="${p[3]}" ${VectorHelpers.microStroke(p[3])} />`;
+      const snowH = rng.range(40, 60),
+        snowRatio = snowH / (botY - py);
+      const slX = px - (pw / 2) * snowRatio,
+        srX = px + (pw / 2) * snowRatio,
+        smX = px + (ridgeBotX - px) * snowRatio;
+      const sBotY = py + snowH,
+        jaggedY = sBotY + rng.range(-10, 10);
+      distMarkup += `<polygon points="${slX},${sBotY} ${px},${py} ${smX},${jaggedY}" fill="#f0f0f5" />`;
+      distMarkup += `<polygon points="${smX},${jaggedY} ${px},${py} ${srX},${sBotY}" fill="#ffffff" />`;
+    }
+    const layer1 = VectorHelpers.layer(1, distMarkup).apply_blur(3, 0.75);
+
+    const waterY = rng.range(250, 270);
+    let water = `<g filter="url(#waterShimmer)">`;
+    water += `<rect x="0" y="${waterY}" width="800" height="${450 - waterY}" fill="${p[4]}" />`;
+    for (let i = 0; i < 6; i++) {
+      water += `<rect x="${rng.range(0, 700)}" y="${waterY + rng.range(5, 60)}" width="${rng.range(40, 150)}" height="2" fill="${p[3]}" />`;
+    }
+    water += `</g>`;
+
+    const mlX = rng.range(150, 250),
+      mlY = rng.range(160, 200),
+      mlW = rng.range(500, 600),
+      mlRidge = mlX + rng.range(-30, 30);
+    let midLeft = `<polygon points="${mlX - mlW / 2},450 ${mlX},${mlY} ${mlRidge},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+    midLeft += `<polygon points="${mlRidge},450 ${mlX},${mlY} ${mlX + mlW / 2},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+
+    const mrX = rng.range(550, 650),
+      mrY = rng.range(120, 160),
+      mrW = rng.range(600, 700),
+      mrRidge = mrX + rng.range(-40, 40);
+    let midRight = `<polygon points="${mrX - mrW / 2},450 ${mrX},${mrY} ${mrRidge},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+    midRight += `<polygon points="${mrRidge},450 ${mrX},${mrY} ${mrX + mrW / 2},450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${water}<g style="filter: blur(1px) drop-shadow(0px -5px 10px rgba(0,0,0,0.45)); opacity: 0.95;">${midLeft}${midRight}</g>`,
+    );
+
+    const flX = rng.range(80, 150),
+      flY = rng.range(280, 320),
+      flW = rng.range(500, 700),
+      flRidge = flX + rng.range(-20, 20);
+    let foreLeft = `<polygon points="${flX - flW / 2},450 ${flX},${flY} ${flRidge},450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    foreLeft += `<polygon points="${flRidge},450 ${flX},${flY} ${flX + flW / 2},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+
+    const frX = rng.range(650, 750),
+      frY = rng.range(250, 300),
+      frW = rng.range(600, 800),
+      frRidge = frX + rng.range(-20, 20);
+    let foreRight = `<polygon points="${frX - frW / 2},450 ${frX},${frY} ${frRidge},450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`;
+    foreRight += `<polygon points="${frRidge},450 ${frX},${frY} ${frX + frW / 2},450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+    const layer3 = VectorHelpers.layer(
+      3,
+      `${foreLeft}${foreRight}`,
+    ).apply_shadow("paper");
+
+    function drawTreesUnified(startX, startY, endX, endY, count) {
+      const tr = [];
+      for (let i = 0; i < count; i++) {
+        const t = i / count + rng.range(-2, 2) * 0.01;
+        const tx = startX + (endX - startX) * t,
+          ty = startY + (endY - startY) * t + rng.range(-2, 2);
+        const th = rng.range(15, 30),
+          tw = th * 0.45;
+        tr.push(
+          `M ${tx.toFixed(1)},${(ty - th).toFixed(1)} L ${(tx - tw).toFixed(1)},${ty.toFixed(1)} L ${(tx + tw).toFixed(1)},${ty.toFixed(1)} Z M ${tx.toFixed(1)},${(ty - th * 0.7).toFixed(1)} L ${(tx - tw * 0.8).toFixed(1)},${(ty - th * 0.1).toFixed(1)} L ${(tx + tw * 0.8).toFixed(1)},${(ty - th * 0.1).toFixed(1)} Z`,
+        );
+      }
+      return tr.join(" ");
+    }
+    const allTreesD =
+      `${drawTreesUnified(flX - flW / 2, 450, flX, flY, 20)} ${drawTreesUnified(frX, frY, frX + frW / 2, 450, 20)}`.trim();
+    const layer4 = VectorHelpers.layer(
+      4,
+      `<path d="${allTreesD}" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`,
+    ).apply_shadow("subtle");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Canyon: (rng, p) => {
+    const skyId = `canyonSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="60%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />`,
+    );
+    const layers = 5;
+    const canyonLayers = ["", "", "", "", ""];
+    for (let l = 0; l < layers; l++) {
+      const sy = 130 + l * 55;
+      let cx = -50,
+        blocks = `<g stroke-linejoin="round">`;
+      while (cx < 850) {
+        const w = rng.range(100, 200),
+          y = sy + rng.range(-25, 25);
+        const c1 = p[Math.min(3, Math.max(0, 3 - l))];
+        const c2 = p[Math.min(4, Math.max(1, 4 - l))];
+        blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w},450 ${cx},450" fill="${c1}" ${VectorHelpers.microStroke(c1)} />`;
+        blocks += `<polygon points="${cx},${y} ${cx + w},${y} ${cx + w - 20},${y - 15} ${cx + 20},${y - 15}" fill="${c2}" ${VectorHelpers.microStroke(c2)} />`;
+        cx += w;
+      }
+      blocks += `</g>`;
+      canyonLayers[l] = blocks;
+    }
+
+    const layer1 = VectorHelpers.layer(1, canyonLayers[0]).apply_blur(
+      5.5,
+      0.6,
+    );
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${canyonLayers[1]}${canyonLayers[2]}`,
+    ).apply_blur(3, 0.75);
+    const layer3 = VectorHelpers.layer(3, canyonLayers[3]).apply_shadow(
+      "paper",
+    );
+    const layer4 = VectorHelpers.layer(4, canyonLayers[4]).apply_shadow(
+      "paperDeep",
+    );
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Dunes: (rng, p) => {
+    const skyId = `duneSky-${rng.seed}`;
+    const sunX = rng.range(260, 560),
+      sunY = rng.range(80, 130),
+      sunR = rng.range(80, 110);
+
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="48%" stop-color="#ffffff"/><stop offset="100%" stop-color="#ffffff"/></linearGradient></defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />
+      <circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${p[4]}" opacity="0.32" style="filter: blur(24px);" />`,
+    );
+
+    function generateSineWave(yBase, amp, freq, phase, fillCol) {
+      let pts = `-50,450 `;
+      for (let x = -50; x <= 850; x += 30) {
+        const py = yBase + Math.sin((x + phase) * freq) * amp;
+        pts += `${x},${py.toFixed(1)} `;
+      }
+      pts += `850,450`;
+      return `<polygon points="${pts}" fill="${fillCol}" ${VectorHelpers.microStroke(fillCol)} />`;
+    }
+
+    function generateSingleDune(
+      yStart,
+      peakX,
+      peakY,
+      yEnd,
+      colLit,
+      colShadow,
+      isRightShadow,
+      rng,
+    ) {
+      let dune = `<g stroke-linejoin="round">`;
+      dune += `<polygon points="-50,450 -50,${yStart} ${peakX},${peakY} 850,${yEnd} 850,450" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
+
+      const dir = isRightShadow ? 1 : -1;
+      const spineBaseX = isRightShadow
+        ? peakX + (850 - peakX) * rng.rangeFloat(0.25, 0.45)
+        : peakX - (peakX - -50) * rng.rangeFloat(0.25, 0.45);
+
+      const numSegments = rng.chance(0.5) ? 2 : 3;
+      let chainedCurve = "";
+
+      if (numSegments === 2) {
+        const midY = peakY + (450 - peakY) * rng.rangeFloat(0.42, 0.58);
+        const swing1 = rng.range(40, 110) * dir;
+        const midX = peakX + (spineBaseX - peakX) * 0.45 + swing1;
+
+        const c1x = peakX + rng.range(-20, 30) * dir;
+        const c1y = peakY + (midY - peakY) * rng.rangeFloat(0.3, 0.5);
+        const c2x = midX + rng.range(30, 80) * dir;
+        const c2y = peakY + (midY - peakY) * rng.rangeFloat(0.6, 0.85);
+
+        const swing2 = rng.range(30, 90) * -dir;
+        const c3x = midX + swing2;
+        const c3y = midY + (450 - midY) * rng.rangeFloat(0.3, 0.5);
+        const c4x = spineBaseX + rng.range(-30, 30) * dir;
+        const c4y = midY + (450 - midY) * rng.rangeFloat(0.65, 0.9);
+
+        chainedCurve =
+          `C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${midX.toFixed(1)},${midY.toFixed(1)} ` +
+          `C ${c3x.toFixed(1)},${c3y.toFixed(1)} ${c4x.toFixed(1)},${c4y.toFixed(1)} ${spineBaseX.toFixed(1)},450`;
+      } else {
+        const y1 = peakY + (450 - peakY) * 0.33;
+        const y2 = peakY + (450 - peakY) * 0.67;
+
+        const s1 = rng.range(45, 120) * dir;
+        const s2 = rng.range(40, 105) * -dir;
+
+        const m1x = peakX + (spineBaseX - peakX) * 0.3 + s1;
+        const m2x = peakX + (spineBaseX - peakX) * 0.7 + s2;
+
+        const cp1x = peakX + rng.range(-15, 30) * dir,
+          cp1y = peakY + (y1 - peakY) * 0.4;
+        const cp2x = m1x + rng.range(20, 60) * dir,
+          cp2y = peakY + (y1 - peakY) * 0.8;
+
+        const cp3x = m1x - rng.range(25, 60) * dir,
+          cp3y = y1 + (y2 - y1) * 0.4;
+        const cp4x = m2x + rng.range(25, 60) * -dir,
+          cp4y = y1 + (y2 - y1) * 0.8;
+
+        const cp5x = m2x + rng.range(-30, 30) * dir,
+          cp5y = y2 + (450 - y2) * 0.4;
+        const cp6x = spineBaseX + rng.range(-25, 25) * dir,
+          cp6y = y2 + (450 - y2) * 0.85;
+
+        chainedCurve =
+          `C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${m1x.toFixed(1)},${y1.toFixed(1)} ` +
+          `C ${cp3x.toFixed(1)},${cp3y.toFixed(1)} ${cp4x.toFixed(1)},${cp4y.toFixed(1)} ${m2x.toFixed(1)},${y2.toFixed(1)} ` +
+          `C ${cp5x.toFixed(1)},${cp5y.toFixed(1)} ${cp6x.toFixed(1)},${cp6y.toFixed(1)} ${spineBaseX.toFixed(1)},450`;
+      }
+
+      if (!isRightShadow) {
+        dune += `<path d="M -50,${yStart} L ${peakX},${peakY} ${chainedCurve} L -50,450 Z" fill="${colShadow}" ${VectorHelpers.microStroke(colShadow)} />`;
+      } else {
+        dune += `<path d="M ${peakX},${peakY} ${chainedCurve} L 850,450 L 850,${yEnd} Z" fill="${colShadow}" ${VectorHelpers.microStroke(colShadow)} />`;
+      }
+
+      dune += `</g>`;
+      return dune;
+    }
+
+    const bg1Y = 145 + rng.range(-14, 14);
+    const bg1Amp = rng.range(14, 28);
+    const bg1Freq = rng.rangeFloat(0.0045, 0.0085);
+    const bg1Phase = rng.range(0, 1200);
+
+    const bg2Y = 175 + rng.range(-14, 14);
+    const bg2Amp = rng.range(18, 34);
+    const bg2Freq = rng.rangeFloat(0.0055, 0.0095);
+    const bg2Phase = rng.range(0, 1200);
+
+    const bg3Y = 205 + rng.range(-14, 14);
+    const bg3Amp = rng.range(22, 40);
+    const bg3Freq = rng.rangeFloat(0.0065, 0.011);
+    const bg3Phase = rng.range(0, 1200);
+
+    const bgWaves = `
+      ${VectorHelpers.blur(generateSineWave(bg1Y, bg1Amp, bg1Freq, bg1Phase, p[2]), 3.5, 0.7)}
+      ${VectorHelpers.blur(generateSineWave(bg2Y, bg2Amp, bg2Freq, bg2Phase, p[3]), 2.5, 0.85)}
+      ${VectorHelpers.blur(generateSineWave(bg3Y, bg3Amp, bg3Freq, bg3Phase, p[2]), 1.5, 0.95)}
+    `;
+    const layer1 = VectorHelpers.layer(1, bgWaves);
+
+    const m1PeakX = rng.range(240, 360);
+    const m1PeakY = rng.range(175, 205);
+    const d1 = VectorHelpers.shadow(
+      generateSingleDune(
+        245,
+        m1PeakX,
+        m1PeakY,
+        260,
+        p[3],
+        p[1],
+        false,
+        rng,
+      ),
+      "dune1",
+    );
+
+    const m2PeakX = rng.range(500, 640);
+    const m2PeakY = rng.range(210, 240);
+    const d2 = VectorHelpers.shadow(
+      generateSingleDune(
+        280,
+        m2PeakX,
+        m2PeakY,
+        295,
+        p[4],
+        p[2],
+        true,
+        rng,
+      ),
+      "dune2",
+    );
+    const layer2 = VectorHelpers.layer(2, `${d1}${d2}`);
+
+    const m3PeakX = rng.range(280, 420);
+    const m3PeakY = rng.range(250, 280);
+    const d3 = VectorHelpers.shadow(
+      generateSingleDune(
+        320,
+        m3PeakX,
+        m3PeakY,
+        335,
+        p[3],
+        p[2],
+        false,
+        rng,
+      ),
+      "dune3",
+    );
+
+    const m4PeakX = rng.range(520, 660);
+    const m4PeakY = rng.range(290, 320);
+    const d4 = VectorHelpers.shadow(
+      generateSingleDune(
+        360,
+        m4PeakX,
+        m4PeakY,
+        375,
+        p[4],
+        p[3],
+        true,
+        rng,
+      ),
+      "dune4",
+    );
+    const layer3 = VectorHelpers.layer(3, `${d3}${d4}`);
+
+    const fgY = 405 + rng.range(-5, 5);
+    const fgAmp = 16 + rng.range(-3, 3);
+    const fgPhase = rng.range(80, 180);
+    const layer4 = VectorHelpers.layer(
+      4,
+      generateSineWave(fgY, fgAmp, 0.009, fgPhase, p[4]),
+    ).apply_shadow("duneFg");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Catacombs: (rng, p) => {
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<rect width="100%" height="100%" fill="${p[0]}" />
+      <circle cx="400" cy="240" r="12" fill="${p[4]}" style="filter: blur(2px);" />`,
+    );
+    function drawArch(i) {
+      const pad = i * 45,
+        col = p[i];
+      return `<path d="M ${pad},450 L ${pad},${150 + i * 20} Q 400,${i * 20} ${800 - pad},${150 + i * 20} L ${800 - pad},450 Z" fill="none" stroke="${col}" stroke-width="18" />`;
+    }
+    const layer1 = VectorHelpers.layer(1, drawArch(4)).apply_shadow(
+      "crypt",
+    );
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${drawArch(3)}${drawArch(2)}`,
+    ).apply_shadow("crypt");
+    const layer3 = VectorHelpers.layer(3, drawArch(1)).apply_shadow(
+      "crypt",
+    );
+    const layer4 = VectorHelpers.layer(4, drawArch(0)).apply_shadow(
+      "crypt",
+    );
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Labyrinth: (rng, p) => {
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs>
+        <linearGradient id="treadGrad-${rng.seed}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${p[4]}"/>
+          <stop offset="100%" stop-color="${p[3]}"/>
+        </linearGradient>
+        <linearGradient id="riserGrad-${rng.seed}" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="${p[3]}"/>
+          <stop offset="100%" stop-color="${p[2]}"/>
+        </linearGradient>
+        <linearGradient id="wallOuterGrad-${rng.seed}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${p[1]}"/>
+          <stop offset="100%" stop-color="${p[0]}"/>
+        </linearGradient>
+        <linearGradient id="wallInnerGrad-${rng.seed}" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="${p[0]}"/>
+          <stop offset="100%" stop-color="${p[2]}"/>
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="${p[0]}" />
+      <circle cx="400" cy="225" r="180" fill="${p[2]}" opacity="0.25" style="filter: blur(32px);" />`,
+    );
+
+    const tg = `url(#treadGrad-${rng.seed})`;
+    const rg = `url(#riserGrad-${rng.seed})`;
+    const wo = `url(#wallOuterGrad-${rng.seed})`;
+    const wi = `url(#wallInnerGrad-${rng.seed})`;
+
+    let figure = `
+      <polygon points="180,414 450,618 450,700 180,496" fill="${wo}"/>
+      <polygon points="450,618 720,414 720,496 450,700" fill="${wo}"/>
+      <polygon points="450,300 600,414 600,450 450,336" fill="${wi}"/>
+      <polygon points="450,300 300,414 300,450 450,336" fill="${wi}"/>
+      <polygon points="300,414 450,528 450,600 300,486" fill="${wi}"/>
+      <polygon points="450,528 600,414 600,486 450,600" fill="${wi}"/>
+
+      <!-- Flight 2: East -> North -->
+      <polygon points="720,414 600,414 600,396 720,396" fill="${rg}"/>
+      <polygon points="720,396 600,396 550,376 630,346" fill="${tg}"/>
+      <polygon points="630,346 550,376 550,358 630,328" fill="${rg}"/>
+      <polygon points="630,328 550,358 500,338 540,278" fill="${tg}"/>
+      <polygon points="540,278 500,338 500,320 540,260" fill="${rg}"/>
+      <polygon points="540,260 500,320 450,300 450,210" fill="${tg}"/>
+
+      <!-- Flight 3: North -> West -->
+      <polygon points="450,210 450,300 450,282 450,192" fill="${rg}"/>
+      <polygon points="450,192 450,282 400,338 360,278" fill="${tg}"/>
+      <polygon points="360,278 400,338 400,320 360,260" fill="${rg}"/>
+      <polygon points="360,260 400,320 350,376 270,346" fill="${tg}"/>
+      <polygon points="270,346 350,376 350,358 270,328" fill="${rg}"/>
+      <polygon points="270,328 350,358 300,414 180,414" fill="${tg}"/>
+
+      <!-- Flight 4: West -> South -->
+      <polygon points="180,414 300,414 300,396 180,396" fill="${rg}"/>
+      <polygon points="180,396 300,396 350,452 270,482" fill="${tg}"/>
+      <polygon points="180,414 180,396 270,482 270,500" fill="${wo}"/>
+      <polygon points="270,482 350,452 350,434 270,464" fill="${rg}"/>
+      <polygon points="270,464 350,434 400,490 360,550" fill="${tg}"/>
+      <polygon points="270,482 270,464 360,550 360,568" fill="${wo}"/>
+      <polygon points="360,550 400,490 400,472 360,532" fill="${rg}"/>
+      <polygon points="360,532 400,472 450,528 450,618" fill="${tg}"/>
+      <polygon points="360,550 360,532 450,618 450,636" fill="${wo}"/>
+
+      <!-- Flight 1: South -> East -->
+      <polygon points="450,618 450,528 450,510 450,600" fill="${rg}"/>
+      <polygon points="450,600 450,510 500,490 540,550" fill="${tg}"/>
+      <polygon points="450,618 450,600 540,550 540,568" fill="${wo}"/>
+      <polygon points="540,550 500,490 500,472 540,532" fill="${rg}"/>
+      <polygon points="540,532 500,472 550,452 630,482" fill="${tg}"/>
+      <polygon points="540,550 540,532 630,482 630,500" fill="${wo}"/>
+      <polygon points="630,482 550,452 550,434 630,464" fill="${rg}"/>
+      <polygon points="630,464 550,434 600,414 720,414" fill="${tg}"/>
+      <polygon points="630,482 630,464 720,414 720,432" fill="${wo}"/>
+    `;
+
+    const layer1 = "";
+    const layer2 = "";
+    const layer3 = VectorHelpers.layer(
+      3,
+      `<g transform="translate(400, 225) scale(0.68) translate(-450, -446)"
+          stroke="${p[0]}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+         ${figure}
+       </g>`,
+    ).apply_shadow("penrose");
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Spire: (rng, p) => {
+    const skyId = `spireSky-${rng.seed}`;
+    let skyMarkup = `
+      <defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[2]}"/><stop offset="100%" stop-color="${p[0]}"/></linearGradient></defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />
+    `;
+
+    function drawFlaredSpire(
+      cx,
+      topY,
+      topW,
+      baseW,
+      colLit,
+      colShadow,
+      colTip,
+      botY = 450,
+    ) {
+      const h = botY - topY;
+      const leftBase = cx - baseW / 2;
+      const rightBase = cx + baseW / 2;
+      const leftTop = cx - topW / 2;
+      const rightTop = cx + topW / 2;
+
+      const ctrlY = topY + h * 0.68;
+      const leftCtrlX = cx - topW * 0.8;
+      const rightCtrlX = cx + topW * 0.8;
+
+      let spire = `<g stroke-linejoin="round">`;
+      spire += `<path d="M ${leftTop.toFixed(1)},${topY.toFixed(1)} Q ${leftCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${leftBase.toFixed(1)},${botY} L ${cx.toFixed(1)},${botY} L ${cx.toFixed(1)},${topY.toFixed(1)} Z" fill="${colLit}" ${VectorHelpers.microStroke(colLit)} />`;
+      spire += `<path d="M ${cx.toFixed(1)},${topY.toFixed(1)} L ${cx.toFixed(1)},${botY} L ${rightBase.toFixed(1)},${botY} Q ${rightCtrlX.toFixed(1)},${ctrlY.toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} Z" fill="${colShadow}" ${VectorHelpers.microStroke(colShadow)} />`;
+      spire += `<polygon points="${leftTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY - 6).toFixed(1)} ${rightTop.toFixed(1)},${topY.toFixed(1)} ${cx.toFixed(1)},${(topY + 10).toFixed(1)}" fill="${colTip}" ${VectorHelpers.microStroke(colTip)} />`;
+      spire += `</g>`;
+      return spire;
+    }
+
+    const countRoll = rng.range(1, 100);
+    const count = countRoll <= 45 ? 1 : countRoll <= 90 ? 3 : 2;
+
+    let layer0,
+      layer1 = "",
+      layer2 = "",
+      layer3 = "",
+      layer4 = "";
+
+    if (count === 1) {
+      const mainX = 400 + rng.range(-35, 35);
+      const mainY = 22 + rng.range(-10, 10);
+      const mainW = rng.range(280, 340);
+      skyMarkup += `<g filter="url(#volumetricGlow)"><circle cx="${mainX}" cy="${mainY + 55}" r="90" fill="${p[4]}" opacity="0.32" style="filter: blur(22px);" /></g>`;
+      layer0 = VectorHelpers.layer(0, skyMarkup);
+
+      const distX = (mainX < 400 ? 590 : 210) + rng.range(-20, 20);
+      layer1 = VectorHelpers.layer(
+        1,
+        drawFlaredSpire(distX, 115, 4, 110, p[3], p[2], p[4]),
+      ).apply_blur(3.5, 0.55);
+      layer3 = VectorHelpers.layer(
+        3,
+        drawFlaredSpire(mainX, mainY, 6, mainW, p[3], p[1], p[4]),
+      ).apply_shadow("paperOmni");
+    } else if (count === 2) {
+      const s1X = 290 + rng.range(-30, 30);
+      const s1Y = 26 + rng.range(-10, 10);
+      const s1W = rng.range(250, 300);
+
+      const s2X = 540 + rng.range(-30, 30);
+      const s2Y = 70 + rng.range(-12, 14);
+      const s2W = rng.range(200, 240);
+      skyMarkup += `<g filter="url(#volumetricGlow)"><circle cx="${(s1X + s2X) / 2}" cy="110" r="100" fill="${p[4]}" opacity="0.3" style="filter: blur(24px);" /></g>`;
+      layer0 = VectorHelpers.layer(0, skyMarkup);
+
+      layer2 = VectorHelpers.layer(
+        2,
+        drawFlaredSpire(s2X, s2Y, 5, s2W, p[3], p[1], p[4]),
+      ).apply_shadow("chasmRight");
+      layer3 = VectorHelpers.layer(
+        3,
+        drawFlaredSpire(s1X, s1Y, 6, s1W, p[3], p[1], p[4]),
+      ).apply_shadow("paperOmni");
+    } else {
+      const cX = 400 + rng.range(-25, 25);
+      const cY = 20 + rng.range(-8, 8);
+      const cW = rng.range(250, 300);
+
+      const lX = 195 + rng.range(-25, 25);
+      const lY = 85 + rng.range(-12, 15);
+      const lW = rng.range(160, 200);
+
+      const rX = 605 + rng.range(-25, 25);
+      const rY = 90 + rng.range(-12, 15);
+      const rW = rng.range(160, 200);
+      skyMarkup += `<g filter="url(#volumetricGlow)"><circle cx="${cX}" cy="${cY + 50}" r="95" fill="${p[4]}" opacity="0.3" style="filter: blur(22px);" /></g>`;
+      layer0 = VectorHelpers.layer(0, skyMarkup);
+
+      layer1 = VectorHelpers.layer(
+        1,
+        `${drawFlaredSpire(lX, lY, 4, lW, p[3], p[2], p[4])}${drawFlaredSpire(rX, rY, 4, rW, p[3], p[2], p[4])}`,
+      ).apply_blur(1.5, 0.85);
+      layer3 = VectorHelpers.layer(
+        3,
+        drawFlaredSpire(cX, cY, 6, cW, p[3], p[1], p[4]),
+      ).apply_shadow("paperOmni");
+    }
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Ruins: (rng, p) => {
+    const skyId = `ruinSky-${rng.seed}`;
+    const layer0 = VectorHelpers.layer(
+      0,
+      VectorHelpers.sky(skyId, p[4], p[1]),
+    );
+
+    const layer1 = VectorHelpers.layer(
+      1,
+      `<rect x="250" y="160" width="300" height="20" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+      <rect x="280" y="180" width="25" height="150" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />
+      <rect x="495" y="180" width="25" height="150" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_blur(3, 0.6);
+
+    let cols = "";
+    for (let i = 0; i < 5; i++) {
+      const cx = 100 + i * 140,
+        h = 180 + (i % 3) * 35;
+      cols += `<rect x="${cx}" y="${330 - h}" width="36" height="${h}" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`;
+      cols += `<polygon points="${cx - 8},${330 - h} ${cx + 18},${310 - h} ${cx + 44},${330 - h}" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`;
+    }
+    const layer2 = VectorHelpers.layer(2, cols).apply_shadow("paperDeep");
+    const layer3 = "";
+    const layer4 = VectorHelpers.layer(
+      4,
+      `<polygon points="0,450 0,330 800,330 800,450" fill="${p[0]}" ${VectorHelpers.microStroke(p[0])} />`,
+    ).apply_shadow("paperDeep");
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Abyss: (rng, p) => {
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<rect width="100%" height="100%" fill="${p[0]}" />
+      <rect x="350" y="0" width="100" height="450" fill="${p[4]}" opacity="0.4" style="filter: blur(20px);" />`,
+    );
+    const layer1 = "";
+    const layer2 = VectorHelpers.layer(
+      2,
+      `<polygon points="0,0 360,0 280,450 0,450" fill="${p[1]}" ${VectorHelpers.microStroke(p[1])} />`,
+    ).apply_shadow("chasmLeft");
+    const layer3 = VectorHelpers.layer(
+      3,
+      `<polygon points="800,0 440,0 520,450 800,450" fill="${p[2]}" ${VectorHelpers.microStroke(p[2])} />`,
+    ).apply_shadow("chasmRight");
+    const layer4 = "";
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+
+  Woods: (rng, p) => {
+    const skyId = `woodsSky-${rng.seed}`;
+    const moonX = rng.range(200, 600),
+      moonY = rng.range(90, 170),
+      moonR = rng.range(70, 105);
+
+    const layer0 = VectorHelpers.layer(
+      0,
+      `<defs><linearGradient id="${skyId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${p[4]}"/><stop offset="50%" stop-color="${p[3]}"/><stop offset="100%" stop-color="${p[1]}"/></linearGradient></defs>
+      <rect width="100%" height="100%" fill="url(#${skyId})" />
+      <circle cx="${moonX}" cy="${moonY}" r="${moonR + 32}" fill="${p[4]}" opacity="0.32" style="filter: blur(25px);" />
+      <circle cx="${moonX}" cy="${moonY}" r="${moonR}" fill="${p[4]}" opacity="0.92" />`,
+    );
+
+    const layers = 6;
+    let prevPositions = [];
+    const woodsLayers = ["", "", "", "", "", ""];
+
+    for (let l = 0; l < layers; l++) {
+      const yMin = 180 - l * 20;
+      const spCount = Math.round(8 - l * (6 / (layers - 1)));
+      const step = 800 / spCount;
+
+      let baseOffset = rng.rangeFloat(0.1, 0.4) * step;
+      if (l > 0 && prevPositions.length > 0) {
+        baseOffset = (prevPositions[l - 1] + 0.5 * step) % step;
+      }
+      prevPositions.push(baseOffset);
+
+      const col =
+        l === layers - 1 ? p[0] : l > 3 ? p[1] : l > 1 ? p[2] : p[3];
+      const forest = new UnifiedConiferEngine();
+      for (let i = 0; i < spCount; i++) {
+        const cx =
+          (baseOffset + (i + 0.5) * step + rng.range(-6, 6)) % 800;
+        const sy = rng.range(yMin, yMin + 70);
+        const th = 450 - sy;
+        forest.addPine(cx, 450, th, 3);
+      }
+      woodsLayers[l] = forest.render(col, col);
+    }
+
+    const layer1 = VectorHelpers.layer(
+      1,
+      `${woodsLayers[0]}${woodsLayers[1]}`,
+    ).apply_blur(5, 0.68);
+    const layer2 = VectorHelpers.layer(
+      2,
+      `${woodsLayers[2]}${woodsLayers[3]}`,
+    ).apply_blur(2.7, 0.82);
+    const layer3 = VectorHelpers.layer(3, woodsLayers[4]).apply_blur(
+      1.1,
+      0.93,
+    );
+    const layer4 = VectorHelpers.layer(4, woodsLayers[5]);
+
+    return { layer0, layer1, layer2, layer3, layer4 };
+  },
+};
+
+/** =========================================================================
+ *  MASTER DOM ASSEMBLER & CONTROLLER
+ *  ========================================================================= */
+
+function renderPixelCanvas(noun, adjective, rng, palette) {
+  return renderPixelDitherCanvas(noun, adjective, rng, palette);
+}
+
+/* =========================================================================
+ *  LOW-RES BAYER DITHERING PIPELINE (borrowed from concept.html)
+ *  1. Rasterize the vector scene into a low-resolution buffer.
+ *  2. Quantize luminance to the 5-tone palette using the Bayer matrix.
+ *  3. Upscale to display size with smoothing disabled.
+ *  ======================================================================= */
+function renderPixelDitherCanvas(noun, adjective, rng, palette) {
+  const lw = PIXEL_CONFIG.WIDTH;
+  const lh = PIXEL_CONFIG.HEIGHT;
+
+  const lowResCanvas = document.createElement("canvas");
+  lowResCanvas.width = lw;
+  lowResCanvas.height = lh;
+  const lowResCtx = lowResCanvas.getContext("2d", {
+    willReadFrequently: true,
+  });
+
+  // Include the existing shared filters in the standalone SVG image.
+  const filterDefs = document.querySelector("svg > defs")?.innerHTML || "";
+  const svgMarkup = createVectorSVG(noun, adjective, rng, palette)
+    .replace(
+      "<svg ",
+      `<svg width="${SVG_CONFIG.WIDTH}" height="${SVG_CONFIG.HEIGHT}" `,
+    )
+    .replace("<defs>", `<defs>${filterDefs}`);
+  const svgUrl = URL.createObjectURL(
+    new Blob([svgMarkup], { type: "image/svg+xml" }),
+  );
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = SVG_CONFIG.WIDTH;
+  outCanvas.height = SVG_CONFIG.HEIGHT;
+  const outCtx = outCanvas.getContext("2d");
+  outCtx.fillStyle = palette[0];
+  outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+  const img = new Image();
+
+  // Return a canvas immediately for gallery/inspector callers; the bridge
+  // awaits ready before caching or displaying the completed image.
+  outCanvas.ready = new Promise((resolve, reject) => {
+    img.onload = () => {
+      try {
+        // 1. Rasterize the unchanged scene at low resolution.
+        lowResCtx.fillStyle = palette[0];
+        lowResCtx.fillRect(0, 0, lw, lh);
+        lowResCtx.drawImage(img, 0, 0, lw, lh);
+        const imageData = lowResCtx.getImageData(0, 0, lw, lh);
+        const data = imageData.data;
+        const paletteRGB = palette.map((hex) => {
+          const num = parseInt(hex.slice(1), 16);
+          return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+        });
+
+        // 2. Concept's luminance + Bayer offset + five-tone quantization.
+        for (let y = 0; y < lh; y++) {
+          for (let x = 0; x < lw; x++) {
+            const idx = (y * lw + x) * 4;
+            const lum =
+              0.299 * data[idx] +
+              0.587 * data[idx + 1] +
+              0.114 * data[idx + 2];
+            const offset = BAYER_4X4[y % 4][x % 4] / 16 - 0.5;
+            const level = Math.min(
+              255,
+              Math.max(0, lum + offset * DITHER_CONFIG.STRENGTH),
+            );
+            const color = paletteRGB[Math.floor((level / 256) * 5)];
+            data[idx] = color[0];
+            data[idx + 1] = color[1];
+            data[idx + 2] = color[2];
+          }
+        }
+        lowResCtx.putImageData(imageData, 0, 0);
+
+        // 3. Upscale without smoothing, preserving the Bayer pattern.
+        outCtx.imageSmoothingEnabled = false;
+        outCtx.drawImage(
+          lowResCanvas,
+          0,
+          0,
+          outCanvas.width,
+          outCanvas.height,
+        );
+        resolve(outCanvas);
+      } catch (error) {
+        reject(error);
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      reject(new Error("Unable to rasterize diorama artwork"));
+    };
+    img.src = svgUrl;
+  });
+  outCanvas.ready.catch((error) => console.error("Pixel dither:", error));
+  return outCanvas;
+}
+
+function applyContainerEffects(container, adjective) {
+  const effectClass = ADJECTIVE_EFFECTS[adjective]?.cssClass;
+  if (effectClass) container.classList.add(effectClass);
+}
+const PATTERN_INNER_SVG = {
+  Clockwork: `
+    <!-- Ground-plane subtle hatched shield corners (perfectly tileable) -->
+    <g fill="none" stroke="#e5a93c" stroke-width="0.5" opacity="0.35">
+      <line x1="0" y1="0" x2="15" y2="15" />
+      <line x1="85" y1="85" x2="100" y2="100" />
+      <line x1="0" y1="100" x2="15" y2="85" />
+      <line x1="85" y1="15" x2="100" y2="0" />
+    </g>
+    <!-- 1. Primary 4-Line Parallel Ribbon Bus Trunk (Left x=0 <-> Right x=100) -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 0,20 H 20 L 35,35 H 65 L 80,20 H 100" stroke="#ffd269" stroke-width="1.3" />
+      <path d="M 0,25 H 18 L 33,40 H 67 L 82,25 H 100" stroke="#e5a93c" stroke-width="1.1" />
+      <path d="M 0,30 H 16 L 31,45 H 69 L 84,30 H 100" stroke="#c4881a" stroke-width="1.0" />
+      <path d="M 0,35 H 14 L 29,50 H 71 L 86,35 H 100" stroke="#9e680a" stroke-width="0.9" />
+    </g>
+    <!-- 2. Secondary 2-Line Horizontal Sub-Bus (Left x=0 <-> Right x=100) -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 0,75 H 25 L 35,65 H 65 L 75,75 H 100" stroke="#e5a93c" stroke-width="1.0" />
+      <path d="M 0,80 H 23 L 33,70 H 67 L 77,80 H 100" stroke="#c4881a" stroke-width="0.8" />
+    </g>
+    <!-- 3. Vertical Power & Clock Feeder Buses (Top y=0 <-> Bottom y=100) -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8,0 V 10 L 14,16 V 40 L 8,46 V 100" stroke="#e5a93c" stroke-width="1.0" />
+      <path d="M 13,0 V 8 L 19,14 V 42 L 13,48 V 100" stroke="#c4881a" stroke-width="0.8" />
+      <path d="M 50,0 V 15 L 45,20" stroke="#c4881a" stroke-width="0.8" />
+      <path d="M 45,65 L 50,70 V 100" stroke="#c4881a" stroke-width="0.8" />
+      <path d="M 92,0 V 20 L 96,24 V 76 L 92,80 V 100" stroke="#e5a93c" stroke-width="0.8" />
+    </g>
+    <!-- 4. Fractal Bifurcation Sub-Traces (Internal branch tree) -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 50,35 V 45 L 42,53 V 58" stroke="#ffd269" stroke-width="0.8" />
+      <path d="M 50,45 L 58,53 V 58" stroke="#ffd269" stroke-width="0.8" />
+      <path d="M 29,50 L 25,54 V 62" stroke="#e5a93c" stroke-width="0.7" />
+      <path d="M 71,50 L 75,54 V 62" stroke="#e5a93c" stroke-width="0.7" />
+    </g>
+    <!-- 5. Plated Solder Vias (Concentrically aligned, zero overlaps) -->
+    <g>
+      <circle cx="20" cy="20" r="2.8" fill="#ffd269" /><circle cx="20" cy="20" r="1.2" fill="#331f05" />
+      <circle cx="80" cy="20" r="2.8" fill="#ffd269" /><circle cx="80" cy="20" r="1.2" fill="#331f05" />
+      <circle cx="25" cy="75" r="2.5" fill="#e5a93c" /><circle cx="25" cy="75" r="1.0" fill="#331f05" />
+      <circle cx="75" cy="75" r="2.5" fill="#e5a93c" /><circle cx="75" cy="75" r="1.0" fill="#331f05" />
+      <circle cx="45" cy="20" r="2.2" fill="#e5a93c" /><circle cx="45" cy="20" r="0.9" fill="#331f05" />
+      <circle cx="45" cy="65" r="2.2" fill="#e5a93c" /><circle cx="45" cy="65" r="0.9" fill="#331f05" />
+      <circle cx="25" cy="62" r="2.2" fill="#e5a93c" /><circle cx="25" cy="62" r="0.9" fill="#331f05" />
+      <circle cx="75" cy="62" r="2.2" fill="#e5a93c" /><circle cx="75" cy="62" r="0.9" fill="#331f05" />
+      <circle cx="14" cy="16" r="2.2" fill="#e5a93c" /><circle cx="14" cy="16" r="0.9" fill="#331f05" />
+      <circle cx="8" cy="46" r="2.2" fill="#e5a93c" /><circle cx="8" cy="46" r="0.9" fill="#331f05" />
+    </g>
+    <!-- 6. Surface-Mount Dual-Pad Component Footprints (SMD) -->
+    <g fill="#ffd269" opacity="0.9">
+      <rect x="40" y="57" width="4" height="2" rx="0.3" />
+      <rect x="40" y="63" width="4" height="2" rx="0.3" />
+      <rect x="56" y="57" width="4" height="2" rx="0.3" />
+      <rect x="56" y="63" width="4" height="2" rx="0.3" />
+    </g>
+    <!-- 7. Precision Optical Alignment Fiducial Crosshair -->
+    <g stroke="#ffd269" stroke-width="0.7" fill="none" opacity="0.85">
+      <circle cx="88" cy="50" r="2.5" />
+      <line x1="84" y1="50" x2="92" y2="50" />
+      <line x1="88" y1="46" x2="88" y2="54" />
+    </g>
+  `,
+  Overgrown: `
+    <!-- 1. Master S-Curve Vine Spine (Tileable Left (0,50) <-> Right (100,50)) -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path
+        d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+        stroke="#142b12"
+        stroke-width="3.2"
+      />
+      <path
+        d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+        stroke="#2a5825"
+        stroke-width="2.0"
+      />
+      <path
+        d="M 0,50 C 20,10 35,10 50,50 C 65,90 80,90 100,50"
+        stroke="#529e49"
+        stroke-width="0.8"
+        opacity="0.85"
+      />
+    </g>
+
+    <!-- 2. Golden Spiral Tendril Offshoots at Golden Nodes (u=0.382 and u=0.618) -->
+    <g fill="none" stroke="#3d7e35" stroke-width="0.9" opacity="0.75">
+      <path
+        d="M 39,28 C 45,18 52,16 55,22 C 57,26 53,30 49,28 Q 47,26 49,24"
+      />
+      <path
+        d="M 61,72 C 55,82 48,84 45,78 C 43,74 47,70 51,72 Q 53,74 51,76"
+      />
+    </g>
+
+    <!-- 3. Alternating Curved Rose Thorns along Golden Ratio sequence -->
+    <g fill="#142b12">
+      <path d="M 9,34 Q 4,26 1,24 Q 7,31 12,37 Z" />
+      <path d="M 39,28 Q 38,38 35,44 Q 41,36 43,29 Z" />
+      <path d="M 70,80 Q 72,70 75,64 Q 69,72 67,79 Z" />
+      <path d="M 97,54 Q 99,62 100,66 Q 96,60 94,53 Z" />
+      <path d="M 0,54 Q 2,62 3,66 Q -1,60 -3,53 Z" />
+    </g>
+
+    <!-- 4. Sinuous Botanical Leaves with Golden Angle Ribs -->
+    <g stroke-linejoin="round">
+      <path
+        d="M 20,22 C 10,12 8,-2 22,-8 C 30,2 26,16 20,22 Z"
+        fill="#2d5e28"
+        stroke="#142b12"
+        stroke-width="0.7"
+      />
+      <path
+        d="M 20,22 Q 18,6 22,-8"
+        stroke="#5cb352"
+        stroke-width="0.5"
+        fill="none"
+      />
+
+      <path
+        d="M 50,50 C 38,60 28,62 26,46 C 36,40 46,44 50,50 Z"
+        fill="#356d2f"
+        stroke="#142b12"
+        stroke-width="0.7"
+      />
+      <path
+        d="M 50,50 Q 38,52 26,46"
+        stroke="#5cb352"
+        stroke-width="0.5"
+        fill="none"
+      />
+
+      <path
+        d="M 80,78 C 90,88 92,102 78,108 C 70,98 74,84 80,78 Z"
+        fill="#2d5e28"
+        stroke="#142b12"
+        stroke-width="0.7"
+      />
+      <path
+        d="M 80,78 Q 82,94 78,108"
+        stroke="#5cb352"
+        stroke-width="0.5"
+        fill="none"
+      />
+      <path
+        d="M 80,-22 C 90,-12 92,2 78,8 C 70,-2 74,-16 80,-22 Z"
+        fill="#2d5e28"
+        stroke="#142b12"
+        stroke-width="0.7"
+      />
+      <path
+        d="M 80,-22 Q 82,-6 78,8"
+        stroke="#5cb352"
+        stroke-width="0.5"
+        fill="none"
+      />
+
+      <path
+        d="M 20,122 C 10,112 8,98 22,92 C 30,102 26,116 20,122 Z"
+        fill="#2d5e28"
+        stroke="#142b12"
+        stroke-width="0.7"
+      />
+      <path
+        d="M 20,122 Q 18,106 22,92"
+        stroke="#5cb352"
+        stroke-width="0.5"
+        fill="none"
+      />
+    </g>
+
+    <!-- 5. Golden Ratio Floral Rosettes & Blossoms -->
+    <g>
+      <!-- Flower 1 (u=0.28, Upper Arc Golden Peak) -->
+      <g transform="translate(30, 20)">
+        <circle cx="0" cy="-3.8" r="2.8" fill="#a83244" opacity="0.95" />
+        <circle
+          cx="3.6"
+          cy="-1.2"
+          r="2.8"
+          fill="#bd3a4e"
+          opacity="0.95"
+        />
+        <circle cx="2.3" cy="3.1" r="2.8" fill="#a83244" opacity="0.95" />
+        <circle
+          cx="-2.3"
+          cy="3.1"
+          r="2.8"
+          fill="#912838"
+          opacity="0.95"
+        />
+        <circle
+          cx="-3.6"
+          cy="-1.2"
+          r="2.8"
+          fill="#a83244"
+          opacity="0.95"
+        />
+        <circle cx="0" cy="0" r="1.6" fill="#e5b83b" />
+        <circle cx="0" cy="0" r="0.7" fill="#ffffff" />
+      </g>
+
+      <!-- Flower 2 (u=0.618, Major Golden Ratio Node - Full Radiant Blossom) -->
+      <g transform="translate(61, 72)">
+        <circle cx="0" cy="-4.2" r="3.2" fill="#912838" />
+        <circle cx="4.0" cy="-1.4" r="3.2" fill="#a83244" />
+        <circle cx="2.5" cy="3.4" r="3.2" fill="#bd3a4e" />
+        <circle cx="-2.5" cy="3.4" r="3.2" fill="#a83244" />
+        <circle cx="-4.0" cy="-1.4" r="3.2" fill="#912838" />
+        <circle cx="0" cy="-1.8" r="2.0" fill="#c94458" />
+        <circle cx="1.8" cy="0.6" r="2.0" fill="#c94458" />
+        <circle cx="-1.8" cy="0.6" r="2.0" fill="#c94458" />
+        <circle cx="0" cy="0" r="1.8" fill="#e5b83b" />
+        <circle cx="0" cy="0" r="0.8" fill="#ffffff" />
+      </g>
+
+      <!-- Bud 3 (u=0.92, Delicate Sprouting Rose Bud) -->
+      <g transform="translate(91, 66)">
+        <circle cx="0" cy="0" r="2.4" fill="#a83244" />
+        <circle cx="-0.8" cy="-0.8" r="1.5" fill="#bd3a4e" />
+        <circle cx="0.8" cy="0.8" r="1.0" fill="#e5b83b" />
+        <path d="M 0,2.4 Q -3,5 -2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+        <path d="M 0,2.4 Q 3,5 2,7 Q 0,4 0,2.4 Z" fill="#2a5825" />
+      </g>
+    </g>
+  `,
+};
+
+class LSystemVine {
+  constructor(rng) {
+    this.rng = rng ? () => rng.range(0, 1000) / 1000 : Math.random;
+    this.stems = [];
+    this.thorns = [];
+    this.leaves = [];
+    this.flowers = [];
+    this.flowerCores = [];
+  }
+
+  grow(x, y, angle, length, depth, maxDepth = 4, width = 4) {
+    if (depth > maxDepth || length < 3) return;
+
+    const curveSign =
+      (depth % 2 === 0 ? 1 : -1) * (0.8 + 0.4 * this.rng());
+    const midAngle = angle + curveSign * 0.25;
+    const endAngle = angle + curveSign * 0.1;
+
+    const cp1x = x + Math.cos(angle) * (length * 0.4);
+    const cp1y = y + Math.sin(angle) * (length * 0.4);
+    const cp2x = x + Math.cos(midAngle) * (length * 0.8);
+    const cp2y = y + Math.sin(midAngle) * (length * 0.8);
+    const endX = x + Math.cos(endAngle) * length;
+    const endY = y + Math.sin(endAngle) * length;
+
+    this.stems.push(
+      `M ${x.toFixed(1)},${y.toFixed(1)} C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}`,
+    );
+
+    const midX = (x + 3 * cp1x + 3 * cp2x + endX) / 8;
+    const midY = (y + 3 * cp1y + 3 * cp2y + endY) / 8;
+
+    // 1. Thorns (alternating at internodes)
+    const thornSide = depth % 2 === 0 ? 1 : -1;
+    const tAngle = midAngle + thornSide * (Math.PI * 0.65);
+    const tLen = Math.max(3, length * 0.22);
+    const tTipX = midX + Math.cos(tAngle) * tLen;
+    const tTipY = midY + Math.sin(tAngle) * tLen;
+    const tBase1X = midX + Math.cos(midAngle) * (tLen * 0.4);
+    const tBase1Y = midY + Math.sin(midAngle) * (tLen * 0.4);
+    const tBase2X = midX - Math.cos(midAngle) * (tLen * 0.4);
+    const tBase2Y = midY - Math.sin(midAngle) * (tLen * 0.4);
+    this.thorns.push(
+      `M ${tBase1X.toFixed(1)},${tBase1Y.toFixed(1)} Q ${midX.toFixed(1)},${midY.toFixed(1)} ${tTipX.toFixed(1)},${tTipY.toFixed(1)} Q ${midX.toFixed(1)},${midY.toFixed(1)} ${tBase2X.toFixed(1)},${tBase2Y.toFixed(1)} Z`,
+    );
+
+    // 2. Leaves (lanceolate with golden angle)
+    const leafSide = -thornSide;
+    const lAngle = midAngle + leafSide * (Math.PI * 0.42);
+    const lLen = Math.max(6, length * 0.55);
+    const lTipX = midX + Math.cos(lAngle) * lLen;
+    const lTipY = midY + Math.sin(lAngle) * lLen;
+    const lPerpX = -Math.sin(lAngle) * (lLen * 0.35);
+    const lPerpY = Math.cos(lAngle) * (lLen * 0.35);
+    const cpL1x = midX + Math.cos(lAngle) * (lLen * 0.4) + lPerpX;
+    const cpL1y = midY + Math.sin(lAngle) * (lLen * 0.4) + lPerpY;
+    const cpL2x = midX + Math.cos(lAngle) * (lLen * 0.4) - lPerpX;
+    const cpL2y = midY + Math.sin(lAngle) * (lLen * 0.4) - lPerpY;
+    this.leaves.push(
+      `M ${midX.toFixed(1)},${midY.toFixed(1)} Q ${cpL1x.toFixed(1)},${cpL1y.toFixed(1)} ${lTipX.toFixed(1)},${lTipY.toFixed(1)} Q ${cpL2x.toFixed(1)},${cpL2y.toFixed(1)} ${midX.toFixed(1)},${midY.toFixed(1)} Z`,
+    );
+
+    // 3. Flower rosettes at sub-terminal nodes or deep branch tips
+    if (depth >= maxDepth - 1 || (depth >= 2 && this.rng() < 0.4)) {
+      const fRadius = Math.max(2.2, 5.5 - depth * 0.8);
+      let flowerPetals = "";
+      for (let p = 0; p < 5; p++) {
+        const pAng = (p * Math.PI * 2) / 5 + depth * 0.5;
+        const pcx = endX + Math.cos(pAng) * (fRadius * 0.8);
+        const pcy = endY + Math.sin(pAng) * (fRadius * 0.8);
+        const r = fRadius * 0.7;
+        flowerPetals += `M ${(pcx - r).toFixed(1)},${pcy.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(pcx + r).toFixed(1)},${pcy.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(pcx - r).toFixed(1)},${pcy.toFixed(1)} `;
+      }
+      this.flowers.push(flowerPetals.trim());
+      const cr = fRadius * 0.4;
+      this.flowerCores.push(
+        `M ${(endX - cr).toFixed(1)},${endY.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(endX + cr).toFixed(1)},${endY.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(endX - cr).toFixed(1)},${endY.toFixed(1)}`,
+      );
+    }
+
+    // Recursive branching: Golden Ratio branch length decay (1 / phi ≈ 0.618)
+    const decay = 0.68 + 0.08 * this.rng();
+    const branchAngle1 = endAngle + 0.42 + 0.15 * this.rng();
+    const branchAngle2 = endAngle - 0.38 - 0.15 * this.rng();
+
+    this.grow(
+      endX,
+      endY,
+      branchAngle1,
+      length * decay,
+      depth + 1,
+      maxDepth,
+      width * 0.7,
+    );
+    if (depth < maxDepth - 1) {
+      this.grow(
+        endX,
+        endY,
+        branchAngle2,
+        length * (decay * 0.75),
+        depth + 2,
+        maxDepth,
+        width * 0.55,
+      );
+    }
+  }
+
+  render() {
+    const stemD = this.stems.join(" ");
+    const thornD = this.thorns.join(" ");
+    const leafD = this.leaves.join(" ");
+    const flowerD = this.flowers.join(" ");
+    const coreD = this.flowerCores.join(" ");
+
+    return `
+      <g class="overgrown-frame-vines" style="pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));">
+        <!-- Unified Stem Spine Paths -->
+        <path d="${stemD}" fill="none" stroke="#122410" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="${stemD}" fill="none" stroke="#254f21" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="${stemD}" fill="none" stroke="#488c40" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+        
+        <!-- Unified Thorns Path -->
+        <path d="${thornD}" fill="#122410" />
+
+        <!-- Unified Leaves Path -->
+        <path d="${leafD}" fill="#2e6629" stroke="#122410" stroke-width="0.8" stroke-linejoin="round" />
+
+        <!-- Unified Flowers & Rosettes Path -->
+        <path d="${flowerD}" fill="#a83244" opacity="0.95" />
+        <path d="${coreD}" fill="#e5b83b" />
+      </g>
+    `;
+  }
+}
+
+function getOvergrownFrameVines(rng) {
+  const lsys = new LSystemVine(rng);
+  // Top-Left corner
+  lsys.grow(-5, -5, Math.PI * 0.22, 65, 0, 4, 5);
+  // Top-Right corner
+  lsys.grow(805, -5, Math.PI * 0.78, 62, 0, 4, 5);
+  // Bottom-Left corner
+  lsys.grow(-5, 455, -Math.PI * 0.22, 68, 0, 4, 5);
+  // Bottom-Right corner
+  lsys.grow(805, 455, -Math.PI * 0.78, 64, 0, 4, 5);
+  // Left side runner
+  lsys.grow(-2, 225, Math.PI * 0.05, 40, 1, 3, 3);
+  // Right side runner
+  lsys.grow(802, 210, Math.PI * 0.95, 38, 1, 3, 3);
+
+  return lsys.render();
+}
+
+class FractalSnowflakeEngine {
+  constructor() {
+    this.spines = [];
+    this.gems = [];
+    this.cores = [];
+  }
+
+  addSnowflake(cx, cy, radius, complexity = 2) {
+    // 6-fold radial symmetry (exact 60° sectors)
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const endX = cx + cosA * radius;
+      const endY = cy + sinA * radius;
+
+      // Main stellar spine ray
+      this.spines.push(
+        `M ${cx.toFixed(1)},${cy.toFixed(1)} L ${endX.toFixed(1)},${endY.toFixed(1)}`,
+      );
+
+      // Primary chevron barbs along golden ratio intervals
+      const barbPositions = [0.4, 0.7, 0.9];
+      for (const t of barbPositions) {
+        const bx = cx + cosA * (radius * t);
+        const by = cy + sinA * (radius * t);
+        const bLen = radius * (1 - t) * 0.75;
+        if (bLen < 2) continue;
+
+        const lAng = angle + Math.PI / 3;
+        const rAng = angle - Math.PI / 3;
+        const lTipX = bx + Math.cos(lAng) * bLen;
+        const lTipY = by + Math.sin(lAng) * bLen;
+        const rTipX = bx + Math.cos(rAng) * bLen;
+        const rTipY = by + Math.sin(rAng) * bLen;
+
+        this.spines.push(
+          `M ${bx.toFixed(1)},${by.toFixed(1)} L ${lTipX.toFixed(1)},${lTipY.toFixed(1)} M ${bx.toFixed(1)},${by.toFixed(1)} L ${rTipX.toFixed(1)},${rTipY.toFixed(1)}`,
+        );
+
+        // Sub-barbs if complexity >= 2
+        if (complexity >= 2 && t === 0.7 && bLen > 4) {
+          const subLen = bLen * 0.45;
+          const slx = bx + Math.cos(lAng) * (bLen * 0.5);
+          const sly = by + Math.sin(lAng) * (bLen * 0.5);
+          const srx = bx + Math.cos(rAng) * (bLen * 0.5);
+          const sry = by + Math.sin(rAng) * (bLen * 0.5);
+          this.spines.push(
+            `M ${slx.toFixed(1)},${sly.toFixed(1)} L ${(slx + cosA * subLen).toFixed(1)},${(sly + sinA * subLen).toFixed(1)} ` +
+              `M ${srx.toFixed(1)},${sry.toFixed(1)} L ${(srx + cosA * subLen).toFixed(1)},${(sry + sinA * subLen).toFixed(1)}`,
+          );
+        }
+      }
+
+      // Tip diamond gem
+      const tipGemSize = Math.max(1.5, radius * 0.08);
+      const tgX = endX + cosA * tipGemSize;
+      const tgY = endY + sinA * tipGemSize;
+      const perpX = -sinA * (tipGemSize * 0.6);
+      const perpY = cosA * (tipGemSize * 0.6);
+      this.gems.push(
+        `M ${endX.toFixed(1)},${endY.toFixed(1)} L ${(endX + perpX).toFixed(1)},${(endY + perpY).toFixed(1)} L ${tgX.toFixed(1)},${tgY.toFixed(1)} L ${(endX - perpX).toFixed(1)},${(endY - perpY).toFixed(1)} Z`,
+      );
+    }
+
+    // Central 6-point star core
+    const coreR = Math.max(3, radius * 0.22);
+    let starD = "";
+    for (let p = 0; p < 12; p++) {
+      const r = p % 2 === 0 ? coreR : coreR * 0.5;
+      const pAng = (p * Math.PI) / 6;
+      const px = cx + Math.cos(pAng) * r;
+      const py = cy + Math.sin(pAng) * r;
+      starD += `${p === 0 ? "M" : "L"} ${px.toFixed(1)},${py.toFixed(1)} `;
+    }
+    this.gems.push(starD.trim() + " Z");
+
+    const cr = Math.max(1.2, coreR * 0.4);
+    this.cores.push(
+      `M ${(cx - cr).toFixed(1)},${cy.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(cx + cr).toFixed(1)},${cy.toFixed(1)} A ${cr.toFixed(1)} ${cr.toFixed(1)} 0 1 0 ${(cx - cr).toFixed(1)},${cy.toFixed(1)}`,
+    );
+  }
+
+  render() {
+    const spineD = this.spines.join(" ");
+    const gemD = this.gems.join(" ");
+    const coreD = this.cores.join(" ");
+
+    return `
+      <g class="frozen-frame-snowflakes" style="pointer-events: none; filter: drop-shadow(0 2px 10px rgba(10,34,56,0.7));">
+        <!-- Halo & Outer Rays -->
+        <path d="${spineD}" fill="none" stroke="#0a2238" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="${spineD}" fill="none" stroke="#4fa1db" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="${spineD}" fill="none" stroke="#ffffff" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+
+        <!-- Snowflake Gems & Central Star Core -->
+        <path d="${gemD}" fill="#d9f2ff" stroke="#1c4a73" stroke-width="0.6" stroke-linejoin="round" opacity="0.95" />
+        <path d="${coreD}" fill="#ffffff" />
+      </g>
+    `;
+  }
+}
+
+function getFrozenFrameSnowflakes(rng) {
+  const engine = new FractalSnowflakeEngine();
+  // 4 Corner Major Stellar Snowflakes
+  engine.addSnowflake(34, 34, 30, 2);
+  engine.addSnowflake(766, 34, 30, 2);
+  engine.addSnowflake(34, 416, 30, 2);
+  engine.addSnowflake(766, 416, 30, 2);
+
+  // Delicate Satellite Micro-Snowflakes
+  engine.addSnowflake(74, 24, 13, 1);
+  engine.addSnowflake(24, 76, 12, 1);
+  engine.addSnowflake(726, 24, 13, 1);
+  engine.addSnowflake(776, 76, 12, 1);
+  engine.addSnowflake(74, 426, 13, 1);
+  engine.addSnowflake(24, 374, 12, 1);
+  engine.addSnowflake(726, 426, 13, 1);
+  engine.addSnowflake(776, 374, 12, 1);
+
+  // Subtle Top/Bottom Centered Flurries
+  engine.addSnowflake(400, 18, 14, 1);
+  engine.addSnowflake(400, 432, 14, 1);
+
+  return engine.render();
+}
+
+function createVectorSVG(noun, adjective, rng, palette) {
+  const effectConfig = ADJECTIVE_EFFECTS[adjective] || {};
+  const filterName = effectConfig.svgFilter;
+  const filterAttr = filterName ? `filter="url(#${filterName})"` : "";
+  const clipId = `clip-${rng.seed}`;
+
+  const generator = GenVectorBG[noun] || GenVectorBG[NOUNS.Vale];
+  const bgContent = generator(rng, palette);
+
+  let skyMarkup = "";
+  let terrainMarkup = "";
+
+  if (typeof bgContent === "object" && bgContent !== null) {
+    skyMarkup = bgContent.layer0 ? bgContent.layer0.render() : "";
+
+    if (effectConfig.selectiveSurface) {
+      // Keep far background (layer1) soft & atmospheric; apply tactile material filter to midground & foreground terrain/structures
+      const farBg = bgContent.layer1 ? bgContent.layer1.render() : "";
+
+      const hasPattern = Boolean(effectConfig.hasPattern);
+      const patternInnerSvg = PATTERN_INNER_SVG[adjective] || "";
+      const patternPrefix = effectConfig.patternPrefix || "circuit";
+      const patternBlendMode =
+        effectConfig.patternBlendMode || "difference";
+      const layerOpacities = effectConfig.layerOpacities || {
+        layer2: 0.4,
+        layer3: 0.55,
+        layer4: 0.65,
+      };
+
+      const surfaceLayerConfigs = [
+        {
+          key: "layer2",
+          data: bgContent.layer2,
+          dx: 0,
+          dy: 0,
+          rot: 0,
+          scale: 0.85,
+          opacity: layerOpacities.layer2,
+        },
+        {
+          key: "layer3",
+          data: bgContent.layer3,
+          dx: 48,
+          dy: 62,
+          rot: 90,
+          scale: 1.05,
+          opacity: layerOpacities.layer3,
+        },
+        {
+          key: "layer4",
+          data: bgContent.layer4,
+          dx: -35,
+          dy: 28,
+          rot: 0,
+          scale: 1.35,
+          opacity: layerOpacities.layer4,
+        },
+      ];
+
+      let extraDefs = "";
+      const surfaceLayerElements = [];
+
+      surfaceLayerConfigs.forEach((cfg) => {
+        if (!cfg.data) return;
+        const markup = cfg.data.render();
+        if (!markup) return;
+
+        if (hasPattern) {
+          const patternId = `${patternPrefix}-${rng.seed}-${cfg.key}`;
+          const maskId = `mask-${rng.seed}-${cfg.key}`;
+          const rotTransform = cfg.rot ? ` rotate(${cfg.rot} 50 50)` : "";
+          const maskMarkup = markup
+            .replace(
+              /<g filter="url\(#waterShimmer\)">[\s\S]*?<\/g>/gi,
+              "",
+            )
+            .replace(/filter:\s*[^;"]+;?/gi, "")
+            .replace(/filter="[^"]*"/gi, "");
+
+          extraDefs += `<pattern id="${patternId}" width="100" height="100" patternUnits="userSpaceOnUse" patternTransform="translate(${cfg.dx}, ${cfg.dy})${rotTransform} scale(${cfg.scale})">${patternInnerSvg}</pattern>\n`;
+          extraDefs += `<mask id="${maskId}" maskUnits="userSpaceOnUse"><g filter="url(#maskToWhite)">${maskMarkup}</g></mask>\n`;
+          const decor = `<rect width="100%" height="100%" fill="url(#${patternId})" mask="url(#${maskId})" style="mix-blend-mode: ${patternBlendMode}; opacity: ${cfg.opacity}; pointer-events: none;" />`;
+          surfaceLayerElements.push(
+            `<g class="${cfg.key}" style="isolation: isolate;">${markup}${decor}</g>`,
+          );
+        } else {
+          surfaceLayerElements.push(markup);
+        }
+      });
+
+      const surfaceStackMarkup = surfaceLayerElements.join("\n");
+      const defsMarkup = extraDefs ? `<defs>${extraDefs}</defs>\n` : "";
+
+      terrainMarkup = `${defsMarkup}${farBg}\n<g class="surface-stack" ${filterAttr}>${surfaceStackMarkup}</g>`;
+    } else {
+      const terrainLayers = [
+        bgContent.layer1,
+        bgContent.layer2,
+        bgContent.layer3,
+        bgContent.layer4,
+      ]
+        .map((l) => (l ? l.render() : ""))
+        .filter(Boolean)
+        .join("\n");
+
+      terrainMarkup = `<g class="terrain-stack" ${filterAttr}>${terrainLayers}</g>`;
+    }
+  } else {
+    terrainMarkup = `<g class="midground" ${filterAttr}>${bgContent}</g>`;
+  }
+
+  const frameOverlay = effectConfig.getFrameOverlay
+    ? effectConfig.getFrameOverlay(rng)
+    : "";
+
+  return `
+    <svg viewBox="${SVG_CONFIG.VIEWBOX}" xmlns="http://www.w3.org/2000/svg" style="overflow: hidden; border-radius: 6px;">
+      <defs>
+        <clipPath id="${clipId}">
+          <rect x="0" y="0" width="${SVG_CONFIG.WIDTH}" height="${SVG_CONFIG.HEIGHT}" />
+        </clipPath>
+      </defs>
+      <g clip-path="url(#${clipId})">
+        ${skyMarkup}
+        ${terrainMarkup}
+        ${frameOverlay}
+      </g>
+    </svg>
+  `;
+}
+
+function openTileFromDataset(event) {
+  const tile = event.currentTarget;
+  openInspector(
+    tile.dataset.adjective,
+    tile.dataset.noun,
+    tile.dataset.category,
+    tile.dataset.engine,
+  );
+}
+
+function makeArtTile(adjective, noun, category, engine, label) {
+  const tile = document.createElement("button");
+  tile.type = "button";
+  tile.className = "art-container";
+  tile.dataset.adjective = adjective;
+  tile.dataset.noun = noun;
+  tile.dataset.category = category;
+  tile.dataset.engine = engine;
+  tile.setAttribute("aria-label", label);
+  tile.addEventListener("click", openTileFromDataset);
+  return tile;
+}
+
+function buildCard(adjective, noun, category, engineMode) {
+  const fullName = `The ${adjective} ${noun}`;
+  const rng = new SeededRNG(fullName);
+  const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.Fractured];
+
+  const card = document.createElement("div");
+  card.className = "art-card";
+  card.dataset.name = fullName;
+  card.dataset.noun = noun;
+  card.dataset.adjective = adjective;
+  card.dataset.category = category;
+
+  // Card Header
+  const headerDiv = document.createElement("div");
+  headerDiv.className = "art-header";
+
+  const title = document.createElement("h3");
+  title.className = "art-title";
+  title.innerText = fullName;
+
+  const badgeWrapper = document.createElement("div");
+  badgeWrapper.className = "header-badges";
+
+  const badge = document.createElement("span");
+  badge.className = `art-badge cat-${category}`;
+  badge.innerText = category;
+
+  badgeWrapper.appendChild(badge);
+  headerDiv.appendChild(title);
+  headerDiv.appendChild(badgeWrapper);
+  card.appendChild(headerDiv);
+
+  // Media Wrapper
+  const mediaWrapper = document.createElement("div");
+  mediaWrapper.className = "card-media-wrapper";
+
+  if (engineMode === ENGINE_MODE.DUAL) {
+    const pixelContainer = makeArtTile(
+      adjective,
+      noun,
+      category,
+      ENGINE_MODE.PIXEL,
+      `Inspect pixel diorama: The ${adjective} ${noun}`,
+    );
+    const pixelLabel = document.createElement("span");
+    pixelLabel.className = "engine-label pixel";
+    pixelLabel.innerText = "PIXEL";
+    pixelContainer.appendChild(pixelLabel);
+
+    const pRng = new SeededRNG(fullName);
+    pixelContainer.appendChild(
+      renderPixelCanvas(noun, adjective, pRng, palette),
+    );
+
+    const vectorContainer = makeArtTile(
+      adjective,
+      noun,
+      category,
+      ENGINE_MODE.VECTOR,
+      `Inspect vector diorama: The ${adjective} ${noun}`,
+    );
+    applyContainerEffects(vectorContainer, adjective);
+
+    const vectorLabel = document.createElement("span");
+    vectorLabel.className = "engine-label vector";
+    vectorLabel.innerText = "VECTOR";
+    vectorContainer.appendChild(vectorLabel);
+    vectorContainer.insertAdjacentHTML(
+      "beforeend",
+      createVectorSVG(noun, adjective, rng, palette),
+    );
+
+    mediaWrapper.appendChild(pixelContainer);
+    mediaWrapper.appendChild(vectorContainer);
+  } else if (engineMode === ENGINE_MODE.PIXEL) {
+    const container = makeArtTile(
+      adjective,
+      noun,
+      category,
+      ENGINE_MODE.PIXEL,
+      `Inspect pixel diorama: The ${adjective} ${noun}`,
+    );
+    container.appendChild(
+      renderPixelCanvas(noun, adjective, rng, palette),
+    );
+    mediaWrapper.appendChild(container);
+  } else {
+    const container = makeArtTile(
+      adjective,
+      noun,
+      category,
+      ENGINE_MODE.VECTOR,
+      `Inspect vector diorama: The ${adjective} ${noun}`,
+    );
+    applyContainerEffects(container, adjective);
+    container.innerHTML = createVectorSVG(noun, adjective, rng, palette);
+    mediaWrapper.appendChild(container);
+  }
+
+  card.appendChild(mediaWrapper);
+
+  // Card Footer
+  const footer = document.createElement("div");
+  footer.className = "card-footer";
+
+  const dots = document.createElement("div");
+  dots.className = "palette-dots";
+  palette.forEach((hex) => {
+    const dot = document.createElement("span");
+    dot.className = "p-dot";
+    dot.style.backgroundColor = hex;
+    dot.title = hex;
+    dots.appendChild(dot);
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+
+  const inspectBtn = document.createElement("button");
+  inspectBtn.className = "btn-action";
+  inspectBtn.innerText = "Inspect";
+  inspectBtn.onclick = (e) => {
+    e.stopPropagation();
+    openInspector(
+      adjective,
+      noun,
+      category,
+      engineMode === ENGINE_MODE.DUAL ? ENGINE_MODE.VECTOR : engineMode,
+    );
+  };
+
+  actions.appendChild(inspectBtn);
+  footer.appendChild(dots);
+  footer.appendChild(actions);
+  card.appendChild(footer);
+
+  return card;
+}
+
+// UI Elements
+const gallery = document.getElementById("gallery");
+const engineSelect = document.getElementById("engine-select");
+const categorySelect = document.getElementById("category-select");
+const adjectiveSelect = document.getElementById("adjective-select");
+const searchInput = document.getElementById("search-input");
+const hudMatchCount = document.getElementById("hud-match-count");
+const hudEngineName = document.getElementById("hud-engine-name");
+const hudPaletteName = document.getElementById("hud-palette-name");
+
+// Modal Elements
+const modal = document.getElementById("inspector-modal");
+const modalClose = document.getElementById("modal-close");
+const modalTitle = document.getElementById("modal-title");
+const modalBadge = document.getElementById("modal-badge");
+const modalPreview = document.getElementById("modal-preview");
+const modalSwatches = document.getElementById("modal-swatches");
+const modalSeedInput = document.getElementById("modal-seed-input");
+const modalSeedReroll = document.getElementById("modal-seed-reroll");
+const modalSeedApply = document.getElementById("modal-seed-apply");
+const modalCopySvg = document.getElementById("modal-copy-svg");
+const modalDownloadSvg = document.getElementById("modal-download-svg");
+
+let currentInspectState = {
+  adjective: ADJECTIVES.Crimson,
+  noun: NOUNS.Wilds,
+  category: CATEGORY.hunt,
+  engine: ENGINE_MODE.VECTOR,
+  seedStr: `The ${ADJECTIVES.Crimson} ${NOUNS.Wilds}`,
+};
+
+// Populate Palette Options
+Object.keys(PALETTES).forEach((adj) => {
+  const opt = document.createElement("option");
+  opt.value = adj;
+  opt.innerText = adj;
+  adjectiveSelect.appendChild(opt);
+});
+
+function matchesQuery(noun, adjective, category, query) {
+  if (!query) return true;
+  const terms = query.trim().toLowerCase().split(/\s+/);
+  const target = `the ${adjective} ${noun} ${category}`.toLowerCase();
+  return terms.every((term) => target.includes(term));
+}
+
+function renderGallery() {
+  gallery.innerHTML = "";
+  const selectedEngine = engineSelect.value;
+  const selectedCategory = categorySelect.value;
+  const selectedAdjective = adjectiveSelect.value;
+  const query = (searchInput.value || "").trim().toLowerCase();
+
+  if (selectedEngine === ENGINE_MODE.DUAL) {
+    gallery.classList.add("mode-dual");
+  } else {
+    gallery.classList.remove("mode-dual");
+  }
+
+  const adjectives =
+    selectedAdjective === "all"
+      ? Object.keys(PALETTES)
+      : [selectedAdjective];
+  const categories =
+    selectedCategory === "all"
+      ? Object.keys(NOUN_DATA)
+      : [selectedCategory];
+
+  let count = 0;
+  adjectives.forEach((adj) => {
+    categories.forEach((cat) => {
+      NOUN_DATA[cat].forEach((noun) => {
+        if (query && !matchesQuery(noun, adj, cat, query)) {
+          return;
+        }
+        gallery.appendChild(buildCard(adj, noun, cat, selectedEngine));
+        count++;
+      });
+    });
+  });
+
+  hudMatchCount.innerText = count;
+  hudEngineName.innerText =
+    engineSelect.options[engineSelect.selectedIndex].text;
+  hudPaletteName.innerText =
+    selectedAdjective === "all" ? "All Palettes" : selectedAdjective;
+
+  if (count === 0) {
+    gallery.innerHTML = `<div class="no-results">No procedural artworks match the current filters.</div>`;
+  }
+}
+
+let previouslyFocusedElement = null;
+
+function getModalFocusable() {
+  return Array.from(
+    modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((el) => !el.disabled);
+}
+
+function openInspector(adj, noun, cat, engine) {
+  currentInspectState = {
+    adjective: adj,
+    noun: noun,
+    category: cat,
+    engine: engine === ENGINE_MODE.DUAL ? ENGINE_MODE.VECTOR : engine,
+    seedStr: `The ${adj} ${noun}`,
+  };
+  previouslyFocusedElement = document.activeElement;
+  modalSeedInput.value = currentInspectState.seedStr;
+  renderModalPreview();
+  modal.classList.add("active");
+  const focusable = getModalFocusable();
+  if (focusable.length > 0) focusable[0].focus();
+}
+
+function closeModal() {
+  if (!modal.classList.contains("active")) return;
+  modal.classList.remove("active");
+  if (
+    previouslyFocusedElement &&
+    typeof previouslyFocusedElement.focus === "function"
+  ) {
+    previouslyFocusedElement.focus();
+  }
+  previouslyFocusedElement = null;
+}
+
+function renderModalPreview() {
+  const { adjective, noun, category, engine, seedStr } =
+    currentInspectState;
+  const rng = new SeededRNG(seedStr);
+  const palette = PALETTES[adjective] || PALETTES[ADJECTIVES.Fractured];
+
+  modalTitle.innerText = `The ${adjective} ${noun}`;
+  modalBadge.className = `art-badge cat-${category}`;
+  modalBadge.innerText = category;
+
+  modalPreview.innerHTML = "";
+  if (engine === ENGINE_MODE.PIXEL) {
+    modalPreview.appendChild(
+      renderPixelCanvas(noun, adjective, rng, palette),
+    );
+  } else {
+    modalPreview.innerHTML = createVectorSVG(
+      noun,
+      adjective,
+      rng,
+      palette,
+    );
+  }
+
+  // Swatches
+  modalSwatches.innerHTML = "";
+  palette.forEach((hex, i) => {
+    const item = document.createElement("div");
+    item.className = "swatch-item";
+    item.innerHTML = `
+      <div class="swatch-box" style="background-color: ${hex};"></div>
+      <span>p[${i}]</span>
+      <code>${hex}</code>
+    `;
+    item.onclick = () => {
+      navigator.clipboard.writeText(hex);
+      item.querySelector("code").innerText = "COPIED!";
+      setTimeout(() => {
+        item.querySelector("code").innerText = hex;
+      }, 1200);
+    };
+    modalSwatches.appendChild(item);
+  });
+}
+
+modalClose.onclick = () => closeModal();
+modal.onclick = (e) => {
+  if (e.target === modal) closeModal();
+};
+window.addEventListener("keydown", (e) => {
+  if (!modal.classList.contains("active")) return;
+  if (e.key === "Escape") {
+    closeModal();
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const focusable = getModalFocusable();
+  if (focusable.length === 0) {
+    e.preventDefault();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (e.shiftKey) {
+    if (active === first || !modal.contains(active)) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else if (active === last || !modal.contains(active)) {
+    e.preventDefault();
+    first.focus();
+  }
+});
+
+modalSeedReroll.onclick = () => {
+  currentInspectState.seedStr = `Seed_${Math.floor(Math.random() * 9999999)}`;
+  modalSeedInput.value = currentInspectState.seedStr;
+  renderModalPreview();
+};
+
+modalSeedApply.onclick = () => {
+  currentInspectState.seedStr =
+    modalSeedInput.value ||
+    `The ${currentInspectState.adjective} ${currentInspectState.noun}`;
+  renderModalPreview();
+};
+
+modalCopySvg.onclick = () => {
+  const svgEl = modalPreview.querySelector("svg");
+  if (svgEl) {
+    navigator.clipboard.writeText(svgEl.outerHTML);
+    modalCopySvg.innerText = "Copied SVG!";
+    setTimeout(() => (modalCopySvg.innerText = "Copy SVG Code"), 1500);
+  }
+};
+
+modalDownloadSvg.onclick = () => {
+  const svgEl = modalPreview.querySelector("svg");
+  if (svgEl) {
+    const blob = new Blob([svgEl.outerHTML], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${currentInspectState.adjective}_${currentInspectState.noun}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+};
+
+engineSelect.addEventListener("change", renderGallery);
+categorySelect.addEventListener("change", renderGallery);
+adjectiveSelect.addEventListener("change", renderGallery);
+
+let searchDebounceTimer;
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(renderGallery, 100);
+});
+
+const isBridgeMode =
+  new URLSearchParams(window.location.search).get("bridge") === "1";
+if (!isBridgeMode) renderGallery();
+
+/* ========================================================
+   CROSS-ORIGIN / IFRAME ARTWORK BRIDGE FOR RIFT RAILS
+   ======================================================== */
+window.renderVectorDiorama = function (dimName) {
+  try {
+    const parts = (dimName || "Fractured Vale").split(" ");
+    const adjective = parts[0] || "Fractured";
+    const noun = parts.slice(1).join(" ") || "Vale";
+    const fullName = `The ${adjective} ${noun}`;
+    const rng = new SeededRNG(fullName);
+    const palette = PALETTES[adjective] || PALETTES.Fractured;
+    const svgStr = createVectorSVG(noun, adjective, rng, palette);
+    const filterDefs =
+      document.querySelector("svg > defs")?.innerHTML || "";
+    if (filterDefs && !svgStr.includes('id="distantFog"')) {
+      return svgStr.replace("<defs>", `<defs>${filterDefs}`);
+    }
+    return svgStr;
+  } catch (e) {
+    console.error("renderVectorDiorama error:", e);
+    return "";
+  }
+};
+
+// Share the same Bayer matrix/pipeline with the game, without duplicating it.
+window.renderPixelDiorama = async function (dimName) {
+  const parts = (dimName || "Fractured Vale").split(" ");
+  const adjective = parts[0] || "Fractured";
+  const noun = parts.slice(1).join(" ") || "Vale";
+  const canvas = renderPixelCanvas(
+    noun,
+    adjective,
+    new SeededRNG(`The ${adjective} ${noun}`),
+    PALETTES[adjective] || PALETTES.Fractured,
+  );
+  await canvas.ready;
+  return canvas.toDataURL("image/png");
+};
+
+window.addEventListener("message", async (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data && event.data.type === "RENDER_DIORAMA") {
+    const svg = window.renderVectorDiorama(event.data.dimName);
+    if (event.source && event.source.postMessage) {
+      event.source.postMessage(
+        {
+          type: "DIORAMA_RESULT",
+          reqId: event.data.reqId,
+          dimName: event.data.dimName,
+          svg,
+        },
+        window.location.origin,
+      );
+    }
+  } else if (event.data && event.data.type === "RENDER_PIXEL_DIORAMA") {
+    const { dimName, reqId } = event.data;
+    try {
+      const src = await window.renderPixelDiorama(dimName);
+      if (event.source && event.source.postMessage) {
+        event.source.postMessage(
+          { type: "DIORAMA_PIXEL_RESULT", reqId, dimName, src },
+          window.location.origin,
+        );
+      }
+    } catch (error) {
+      if (event.source && event.source.postMessage) {
+        event.source.postMessage(
+          {
+            type: "DIORAMA_PIXEL_ERROR",
+            reqId,
+            dimName,
+            error: String(error),
+          },
+          window.location.origin,
+        );
+      }
+    }
+  }
+});

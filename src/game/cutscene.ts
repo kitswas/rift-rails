@@ -25,10 +25,11 @@ export interface CutsceneDeps {
 }
 
 /**
- * Fallback order used only when the registry holds fewer entries
- * than the baseline set. Canonical lookup is registry-driven.
+ * Waypoint cutscenes are keyed by the namespaced ids the host assigns when a
+ * plugin registers them (e.g. `corvus-tutorial:wp3`). Bare ids never exist in
+ * the registry.
  */
-const FALLBACK_ORDER: readonly string[] = ["wp1", "wp2", "wp3", "wp4", "wp5"];
+const WAYPOINT_ID_PREFIX = "corvus-tutorial:wp";
 
 export class CutsceneEngine {
   activeCutscene: Cutscene | null = null;
@@ -44,6 +45,7 @@ export class CutsceneEngine {
   private activeSpeaker = "MASTER CORVUS // VEILED SCHOLAR";
   private activeStory = false;
   private activePluginId: string | null = null;
+  private interruptedPhase: Phase | null = null;
 
   private readonly registry: Registry;
   private readonly voyage: Voyage;
@@ -78,34 +80,31 @@ export class CutsceneEngine {
     return this.refs.get(key);
   }
 
-  /** Registry-driven waypoint lookup; baseline order is only a fallback. */
-  hasSeen(cutsceneId: string, seen: readonly string[] = this.voyage.state.seenCutscenes ?? []): boolean {
+  hasSeen(
+    cutsceneId: string,
+    seen: readonly string[] = this.voyage.state.seenCutscenes ?? [],
+  ): boolean {
     if (seen.includes(cutsceneId)) return true;
     const prefix = "corvus-tutorial:";
     return cutsceneId.startsWith(prefix) && seen.includes(cutsceneId.slice(prefix.length));
   }
 
+  /** Waypoint lookup: the tutorial's namespaced wp cutscene for this jump, if unseen. */
   cutsceneForJump(jumpCount: number, seen?: readonly string[]): string | null {
     const seenList = seen ?? [];
-    const ids = this.registry.listCutsceneIds();
-    const idx = jumpCount - 1;
-    const candidate = ids[idx];
-    if (candidate && !this.hasSeen(candidate, seenList)) return candidate;
-    const fallback = FALLBACK_ORDER[idx];
-    if (fallback && !this.hasSeen(fallback, seenList) && this.registry.getCutscene(fallback)) {
-      return fallback;
-    }
+    const id = `${WAYPOINT_ID_PREFIX}${jumpCount}`;
+    if (this.registry.getCutscene(id) && !this.hasSeen(id, seenList)) return id;
     return null;
   }
 
   firstCutscene(): string | null {
+    const wp1 = `${WAYPOINT_ID_PREFIX}1`;
+    if (this.registry.getCutscene(wp1)) return wp1;
     const first = this.registry.listCutsceneIds()[0];
     if (first) return first;
     if (this.firstCutsceneId && this.registry.getCutscene(this.firstCutsceneId)) {
       return this.firstCutsceneId;
     }
-    const fallback = FALLBACK_ORDER[0];
-    if (fallback && this.registry.getCutscene(fallback)) return fallback;
     return null;
   }
 
@@ -140,16 +139,19 @@ export class CutsceneEngine {
   }
 
   play(cutsceneId: string): void {
-    let resolved = this.registry.getCutscene(cutsceneId);
+    const resolved = this.registry.getCutscene(cutsceneId);
     if (!resolved) {
-      const firstId = this.firstCutscene();
-      if (firstId) resolved = this.registry.getCutscene(firstId);
+      // Explicit request for a missing scene: no-op (never substitute another plugin's scene).
+      this.log(`cutscene not found: ${cutsceneId}`, this.logLoreClass);
+      return;
     }
     if (!resolved) return;
     this.enqueue({
       cutscene: resolved,
       speaker: "MASTER CORVUS // VEILED SCHOLAR",
-      ...(cutsceneId.includes(":") ? { pluginId: cutsceneId.slice(0, cutsceneId.indexOf(":")) } : {}),
+      ...(cutsceneId.includes(":")
+        ? { pluginId: cutsceneId.slice(0, cutsceneId.indexOf(":")) }
+        : {}),
     });
   }
 
@@ -202,6 +204,13 @@ export class CutsceneEngine {
     pluginId?: string;
   }): void {
     const { cutscene, speaker, onChoice } = scene;
+    // Abort rather than soft-lock the game behind an overlay if the phase machine refuses DIALOGUE.
+    const phaseBefore = this.voyage.getPhase?.() as Phase | undefined;
+    if (!this.transitionTo(this.dialoguePhase)) {
+      this.log("cutscene skipped: cannot enter dialogue phase", this.logLoreClass);
+      return;
+    }
+    this.interruptedPhase = phaseBefore ?? null;
     this.activeCutscene = cutscene;
     this.beatIndex = 0;
     this.returnFocus = this.refs.getActiveElement?.() ?? null;
@@ -214,7 +223,6 @@ export class CutsceneEngine {
     if (game) (game as HTMLElement & { inert: boolean }).inert = true;
     const overlay = this.el("cutsceneOverlay");
     if (overlay) overlay.hidden = false;
-    this.transitionTo(this.dialoguePhase);
     this.renderCurrentBeat();
     this.el("cutsceneBtnA")?.focus();
   }
@@ -255,8 +263,11 @@ export class CutsceneEngine {
     if (this.activeChoice) {
       const choose = this.activeChoice;
       this.activeChoice = null;
-      choose(choiceIndex);
-      this.close();
+      try {
+        choose(choiceIndex);
+      } finally {
+        this.close();
+      }
       return;
     }
     this.beatIndex++;
@@ -281,9 +292,6 @@ export class CutsceneEngine {
     this.activeChoice = null;
     this.activeStory = false;
     this.activePluginId = null;
-    this.transitionTo(this.idlePhase);
-    const next = this.voyage.evaluateSurvival();
-    if (next) this.transitionTo(next);
     if (cutscene?.id === this.firstCutscene()) this.showExploreHint();
     const returnFocus = this.returnFocus as HTMLElement | null;
     let focusRestored = false;
@@ -305,6 +313,14 @@ export class CutsceneEngine {
       }
     }
     this.returnFocus = null;
+    const returnPhase =
+      this.interruptedPhase && this.interruptedPhase !== this.dialoguePhase
+        ? this.interruptedPhase
+        : this.idlePhase;
+    this.interruptedPhase = null;
+    this.transitionTo(returnPhase);
+    const next = this.voyage.evaluateSurvival();
+    if (next) this.transitionTo(next);
     const nextScene = this.pending.shift();
     if (nextScene) this.start(nextScene);
   }

@@ -4,6 +4,7 @@ import { Registry } from "./game/registry";
 import { ConduitDeck } from "./game/conduit";
 import { Voyage } from "./game/voyage";
 import { PluginHost } from "./game/host";
+import type { HostDeps } from "./game/workerProtocol";
 import { SaveSystem } from "./game/save";
 import { EngineService } from "./game/engine";
 import type { EngineDeps } from "./game/engine";
@@ -153,7 +154,7 @@ const storylines = {
   },
 };
 
-const host = new PluginHost({
+const hostDeps: HostDeps = {
   voyage: {
     getSnapshot: () => voyage.getSnapshot() as never,
     executeAction: (id) => voyage.executeAction(id) as never,
@@ -182,7 +183,8 @@ const host = new PluginHost({
   storylines,
   log: (msg) => appendLog(msg, GAME_DATA.dom.classes.logSystem ?? "log-system"),
   events: bus,
-});
+};
+const host = new PluginHost(hostDeps);
 
 const save = new SaveSystem({
   storage: localStorage,
@@ -190,38 +192,12 @@ const save = new SaveSystem({
   getEnabledPlugins: () => readEnabled(),
   getHostStorage: () => host.serializeAllStorage(),
   restoreHostStorage: (storage) => {
-    if (!storage || typeof storage !== "object") return;
-    const hostAny = host as unknown as {
-      restoreHostStorage?: (s: Record<string, Record<string, unknown>>) => void;
-      deserialize?: (s: Record<string, Record<string, unknown>>) => void;
-      storage?: Map<string, Map<string, unknown>>;
-    };
-    if (typeof hostAny.restoreHostStorage === "function") {
-      hostAny.restoreHostStorage(storage);
-      return;
-    }
-    if (typeof hostAny.deserialize === "function") {
-      hostAny.deserialize(storage);
-      return;
-    }
-    const internal = hostAny.storage;
-    if (!internal) return;
-    for (const [id, bag] of Object.entries(storage)) {
-      if (!bag || typeof bag !== "object" || Array.isArray(bag)) continue;
-      let map = internal.get(id);
-      if (!map) {
-        map = new Map();
-        internal.set(id, map);
-      }
-      for (const [k, v] of Object.entries(bag)) {
-        if (k.length === 0 || k.length > 128) continue;
-        map.set(k, v === undefined ? undefined : (JSON.parse(JSON.stringify(v)) as unknown));
-      }
-    }
+    host.restoreHostStorage(storage);
   },
   setTimeoutFn: (cb, ms) => {
     window.setTimeout(cb, ms);
   },
+  waitForIdle: () => host.whenIdle(),
 });
 
 const sound = new SoundFXService({
@@ -255,9 +231,12 @@ const art = new DioramaPipelineService({
         iframe.id = "art-bridge";
         iframe.src = "artwork-browser.html?bridge=1";
         iframe.style.display = "none";
+        iframe.title = "Artwork bridge";
+        iframe.sandbox.add("allow-scripts", "allow-same-origin");
         document.body.appendChild(iframe);
       }
       const frame = iframe;
+      const origin = window.location.origin;
       const ready = new Promise<void>((resolve) => {
         let done = false;
         const finish = (): void => {
@@ -271,9 +250,10 @@ const art = new DioramaPipelineService({
       });
       return {
         ready,
-        postMessage: (message) => frame.contentWindow?.postMessage(message, "*"),
+        postMessage: (message) => frame.contentWindow?.postMessage(message, origin),
         subscribeMessage: (handler) =>
           window.addEventListener("message", (event) => {
+            if (event.origin !== origin) return;
             if (event.source === frame.contentWindow) handler(event);
           }),
       };
@@ -872,9 +852,23 @@ const disableAllButtons = (): void => {
     (b as HTMLButtonElement).disabled = true;
   });
 };
+let navReturnFocus: HTMLElement | null = null;
 const showNavScreen = (visible: boolean): void => {
   const s = el("nav-screen");
-  if (s) s.style.display = visible ? "flex" : "none";
+  if (!s) return;
+  if (visible) {
+    s.setAttribute("role", "dialog");
+    s.setAttribute("aria-modal", "true");
+    s.setAttribute("aria-label", "Navigation choices");
+    s.style.display = "flex";
+    navReturnFocus = document.activeElement as HTMLElement | null;
+    // Choices render after this call; focus once they exist.
+    requestAnimationFrame(() => s.querySelector<HTMLButtonElement>("button")?.focus());
+  } else {
+    s.style.display = "none";
+    navReturnFocus?.focus?.();
+    navReturnFocus = null;
+  }
 };
 const schedule = (fn: () => void, ms: number): void => {
   window.setTimeout(fn, ms);
@@ -999,6 +993,12 @@ engine = new EngineService({
   },
 });
 
+hostDeps.engine = {
+  executeActionResult: (id) => engine.executeActionResult(id as never),
+  exploreNode: () => engine.exploreNode(),
+  desperateScavenge: () => engine.desperateScavenge(),
+  notePluginMutation: () => engine.notePluginMutation(),
+};
 const phaseMachine = new PhaseMachine({
   transitionTo: (phase) => engine.transitionTo(phase),
   executeAction: (actId) => engine.executeAction(actId),
@@ -1064,7 +1064,7 @@ engine.attachHooks(phaseMachine.hooks);
     else sound.playActionDamage();
   };
   voyage.hooks.onSave = () => {
-    bus.emit("onSave", { storage: host.serializeAllStorage() });
+    bus.emit("onSave", {});
     bus.emit("afterJump", { jumpCount: voyage.getSnapshot().jumpCount });
     void save.saveAsync();
   };
@@ -1189,8 +1189,9 @@ function bind(): void {
     })();
   });
 
-  // Inspect is bound once via inline onclick attrs on .hud-cell (index.html).
-  // Do not add duplicate listeners here.
+  document.querySelectorAll<HTMLElement>("[data-inspect]").forEach((cell) => {
+    cell.addEventListener("click", () => engine.inspect(cell.dataset.inspect ?? ""));
+  });
 
   tabIds.forEach((id, idx) => {
     el(id)?.addEventListener("click", () => engine.scrollToPane(idx));
@@ -1288,7 +1289,9 @@ const panel = mountPluginsPanel(host, {
   onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
 });
 refreshPluginsPanel = panel.refresh;
-void rehydratePlugins(host);
+void rehydratePlugins(host).then((ids) => {
+  if (ids.length) panel.refresh();
+});
 bundledPluginsReady = loadBundledPlugins(host, {
   onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
 }).then((ids) => {

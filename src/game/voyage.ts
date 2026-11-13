@@ -125,8 +125,7 @@ export class Voyage {
 
   getNextTierTravelCost(): number {
     return (
-      this.config.TRAVEL_BASE_FUEL_COST +
-      (this.state.engineTier + 1) * this.config.TRAVEL_TIER_MULT
+      this.config.TRAVEL_BASE_FUEL_COST + (this.state.engineTier + 1) * this.config.TRAVEL_TIER_MULT
     );
   }
 
@@ -180,7 +179,12 @@ export class Voyage {
     const node = this.node();
     if (this.state.phase === "IDLE" && this.state.energy >= node.exploreCost) return true;
 
-    if (this.state.phase === "ENCOUNTER") {
+    // Yard phases exit into ENCOUNTER; survival there is the encounter's affordability check.
+    if (
+      this.state.phase === "ENCOUNTER" ||
+      this.state.phase === "YARD_ROOT" ||
+      this.state.phase === "YARD_CATEGORY"
+    ) {
       return node.actions.some((actId) => {
         const act = this.registry.getAction(actId);
         return act !== undefined && !act.isMenu && this.canAffordAction(act);
@@ -211,8 +215,10 @@ export class Voyage {
 
   hasObserverDeparted(): boolean {
     const seen = this.state.seenCutscenes ?? [];
-    return seen.includes(this.config.CORVUS_FINAL_CUTSCENE) ||
-      (this.config.CORVUS_FINAL_CUTSCENE === "corvus-tutorial:wp5" && seen.includes("wp5"));
+    return (
+      seen.includes(this.config.CORVUS_FINAL_CUTSCENE) ||
+      (this.config.CORVUS_FINAL_CUTSCENE === "corvus-tutorial:wp5" && seen.includes("wp5"))
+    );
   }
 
   assertInvariants(): string[] {
@@ -350,9 +356,10 @@ export class Voyage {
     | null {
     const cost = this.getTravelCost();
     if (this.state.fuel < cost) return null;
-    this.state.fuel -= cost;
     const hasAstrolabe = this.state.module === this.registry.getYardItem("astro")?.name;
     const choices = this.conduit.getTrajectories(this.state.jumpCount, hasAstrolabe);
+    if (!hasAstrolabe && !choices[0]) return null;
+    this.state.fuel -= cost;
     if (hasAstrolabe) {
       this.state.navChoices = choices;
       return { isNavigating: true, choices };
@@ -410,28 +417,48 @@ export class Voyage {
     if (!saved) return;
     const cur = this.state;
     const sanitized: SerializedVoyage = {
-      jumpCount: clampNum(Math.floor(finiteNum(saved.jumpCount, cur.jumpCount)), 1, Number.MAX_SAFE_INTEGER),
-      sectorBag: Array.isArray(saved.sectorBag) ? saved.sectorBag.filter((x): x is string => typeof x === "string") : cur.sectorBag,
+      jumpCount: clampNum(
+        Math.floor(finiteNum(saved.jumpCount, cur.jumpCount)),
+        1,
+        Number.MAX_SAFE_INTEGER,
+      ),
+      sectorBag: Array.isArray(saved.sectorBag)
+        ? saved.sectorBag.filter((x): x is string => typeof x === "string")
+        : cur.sectorBag,
       hull: clampNum(finiteNum(saved.hull, cur.hull), 0, this.config.MAX_HULL),
       fuel: clampNum(finiteNum(saved.fuel, cur.fuel), 0, Number.MAX_SAFE_INTEGER),
       flux: clampNum(finiteNum(saved.flux, cur.flux), 0, Number.MAX_SAFE_INTEGER),
       rep: clampNum(finiteNum(saved.rep, cur.rep), 0, Number.MAX_SAFE_INTEGER),
       energy: clampNum(finiteNum(saved.energy, cur.energy), 0, Number.MAX_SAFE_INTEGER),
-      engineTier: clampNum(Math.floor(finiteNum(saved.engineTier, cur.engineTier)), 0, this.config.MAX_TIER),
-      weaponTier: clampNum(Math.floor(finiteNum(saved.weaponTier, cur.weaponTier)), 0, this.config.MAX_TIER),
+      engineTier: clampNum(
+        Math.floor(finiteNum(saved.engineTier, cur.engineTier)),
+        0,
+        this.config.MAX_TIER,
+      ),
+      weaponTier: clampNum(
+        Math.floor(finiteNum(saved.weaponTier, cur.weaponTier)),
+        0,
+        this.config.MAX_TIER,
+      ),
       module: typeof saved.module === "string" ? saved.module : cur.module,
       carriage: typeof saved.carriage === "string" ? saved.carriage : cur.carriage,
       crew: typeof saved.crew === "string" ? saved.crew : cur.crew,
       dimId: typeof saved.dimId === "string" && saved.dimId ? saved.dimId : cur.dimId,
       dimName: typeof saved.dimName === "string" && saved.dimName ? saved.dimName : cur.dimName,
       isSurveyed: !!saved.isSurveyed,
-      seenCutscenes: Array.isArray(saved.seenCutscenes) ? saved.seenCutscenes.filter((x): x is string => typeof x === "string") : cur.seenCutscenes,
+      seenCutscenes: Array.isArray(saved.seenCutscenes)
+        ? saved.seenCutscenes.filter((x): x is string => typeof x === "string")
+        : cur.seenCutscenes,
       storyProgress:
-        typeof saved.storyProgress === "object" && saved.storyProgress !== null && !Array.isArray(saved.storyProgress)
+        typeof saved.storyProgress === "object" &&
+        saved.storyProgress !== null &&
+        !Array.isArray(saved.storyProgress)
           ? (JSON.parse(JSON.stringify(saved.storyProgress)) as SaveState["storyProgress"])
           : {},
       pluginState:
-        typeof saved.pluginState === "object" && saved.pluginState !== null && !Array.isArray(saved.pluginState)
+        typeof saved.pluginState === "object" &&
+        saved.pluginState !== null &&
+        !Array.isArray(saved.pluginState)
           ? { ...saved.pluginState }
           : {},
     };
@@ -464,7 +491,9 @@ export class Voyage {
       dimName: this.state.dimName,
       isSurveyed: !!this.state.isSurveyed,
       seenCutscenes: this.state.seenCutscenes ?? [],
-      storyProgress: JSON.parse(JSON.stringify(this.state.storyProgress ?? {})) as SaveState["storyProgress"],
+      storyProgress: JSON.parse(
+        JSON.stringify(this.state.storyProgress ?? {}),
+      ) as SaveState["storyProgress"],
       pluginState: { ...this.state.pluginState },
     };
   }

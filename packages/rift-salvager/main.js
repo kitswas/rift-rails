@@ -10,6 +10,10 @@
 // location and surplus: deterministic flux away from hub/res nodes when
 // fuel is surplus, at the price of the energy a jump would refresh.
 // No grants are issued, so there is no free-resource loop.
+// Registered ids are host-namespaced, so the action arrives as
+// "rift-salvager:salvage_melt".
+const MELT_ACTION_ID = "rift-salvager:salvage_melt";
+
 const plugin = {
   mount(api) {
     api.registerAction({
@@ -33,25 +37,53 @@ const plugin = {
       actions: ["salvage_melt"],
     });
 
+    // Melt count is authoritative in memory for the session; storage is only
+    // read once to seed it after a reload. afterJump resets both.
+    let meltsThisJump = null;
+    async function seedMelts() {
+      if (meltsThisJump !== null) return meltsThisJump;
+      const prev = await api.storage.get("meltsThisJump");
+      meltsThisJump = typeof prev === "number" && Number.isFinite(prev) ? prev : 0;
+      return meltsThisJump;
+    }
+
     // Audit melts per jump in plugin storage. Real payloads:
     // afterAction { actionId, success }, afterJump { jumpCount }.
     api.on("afterAction", async (payload) => {
-      const actionId = payload && typeof payload.actionId === "string" ? payload.actionId : "";
-      if (actionId !== "salvage_melt" && !actionId.endsWith(":salvage_melt")) return;
-      if (!payload || payload.success !== true) return;
-      const prev = await api.storage.get("meltsThisJump");
-      const melts = (typeof prev === "number" && Number.isFinite(prev) ? prev : 0) + 1;
-      await api.storage.set("meltsThisJump", melts);
-      api.log(`rift-salvager: melt ${melts} this jump`);
+      try {
+        const actionId =
+          payload && typeof payload.actionId === "string" ? payload.actionId : "";
+        if (actionId !== MELT_ACTION_ID) return;
+        if (!payload || payload.success !== true) return;
+        const current = await seedMelts();
+        meltsThisJump = current + 1;
+        await api.storage.set("meltsThisJump", meltsThisJump);
+        api.log(`rift-salvager: melt ${meltsThisJump} this jump`);
+      } catch (err) {
+        api.log(
+          "rift-salvager: afterAction error (" +
+            ((err && err.message) || err) +
+            ")",
+        );
+      }
     });
 
     api.on("afterJump", async (payload) => {
-      const jumpCount =
-        payload && typeof payload.jumpCount === "number" && Number.isFinite(payload.jumpCount)
-          ? payload.jumpCount
-          : 0;
-      await api.storage.set("meltsThisJump", 0);
-      await api.storage.set("lastJump", jumpCount);
+      try {
+        const jumpCount =
+          payload && typeof payload.jumpCount === "number" && Number.isFinite(payload.jumpCount)
+            ? payload.jumpCount
+            : 0;
+        meltsThisJump = 0;
+        await api.storage.set("meltsThisJump", 0);
+        await api.storage.set("lastJump", jumpCount);
+      } catch (err) {
+        api.log(
+          "rift-salvager: afterJump error (" +
+            ((err && err.message) || err) +
+            ")",
+        );
+      }
     });
   },
   unmount() {},

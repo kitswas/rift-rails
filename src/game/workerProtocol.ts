@@ -128,7 +128,8 @@ export type WorkerMessage =
   | { type: "register-cutscene"; def: RegisteredCutscene }
   | { type: "grant"; reqId: number; op: GrantOp }
   | { type: "storage-get"; reqId: number; key: string }
-  | { type: "storage-set"; reqId: number; key: string; value: unknown };
+  | { type: "storage-set"; reqId: number; key: string; value: unknown }
+  | { type: "event-settled"; event: string };
 
 // ---- Messages (host -> worker) --------------------------------------------
 
@@ -170,10 +171,19 @@ export interface GameEventSource {
   on(event: string, cb: (payload: unknown) => void): void;
 }
 
+/** Engine surface grants may use, so plugin actions get full UI/survival handling. */
+export interface EngineLike {
+  executeActionResult(actionId: string): { isMenu: boolean; success: boolean };
+  exploreNode(): boolean;
+  desperateScavenge(): boolean;
+  notePluginMutation(): void;
+}
+
 export interface HostDeps {
   voyage: VoyageLike;
   registry: RegistryLike;
   storylines?: StorylineRegistryLike;
   log: (msg: string) => void;
   events: GameEventSource;
+  engine?: EngineLike;
 }

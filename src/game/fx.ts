@@ -18,7 +18,10 @@ export interface ThemeLookup {
 export interface FXDeps {
   config: GameConfig;
   themes: ThemeLookup;
-  sound: Pick<SoundFXService, "init" | "playJumpCharge" | "playArrivalChime" | "updateAmbientTheme">;
+  sound: Pick<
+    SoundFXService,
+    "init" | "playJumpCharge" | "playArrivalChime" | "updateAmbientTheme"
+  >;
   setCssVars?: (vars: Record<string, string>) => void;
   vibrate?: (pattern: number[]) => void;
   requestFrame?: (cb: (now: number) => void) => number;
@@ -136,6 +139,7 @@ export class TransitionFXService {
     onBreach: () => void,
     onComplete: () => void,
   ): void {
+    if (this.running) return; // re-entry: a second jump effect would double-fire onBreach/onComplete
     this.sound.init();
     this.sound.playJumpCharge(this.config.JUMP_CHARGE_MS / 1000);
     this.vibrate?.(this.config.FX_VIBRATE_PATTERN);

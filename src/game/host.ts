@@ -109,10 +109,18 @@ function __frozen(v) {
 function __dispatchEvent(m) {
   if (m.snapshot) __snapshot = m.snapshot;
   const fns = __listeners.get(m.event) || [];
+  const runs = [];
   for (const fn of fns) {
-    try { __trace("event:" + m.event, m.payload, "event"); fn(m.payload); }
-    catch (err) { __post({ type: "log", msg: "handler error: " + ((err && err.message) || err) }); }
+    runs.push(Promise.resolve().then(function () {
+      try { __trace("event:" + m.event, m.payload, "event"); } catch (e) {}
+      return fn(m.payload);
+    }).catch(function (err) {
+      __post({ type: "log", msg: "handler error: " + ((err && err.message) || err) });
+    }));
   }
+  Promise.allSettled(runs).then(function () {
+    __post({ type: "event-settled", event: m.event });
+  });
 }
 function __start(plugin) {
   if (__startCalled) return;
@@ -582,6 +590,9 @@ export class PluginHost {
   private readonly storage = new Map<string, Map<string, unknown>>();
   private grantSeq = 0;
   private readonly grantUsage = new Map<string, { seq: number; total: number; count: number }>();
+  private pendingEvents = 0;
+  private readonly idleWaiters: (() => void)[] = [];
+  private loadChain: Promise<unknown> = Promise.resolve();
 
   constructor(deps: HostDeps) {
     this.deps = deps;
@@ -591,7 +602,8 @@ export class PluginHost {
           const phase = (payload as { phase?: string } | null)?.phase;
           this.emit(phase ? (`onEnter:${phase}` as never) : ("onEnter" as never), payload);
         } else if (event === "onSave") {
-          this.emit("onSave", { storage: this.serializeAllStorage() });
+          // No cross-plugin storage in the event payload; save path reads storage directly.
+          this.emit("onSave", {});
         } else {
           this.emit(event as never, payload);
         }
@@ -601,8 +613,14 @@ export class PluginHost {
     }
   }
 
-  /** Load, validate, and mount a plugin from a zip file. */
-  async loadZip(input: File | ArrayBuffer): Promise<PluginManifest> {
+  /** Load, validate, and mount a plugin from a zip file. Serialized: concurrent mounts cannot race the plugins map. */
+  loadZip(input: File | ArrayBuffer): Promise<PluginManifest> {
+    const run = this.loadChain.then(() => this.loadZipInner(input));
+    this.loadChain = run.catch(() => undefined);
+    return run;
+  }
+
+  private async loadZipInner(input: File | ArrayBuffer): Promise<PluginManifest> {
     const buf: ArrayBuffer =
       typeof File !== "undefined" && input instanceof File
         ? await input.arrayBuffer()
@@ -718,6 +736,7 @@ export class PluginHost {
       if (!record.active || record.stopping) continue;
       const msg: HostMessage = { type: "event", event: event as never, payload, snapshot };
       record.worker.postMessage(msg);
+      this.pendingEvents += 1;
     }
   }
 
@@ -802,13 +821,39 @@ export class PluginHost {
     }));
   }
 
-  /** All plugin storage, keyed by plugin id (for onSave payloads). */
+  /** All plugin storage, keyed by plugin id (for the save path). */
   serializeAllStorage(): Record<string, Record<string, unknown>> {
     const out: Record<string, Record<string, unknown>> = {};
     for (const [id, map] of this.storage) {
       out[id] = Object.fromEntries(map);
     }
     return out;
+  }
+
+  /** Replace plugin storage wholesale from a save payload (per plugin id). */
+  restoreHostStorage(storage: Record<string, Record<string, unknown>>): void {
+    for (const [id, bag] of Object.entries(storage)) {
+      if (typeof id !== "string" || id.length === 0 || id.length > MAX_STORAGE_KEY) continue;
+      if (!bag || typeof bag !== "object" || Array.isArray(bag)) continue;
+      const map = new Map<string, unknown>();
+      let totalBytes = 0;
+      for (const [k, v] of Object.entries(bag)) {
+        if (map.size >= MAX_STORAGE_KEYS) break;
+        if (k.length === 0 || k.length > MAX_STORAGE_KEY) continue;
+        let cloned: unknown;
+        try {
+          cloned = v === undefined ? undefined : (JSON.parse(JSON.stringify(v)) as unknown);
+        } catch {
+          continue;
+        }
+        const size = JSON.stringify(cloned)?.length ?? 0;
+        if (size > MAX_STORAGE_BYTES) continue;
+        totalBytes += size;
+        if (totalBytes > MAX_STORAGE_TOTAL_BYTES) break;
+        map.set(k, cloned);
+      }
+      this.storage.set(id, map);
+    }
   }
 
   // ---- Worker message handling ---------------------------------------------
@@ -835,7 +880,10 @@ export class PluginHost {
       });
       return;
     }
-    if (record.stopping && !["api-call", "log", "storage-get", "storage-set"].includes(msg.type)) {
+    if (
+      record.stopping &&
+      !["api-call", "log", "storage-get", "storage-set", "event-settled"].includes(msg.type)
+    ) {
       return;
     }
     switch (msg.type) {
@@ -880,7 +928,25 @@ export class PluginHost {
       case "storage-set":
         this.handleStorageSet(id, msg.reqId, msg.key, msg.value);
         break;
+      case "event-settled":
+        this.noteEventSettled();
+        break;
     }
+  }
+
+  private noteEventSettled(): void {
+    this.pendingEvents = Math.max(0, this.pendingEvents - 1);
+    if (this.pendingEvents !== 0) return;
+    const waiters = this.idleWaiters.splice(0);
+    for (const resolve of waiters) resolve();
+  }
+
+  /** Resolves once every dispatched plugin event has settled in its worker. */
+  whenIdle(): Promise<void> {
+    if (this.pendingEvents === 0) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      this.idleWaiters.push(resolve);
+    });
   }
 
   private registerOne(
@@ -1044,6 +1110,17 @@ export class PluginHost {
     }
     try {
       const voyage = this.deps.voyage;
+      const engine = this.deps.engine;
+      let phaseNow = "";
+      try {
+        phaseNow = voyage.getSnapshot().phase ?? "";
+      } catch {
+        phaseNow = "";
+      }
+      if (phaseNow === "DEAD" || phaseNow === "JUMPING" || phaseNow === "STRANDED") {
+        reply(false, `cannot grant while ${phaseNow}`);
+        return;
+      }
       switch (op.kind) {
         case "adjustResource": {
           if (!ADJUSTABLE_RESOURCES.has(op.resource)) {
@@ -1076,22 +1153,13 @@ export class PluginHost {
           }
           usage.total = nextTotal;
           usage.count = nextCount;
+          engine?.notePluginMutation();
           reply(true);
           return;
         }
         case "executeAction": {
           if (typeof op.actionId !== "string" || op.actionId.length === 0) {
             reply(false, "actionId required");
-            return;
-          }
-          let phase = "";
-          try {
-            phase = voyage.getSnapshot().phase ?? "";
-          } catch {
-            phase = "";
-          }
-          if (phase === "DEAD" || phase === "JUMPING" || phase === "STRANDED") {
-            reply(false, `cannot execute action while ${phase}`);
             return;
           }
           let act: unknown;
@@ -1102,7 +1170,8 @@ export class PluginHost {
             hasLookup = true;
             const getAction = regGet as (v: string) => unknown;
             act = getAction.call(this.deps.registry, actionId);
-            if (!act) {
+            // Fallback only for base-game (un-namespaced) action ids; never another plugin's.
+            if (!act && !op.actionId.includes(":")) {
               actionId = op.actionId;
               act = getAction.call(this.deps.registry, actionId);
             }
@@ -1112,7 +1181,7 @@ export class PluginHost {
               hasLookup = true;
               const getAction = vreg.getAction as (v: string) => unknown;
               act = getAction.call(vreg, actionId);
-              if (!act) {
+              if (!act && !op.actionId.includes(":")) {
                 actionId = op.actionId;
                 act = getAction.call(vreg, actionId);
               }
@@ -1140,6 +1209,11 @@ export class PluginHost {
               return;
             }
           }
+          if (engine) {
+            const detailed = engine.executeActionResult(actionId);
+            reply(detailed.success);
+            return;
+          }
           const result: unknown = voyage.executeAction(actionId);
           if (result === false) {
             reply(false, "action failed");
@@ -1160,10 +1234,10 @@ export class PluginHost {
           return;
         }
         case "explore":
-          reply(voyage.exploreNode());
+          reply(engine ? engine.exploreNode() : voyage.exploreNode());
           return;
         case "desperateScavenge":
-          reply(voyage.desperateScavenge());
+          reply(engine ? engine.desperateScavenge() : voyage.desperateScavenge());
           return;
       }
     } catch (err) {

@@ -28,6 +28,7 @@ export interface SaveDeps {
   getHostStorage?: () => Record<string, Record<string, unknown>>;
   restoreHostStorage?: (storage: Record<string, Record<string, unknown>>) => void;
   setTimeoutFn?: (cb: () => void, ms: number) => void;
+  waitForIdle?: () => Promise<void>;
   sound?: Pick<SoundFXService, "prefsSnapshot">;
   log?: (msg: string) => void;
   warn?: (msg: string, err?: unknown) => void;
@@ -60,7 +61,8 @@ function isValidPayload(v: unknown): v is PersistedPayload {
   if (!v["seenCutscenes"].every((x) => typeof x === "string")) return false;
   if (!Array.isArray(v["sectorBag"]) || v["sectorBag"].length > MAX_ARRAY_LEN) return false;
   if (!v["sectorBag"].every((x) => typeof x === "string")) return false;
-  if (!isRecord(v["pluginState"]) || Object.keys(v["pluginState"]).length > MAX_PLUGIN_KEYS) return false;
+  if (!isRecord(v["pluginState"]) || Object.keys(v["pluginState"]).length > MAX_PLUGIN_KEYS)
+    return false;
   try {
     if ((JSON.stringify(v["pluginState"]) ?? "").length > MAX_PLUGIN_BYTES) return false;
   } catch {
@@ -68,21 +70,27 @@ function isValidPayload(v: unknown): v is PersistedPayload {
   }
   const storyProgress = v["storyProgress"];
   if (storyProgress !== undefined) {
-    if (!isRecord(storyProgress) || Object.keys(storyProgress).length > MAX_STORY_KEYS) return false;
+    if (!isRecord(storyProgress) || Object.keys(storyProgress).length > MAX_STORY_KEYS)
+      return false;
     for (const [key, progress] of Object.entries(storyProgress)) {
       if (key.length > 100) return false;
       if (!isRecord(progress)) return false;
       if (progress["status"] !== "active" && progress["status"] !== "complete") return false;
       if (typeof progress["nodeId"] !== "string" || progress["nodeId"].length > 32) return false;
       if (typeof progress["waiting"] !== "boolean") return false;
-      if (!Array.isArray(progress["trace"]) || progress["trace"].length > MAX_STORY_TRACE) return false;
-      if (!progress["trace"].every((entry) =>
-        isRecord(entry) &&
-        typeof entry["nodeId"] === "string" &&
-        typeof entry["choiceId"] === "string" &&
-        entry["nodeId"].length <= 32 &&
-        entry["choiceId"].length <= 32
-      )) return false;
+      if (!Array.isArray(progress["trace"]) || progress["trace"].length > MAX_STORY_TRACE)
+        return false;
+      if (
+        !progress["trace"].every(
+          (entry) =>
+            isRecord(entry) &&
+            typeof entry["nodeId"] === "string" &&
+            typeof entry["choiceId"] === "string" &&
+            entry["nodeId"].length <= 32 &&
+            entry["choiceId"].length <= 32,
+        )
+      )
+        return false;
     }
     try {
       if ((JSON.stringify(storyProgress) ?? "").length > MAX_PLUGIN_BYTES) return false;
@@ -90,7 +98,8 @@ function isValidPayload(v: unknown): v is PersistedPayload {
       return false;
     }
   }
-  if (v["version"] !== undefined && !isFiniteInRange(v["version"], 1, SAVE_VERSION + 10)) return false;
+  if (v["version"] !== undefined && !isFiniteInRange(v["version"], 1, SAVE_VERSION + 10))
+    return false;
   return true;
 }
 
@@ -110,8 +119,9 @@ function migrate(parsed: unknown): PersistedPayload | null {
   const rawState: unknown = cloned["pluginState"];
   const pluginState: Record<string, unknown> = isRecord(rawState) ? { ...rawState } : {};
   const rawHost: unknown = cloned["hostStorage"];
-  const hostStorage: Record<string, Record<string, unknown>> =
-    isRecord(rawHost) ? (deepClonePayload(rawHost) as Record<string, Record<string, unknown>>) : {};
+  const hostStorage: Record<string, Record<string, unknown>> = isRecord(rawHost)
+    ? (deepClonePayload(rawHost) as Record<string, Record<string, unknown>>)
+    : {};
   return {
     ...(cloned as SerializedVoyage),
     version: SAVE_VERSION,
@@ -133,8 +143,11 @@ export class SaveSystem {
   private readonly voyage: Voyage;
   private readonly getEnabledPlugins: (() => string[]) | undefined;
   private readonly getHostStorage: (() => Record<string, Record<string, unknown>>) | undefined;
-  private readonly restoreHostStorage: ((storage: Record<string, Record<string, unknown>>) => void) | undefined;
+  private readonly restoreHostStorage:
+    | ((storage: Record<string, Record<string, unknown>>) => void)
+    | undefined;
   private readonly setTimeoutFn: ((cb: () => void, ms: number) => void) | undefined;
+  private readonly waitForIdle: (() => Promise<void>) | undefined;
   private readonly sound: Pick<SoundFXService, "prefsSnapshot"> | undefined;
   private readonly log: ((msg: string) => void) | undefined;
   private readonly warn: ((msg: string, err?: unknown) => void) | undefined;
@@ -147,6 +160,7 @@ export class SaveSystem {
     this.getHostStorage = deps.getHostStorage;
     this.restoreHostStorage = deps.restoreHostStorage;
     this.setTimeoutFn = deps.setTimeoutFn;
+    this.waitForIdle = deps.waitForIdle;
     this.sound = deps.sound;
     this.log = deps.log;
     this.warn = deps.warn;
@@ -158,7 +172,10 @@ export class SaveSystem {
       ...payload,
       version: SAVE_VERSION,
       pluginState: { ...payload.pluginState },
-      hostStorage: deepClonePayload(this.getHostStorage?.() ?? {}) as Record<string, Record<string, unknown>>,
+      hostStorage: deepClonePayload(this.getHostStorage?.() ?? {}) as Record<
+        string,
+        Record<string, unknown>
+      >,
       enabledPlugins: [...(this.getEnabledPlugins?.() ?? [])],
     };
     try {
@@ -186,11 +203,14 @@ export class SaveSystem {
     restore(out);
   }
 
-  /** Async-aware save: defers the write so onSave plugin handlers can settle first. */
+  /** Async-aware save: waits for in-flight plugin event handlers (e.g. afterJump grants) to settle before writing. */
   saveAsync(): Promise<void> {
     if (this.saveQueue) return this.saveQueue;
     this.saveQueue = new Promise<void>((resolve) => {
+      let settled = false;
       const done = (): void => {
+        if (settled) return;
+        settled = true;
         try {
           this.save();
         } finally {
@@ -198,8 +218,16 @@ export class SaveSystem {
           resolve();
         }
       };
-      if (this.setTimeoutFn) this.setTimeoutFn(done, 0);
-      else setTimeout(done, 0);
+      // Safety cap: a stuck plugin must not block the save forever.
+      if (this.setTimeoutFn) this.setTimeoutFn(done, 2000);
+      else setTimeout(done, 2000);
+      if (this.waitForIdle) {
+        void this.waitForIdle().then(done, done);
+      } else if (this.setTimeoutFn) {
+        this.setTimeoutFn(done, 0);
+      } else {
+        setTimeout(done, 0);
+      }
     });
     return this.saveQueue;
   }
@@ -214,11 +242,7 @@ export class SaveSystem {
         this.warn?.("Auto-save payload has an unsupported shape");
         return null;
       }
-      try {
-        this.applyHostStorage(migrated.hostStorage);
-      } catch (e) {
-        this.warn?.("Failed to restore host storage:", e);
-      }
+      // Pure read: host storage is applied exactly once, by the caller (ignite).
       return migrated;
     } catch (e) {
       this.warn?.("Failed to parse auto-save:", e);
@@ -240,7 +264,24 @@ export class SaveSystem {
     try {
       const raw = this.storage.getItem(SaveSystem.AUDIO_KEY);
       if (!raw) return null;
-      return JSON.parse(raw) as AudioPrefs;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isRecord(parsed)) return null;
+      const prefs: AudioPrefs = {};
+      if (
+        parsed["mode"] === "rails" ||
+        parsed["mode"] === "telemetry" ||
+        parsed["mode"] === "none"
+      ) {
+        prefs.mode = parsed["mode"];
+      }
+      if (isFiniteInRange(parsed["ambientSlider"], 0, 100)) {
+        prefs.ambientSlider = parsed["ambientSlider"] as number;
+      }
+      if (isFiniteInRange(parsed["sfxSlider"], 0, 100)) {
+        prefs.sfxSlider = parsed["sfxSlider"] as number;
+      }
+      if (typeof parsed["muted"] === "boolean") prefs.muted = parsed["muted"];
+      return prefs;
     } catch {
       return null;
     }

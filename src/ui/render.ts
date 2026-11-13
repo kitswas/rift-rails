@@ -34,7 +34,10 @@ export function renderVitals(s: SaveState): void {
   };
   set("statHull", GAME_DATA.text.formatPct(Math.floor(s.hull)));
   set("statFuel", Math.floor(s.fuel));
-  set("statEnergy", GAME_DATA.text.formatStatPair(s.energy, GAME_DATA.config.START_ENERGY + s.engineTier));
+  set(
+    "statEnergy",
+    GAME_DATA.text.formatStatPair(s.energy, GAME_DATA.config.START_ENERGY + s.engineTier),
+  );
   set("statFlux", Math.floor(s.flux));
   set("statRep", s.rep);
   set("statSector", GAME_DATA.text.formatSectorWaypoint(s.jumpCount));
@@ -44,31 +47,43 @@ export function renderVitals(s: SaveState): void {
   set("eqCarriage", s.carriage);
   set("eqCrew", s.crew);
   const nodeLabel = GAME_DATA.nodes[s.dimId]?.label ?? s.dimId;
-  const travelCost = GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
+  const travelCost =
+    GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
   const lt = el("locationType");
   if (lt) lt.textContent = GAME_DATA.text.formatDimType(nodeLabel);
   const codex = el("dimTypeCodex");
   if (codex) codex.textContent = nodeLabel;
   const hullEl = el("statHull");
-  if (hullEl) hullEl.style.color = s.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD ? "var(--danger)" : "var(--success)";
+  if (hullEl)
+    hullEl.style.color =
+      s.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD ? "var(--danger)" : "var(--success)";
   const fuelEl = el("statFuel");
   if (fuelEl) fuelEl.style.color = s.fuel < travelCost ? "var(--danger)" : "var(--action)";
   const energyEl = el("statEnergy");
   if (energyEl) energyEl.style.color = s.energy === 0 ? "var(--warning)" : "var(--energy)";
   const corvus = el("corvusPortrait");
-  if (corvus) (corvus as HTMLElement & { hidden: boolean }).hidden = (s.seenCutscenes ?? []).includes(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
+  if (corvus)
+    (corvus as HTMLElement & { hidden: boolean }).hidden = (s.seenCutscenes ?? []).includes(
+      GAME_DATA.config.CORVUS_FINAL_CUTSCENE,
+    );
 }
 
-export function renderActionButtons(s: SaveState, perms: { explore: boolean; travel: boolean }): void {
+export function renderActionButtons(
+  s: SaveState,
+  perms: { explore: boolean; travel: boolean },
+): void {
   const node = GAME_DATA.nodes[s.dimId];
   const exploreCost = node?.exploreCost ?? 1;
-  const isHub = node?.isHub ?? (s.dimId === "hub");
+  const isHub = node?.isHub ?? s.dimId === "hub";
   const ex = el("btnExplore");
   if (ex) {
-    ex.textContent = isHub ? GAME_DATA.text.btnExploreHub(exploreCost) : GAME_DATA.text.btnExploreClosed(exploreCost);
+    ex.textContent = isHub
+      ? GAME_DATA.text.btnExploreHub(exploreCost)
+      : GAME_DATA.text.btnExploreClosed(exploreCost);
     (ex as HTMLButtonElement).disabled = !(perms.explore && s.energy >= exploreCost);
   }
-  const cost = GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
+  const cost =
+    GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
   const tr = el("btnTravel");
   if (tr) {
     tr.textContent = GAME_DATA.text.btnJump(cost);
@@ -76,8 +91,14 @@ export function renderActionButtons(s: SaveState, perms: { explore: boolean; tra
   }
   const dp = el("btnDesperate");
   if (dp) {
-    dp.style.display = s.fuel < cost && s.hull > GAME_DATA.config.DESPERATE_HULL_COST && perms.travel ? "block" : "none";
-    dp.textContent = GAME_DATA.text.btnDesperate(GAME_DATA.config.DESPERATE_HULL_COST, GAME_DATA.config.DESPERATE_FUEL_YIELD);
+    dp.style.display =
+      s.fuel < cost && s.hull > GAME_DATA.config.DESPERATE_HULL_COST && perms.travel
+        ? "block"
+        : "none";
+    dp.textContent = GAME_DATA.text.btnDesperate(
+      GAME_DATA.config.DESPERATE_HULL_COST,
+      GAME_DATA.config.DESPERATE_FUEL_YIELD,
+    );
   }
 }
 
@@ -86,23 +107,32 @@ export function renderForge(s: SaveState, canForge: boolean): void {
   const fe = el("btnForgeEng") as HTMLButtonElement | null;
   if (fe) {
     const fEngCost = (s.engineTier + 1) * FORGE_BASE;
-    fe.textContent = s.engineTier >= GAME_DATA.config.MAX_TIER
-      ? GAME_DATA.text.btnApexEngine
-      : GAME_DATA.text.btnForgeEngine(fEngCost, GAME_DATA.config.TRAVEL_TIER_MULT, GAME_DATA.config.TRAVEL_BASE_FUEL_COST + (s.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT, s.fuel);
+    fe.textContent =
+      s.engineTier >= GAME_DATA.config.MAX_TIER
+        ? GAME_DATA.text.btnApexEngine
+        : GAME_DATA.text.btnForgeEngine(
+            fEngCost,
+            GAME_DATA.config.TRAVEL_TIER_MULT,
+            GAME_DATA.config.TRAVEL_BASE_FUEL_COST +
+              (s.engineTier + 1) * GAME_DATA.config.TRAVEL_TIER_MULT,
+            s.fuel,
+          );
     fe.disabled = !canForge || s.flux < fEngCost || s.engineTier >= GAME_DATA.config.MAX_TIER;
   }
   const fw = el("btnForgeWpn") as HTMLButtonElement | null;
   if (fw) {
     const fWpnCost = (s.weaponTier + 1) * FORGE_BASE;
-    fw.textContent = s.weaponTier >= GAME_DATA.config.MAX_TIER
-      ? GAME_DATA.text.btnApexWeapon
-      : GAME_DATA.text.btnForgeWeapon(fWpnCost);
+    fw.textContent =
+      s.weaponTier >= GAME_DATA.config.MAX_TIER
+        ? GAME_DATA.text.btnApexWeapon
+        : GAME_DATA.text.btnForgeWeapon(fWpnCost);
     fw.disabled = !canForge || s.flux < fWpnCost || s.weaponTier >= GAME_DATA.config.MAX_TIER;
   }
   const lbl = el("lblForge");
   if (lbl) lbl.textContent = GAME_DATA.text.lblForge;
 }
 
+const MAX_LOG_ENTRIES = 200;
 export function appendLog(text: string, styleClass = cls.logSystem): void {
   const log = el("storyLog");
   if (!log) return;
@@ -116,8 +146,16 @@ export function appendLog(text: string, styleClass = cls.logSystem): void {
   } else {
     div.textContent = text;
   }
+  while (log.childElementCount >= MAX_LOG_ENTRIES) log.firstElementChild?.remove();
   log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
+  // Defer the forced layout to the next frame; per-append sync layout thrashes on long sessions.
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      log.scrollTop = log.scrollHeight;
+    });
+  } else {
+    log.scrollTop = log.scrollHeight;
+  }
 }
 
 export interface NodeLookup {
@@ -147,9 +185,16 @@ export function renderEncounterChoices(
   }
 }
 
+let navReturnFocus: HTMLElement | null = null;
 export function renderNavScreen(choices: Trajectory[], onPick: (t: Trajectory) => void): void {
   const screen = el("navScreen");
-  if (screen) screen.style.display = "flex";
+  if (screen) {
+    screen.setAttribute("role", "dialog");
+    screen.setAttribute("aria-modal", "true");
+    screen.setAttribute("aria-label", "Navigation choices");
+    screen.style.display = "flex";
+    navReturnFocus = document.activeElement as HTMLElement | null;
+  }
   const title = el("lblNavTitle");
   if (title) title.textContent = GAME_DATA.text.lblNavTitle;
   const host = el("navChoices");
@@ -164,11 +209,14 @@ export function renderNavScreen(choices: Trajectory[], onPick: (t: Trajectory) =
     b.addEventListener("click", () => onPick(t));
     host.appendChild(b);
   }
+  host.querySelector("button")?.focus();
 }
 
 export function hideNavScreen(): void {
   const screen = el("navScreen");
   if (screen) screen.style.display = "none";
+  navReturnFocus?.focus?.();
+  navReturnFocus = null;
 }
 
 export function renderCutscene(cut: Cutscene, beatIdx: number): void {

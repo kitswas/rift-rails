@@ -279,7 +279,10 @@ export class SoundFXService {
     const filter = this.ctx.createBiquadFilter();
     filter.type = "bandpass";
     filter.frequency.setValueAtTime(this.config.chargeBandpassStartFreq, now);
-    filter.frequency.exponentialRampToValueAtTime(this.config.chargeBandpassEndFreq, now + breachSec);
+    filter.frequency.exponentialRampToValueAtTime(
+      this.config.chargeBandpassEndFreq,
+      now + breachSec,
+    );
     filter.Q.setValueAtTime(this.config.chargeBandpassQ, now);
     osc1.connect(filter);
     filter.connect(gain1);

@@ -1,11 +1,4 @@
-import type {
-  ActionId,
-  Phase,
-  StateHook,
-  TextStrings,
-  Trajectory,
-  YardKey,
-} from "./types";
+import type { ActionId, Phase, StateHook, TextStrings, Trajectory, YardKey } from "./types";
 import type { Registry } from "./registry";
 import type { Voyage } from "./voyage";
 import type { TransitionFXService } from "./fx";
@@ -129,12 +122,7 @@ export class PhaseMachine {
           node.actions.forEach((actId) => {
             const act = registry.getAction(actId);
             if (!act) return;
-            deps.addMenuItem(
-              act.label,
-              () => deps.executeAction(actId),
-              act.uiClass,
-              actId,
-            );
+            deps.addMenuItem(act.label, () => deps.executeAction(actId), act.uiClass, actId);
           });
         },
         onExit: () => deps.clearMenu(),

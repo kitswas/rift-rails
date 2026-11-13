@@ -40,9 +40,7 @@ export class ConduitDeck {
     this.sectorPoolCounts = { ...options.sectorPoolCounts };
     this.waypointHubInterval = options.waypointHubInterval;
     this.adjectives = [...options.adjectives];
-    this.nouns = Object.fromEntries(
-      Object.entries(options.nouns).map(([k, v]) => [k, [...v]]),
-    );
+    this.nouns = Object.fromEntries(Object.entries(options.nouns).map(([k, v]) => [k, [...v]]));
     this.random = options.random ?? (() => 0.5);
     this.extraNodes = [...(options.extraNodes ?? [])];
     this.getExtraNodeIdsCb = options.getExtraNodeIds;
@@ -127,9 +125,7 @@ export class ConduitDeck {
     } else {
       this.injectMissingExtras();
     }
-    const next = pop
-      ? this.sectorBag.pop()
-      : this.sectorBag[this.sectorBag.length - 1];
+    const next = pop ? this.sectorBag.pop() : this.sectorBag[this.sectorBag.length - 1];
     return (next ?? "hub") as DimId;
   }
 
@@ -137,9 +133,7 @@ export class ConduitDeck {
     const nouns = this.nouns[chosenId] ?? [];
     // Unknown/plugin dimId: fallback name is the id itself, never a crash.
     if (nouns.length === 0) return { id: chosenId, name: chosenId };
-    const adj = this.adjectives[
-      Math.floor(this.random() * this.adjectives.length)
-    ] ?? "";
+    const adj = this.adjectives[Math.floor(this.random() * this.adjectives.length)] ?? "";
     const noun = nouns[Math.floor(this.random() * nouns.length)] ?? "";
     const name = `${adj} ${noun}`.trim();
     return { id: chosenId, name: name || chosenId };
@@ -148,8 +142,7 @@ export class ConduitDeck {
   getTrajectories(jumpCount: number, hasAstrolabe: boolean): Trajectory[] {
     const nextJump = jumpCount + 1;
     const isFixedPoint =
-      nextJump <= this.runway.length ||
-      nextJump % this.waypointHubInterval === 0;
+      nextJump <= this.runway.length || nextJump % this.waypointHubInterval === 0;
 
     if (!hasAstrolabe) {
       const chosenId = this.resolveNextNodeId(jumpCount, true);
@@ -161,18 +154,18 @@ export class ConduitDeck {
     let id2: DimId;
     if (isFixedPoint) {
       id1 = this.resolveNextNodeId(jumpCount, true);
-      id2 = id1;
-    } else {
-      id1 = this.resolveNextNodeId(jumpCount, true);
-      id2 = this.resolveNextNodeId(jumpCount, true);
+      const dest = this.generateDimensionForId(id1);
+      return [{ ...dest, returnId: null }];
     }
+    id1 = this.resolveNextNodeId(jumpCount, true);
+    id2 = this.resolveNextNodeId(jumpCount, true);
 
     const dest1 = this.generateDimensionForId(id1);
     const dest2 = this.generateDimensionForId(id2);
 
     return [
-      { ...dest1, returnId: isFixedPoint ? null : id2 },
-      { ...dest2, returnId: isFixedPoint ? null : id1 },
+      { ...dest1, returnId: id2 },
+      { ...dest2, returnId: id1 },
     ];
   }
 

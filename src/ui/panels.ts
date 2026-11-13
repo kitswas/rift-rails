@@ -132,9 +132,18 @@ const BUNDLED_PLUGINS: readonly { id: string; url: string; defaultEnabled?: bool
   { id: "corvus-tutorial", url: "./plugins/corvus-tutorial.zip", defaultEnabled: false },
 ];
 
+function rawEnabledKey(): string | null {
+  try {
+    return localStorage.getItem(ENABLED_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export async function loadBundledPlugins(host: PluginHost, hooks: PanelsHooks): Promise<string[]> {
   const { ids: enabled, retiredSelection } = parseEnabled();
-  const firstRun = enabled.length === 0 || retiredSelection;
+  // Key absent = first run (defaults on); key === "[]" = user disabled everything (respect it).
+  const firstRun = rawEnabledKey() === null || retiredSelection;
   const targets = BUNDLED_PLUGINS.filter(
     (p) => (firstRun && p.defaultEnabled !== false) || enabled.includes(p.id),
   );
@@ -161,7 +170,7 @@ export async function loadBundledPlugins(host: PluginHost, hooks: PanelsHooks): 
       );
     }
   });
-  if (firstRun && loaded.length) writeEnabled([...new Set([...enabled, ...loaded])]);
+  if (firstRun) writeEnabled([...new Set([...enabled, ...loaded])]);
   return loaded;
 }
 
@@ -176,13 +185,18 @@ export interface PanelsHooks {
  */
 export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refresh: () => void } {
   const pane = document.getElementById("pane-settings");
-  const parent: HTMLElement | null =
-    (pane?.querySelector(".settings-content") as HTMLElement | null) ?? pane ?? document.body;
+  if (!pane) {
+    hooks.onLog("plugins panel: #pane-settings missing; panel not mounted");
+    return { refresh: () => {} };
+  }
+  document.getElementById("plugins-panel")?.remove(); // guard against double-mount
+  const parent: HTMLElement =
+    (pane.querySelector(".settings-content") as HTMLElement | null) ?? pane;
 
   const section = document.createElement("section");
   section.className = "settings-section";
   section.id = "plugins-panel";
-  section.innerHTML = `<h3 style="color: var(--info); letter-spacing: 1px">[ PLUGINS // LEYRIG ]</h3><p id="plugin-status"></p><div class="audio-control-row"><label for="plugin-file">Install .zip</label><input id="plugin-file" type="file" class="audio-select" accept=".zip" /></div><p id="plugin-error" role="alert"></p><div id="plugin-list"></div>`;
+  section.innerHTML = `<h3 style="color: var(--info); letter-spacing: 1px">[ PLUGINS // LEYRIG ]</h3><p id="plugin-status" aria-live="polite"></p><div class="audio-control-row"><label for="plugin-file">Install .zip</label><input id="plugin-file" type="file" class="audio-select" accept=".zip" /></div><p id="plugin-error" role="alert"></p><div id="plugin-list"></div>`;
 
   parent.appendChild(section);
 
@@ -205,6 +219,11 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
     const plugins = host.listPlugins();
     const activeCount = plugins.filter((p) => p.active).length;
     if (statusEl) statusEl.textContent = `${activeCount} active`;
+    // Keep keyboard focus on the same plugin's toggle across the rebuild.
+    const focusedId =
+      document.activeElement instanceof HTMLInputElement
+        ? document.activeElement.dataset.pluginId
+        : undefined;
     listEl.replaceChildren();
     for (const p of plugins) {
       const row = document.createElement("div");
@@ -215,6 +234,7 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
       toggle.type = "checkbox";
       toggle.checked = enabledSet.has(p.id) && p.active;
       toggle.dataset.pluginId = p.id;
+      toggle.setAttribute("aria-label", `Toggle plugin ${p.name}`);
       toggle.addEventListener("change", () => {
         if (toggle.checked) {
           void enable(p.id);
@@ -224,6 +244,12 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
       });
       row.append(label, toggle);
       listEl.appendChild(row);
+    }
+    if (focusedId) {
+      const restored = [...listEl.querySelectorAll<HTMLInputElement>("input[data-plugin-id]")].find(
+        (t) => t.dataset.pluginId === focusedId,
+      );
+      restored?.focus();
     }
   };
 
@@ -240,10 +266,9 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
   const enable = async (id: string): Promise<void> => {
     const buf = buffers.get(id) ?? getStoredZip(id);
     if (!buf) {
-      enabledSet.add(id);
-      persist();
+      // Not persisting: a plugin we cannot load must not stay "enabled" forever.
+      setError(`Plugin "${id}" is not available; reinstall its .zip to re-enable.`);
       refresh();
-      hooks.onLog(`Plugin enabled: ${id} (zip not stored; please reinstall)`);
       return;
     }
     try {
@@ -259,10 +284,13 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
     }
   };
 
+  let installing = false;
   if (fileInput) {
     fileInput.addEventListener("change", () => {
       const file = fileInput.files?.[0];
-      if (!file) return;
+      if (!file || installing) return;
+      installing = true;
+      fileInput.disabled = true;
       void (async () => {
         try {
           const buf = await file.arrayBuffer();
@@ -279,18 +307,15 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err));
         } finally {
+          installing = false;
+          fileInput.disabled = false;
           fileInput.value = "";
         }
       })();
     });
   }
 
+  // Caller drives rehydration (main.ts calls rehydratePlugins once at boot); do not double-mount here.
   refresh();
-  void rehydratePlugins(host).then((ids) => {
-    if (ids.length) {
-      for (const id of ids) hooks.onLog(`Plugin rehydrated: ${id}`);
-      refresh();
-    }
-  });
   return { refresh };
 }

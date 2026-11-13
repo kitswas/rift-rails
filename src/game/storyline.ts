@@ -210,7 +210,10 @@ export function validateStoryline(value: unknown): StorylineDefinition | null {
 function matches(trigger: StoryTrigger, event: StoryEvent, payload: unknown): boolean {
   if (trigger.event !== event || !isRecord(payload)) return false;
   if (trigger.event === "afterAction") {
-    return trigger.actionId === payload.actionId && (trigger.success === undefined || trigger.success === payload.success);
+    return (
+      trigger.actionId === payload.actionId &&
+      (trigger.success === undefined || trigger.success === payload.success)
+    );
   }
   if (trigger.event === "afterJump") {
     return trigger.jumpCount === undefined || trigger.jumpCount === payload.jumpCount;
@@ -239,10 +242,12 @@ export class StorylineService {
     const key = this.key(pluginId, definition.id);
     if (this.stories.has(key)) throw new Error(`duplicate storyline: ${definition.id}`);
     if (this.stories.size >= MAX_STORIES) throw new Error("storyline limit reached");
-    if (
-      !this.voyage.state.storyProgress[key] &&
-      Object.keys(this.voyage.state.storyProgress).length >= MAX_STORIES
-    ) {
+    // Cap counts live progress only: completed keys from unregistered plugins are
+    // retained (they may re-enable) but must not block new stories.
+    const liveProgress = Object.entries(this.voyage.state.storyProgress).filter(
+      ([k, p]) => this.stories.has(k) || p?.status !== "complete",
+    ).length;
+    if (!this.voyage.state.storyProgress[key] && liveProgress >= MAX_STORIES) {
       throw new Error("saved storyline limit reached");
     }
     this.stories.set(key, { pluginId, definition });

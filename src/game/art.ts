@@ -104,7 +104,13 @@ export class DioramaPipelineService {
             }),
         )
         .then((src) => {
-          const markup = `<img src="${src}" alt="Dithered dimension diorama" />`;
+          // Bridge responses must be base64 data URIs; anything else (or any quote break-out) never reaches innerHTML.
+          const safeSrc =
+            typeof src === "string" &&
+            /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/i.test(src)
+              ? src
+              : "";
+          const markup = safeSrc ? `<img src="${safeSrc}" alt="Dithered dimension diorama" />` : "";
           this.cache.set(dimName, markup);
           return markup;
         })
