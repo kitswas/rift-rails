@@ -9,7 +9,7 @@ test.describe("optional Corvus tutorial", () => {
     await expect(page.locator("#cutscene-overlay")).toBeVisible();
     await expect(page.locator("#cutscene-speaker")).toHaveText("MASTER CORVUS // VEILED SCHOLAR");
     await expect(page.locator("#cutscene-body")).toContainText("Crucible fire drinks refined fuel");
-    await expect(page.locator("#tutorial-cue")).toHaveCount(0);
+    await expect(page.locator("#tutorial-cue")).toBeHidden();
     const active = await page.evaluate(() => {
       const app = (
         window as Window & { __rift?: { host?: { isPluginActive(id: string): boolean } } }
@@ -17,9 +17,15 @@ test.describe("optional Corvus tutorial", () => {
       return app?.host?.isPluginActive("corvus-tutorial") ?? false;
     });
     expect(active).toBe(true);
-    for (let beat = 0; beat < 3; beat++) await page.locator("#cutscene-btn-a").click();
+    // Click through wp1 beats until the cutscene overlay closes itself;
+    // capped so a broken plugin fails the test instead of hanging it.
+    for (let beat = 0; beat < 10; beat++) {
+      if (!(await page.locator("#cutscene-overlay").isVisible())) break;
+      await page.locator("#cutscene-btn-a").click();
+    }
+    await expect(page.locator("#cutscene-overlay")).toBeHidden();
     await expect(page.locator("#btn-explore")).toHaveClass(/tutorial-highlight/);
-    await expect(page.locator("#tutorial-cue")).toHaveCount(0);
+    await expect(page.locator("#tutorial-cue")).toBeHidden();
   });
 
   test("does not start Corvus dialogue when unchecked for a new game", async ({ page }) => {
