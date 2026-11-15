@@ -1,5 +1,10 @@
 export type ArtworkKind = "pixel" | "vector";
 
+export interface ArtRenderSize {
+  width: number;
+  height: number;
+}
+
 interface ArtResultMessage {
   type?: string;
   reqId?: number;
@@ -40,6 +45,15 @@ const ARTWORK_MODES = {
     className: "art-vector",
   },
 } as const;
+
+function normalizeSize(size?: ArtRenderSize): ArtRenderSize | undefined {
+  if (!size) return undefined;
+  const width = Math.round(size.width);
+  const height = Math.round(size.height);
+  return Number.isFinite(width) && Number.isFinite(height) && width >= 1 && height >= 1
+    ? { width, height }
+    : undefined;
+}
 
 export class DioramaPipelineService {
   bridge: ArtBridgeHandle | null = null;
@@ -84,14 +98,16 @@ export class DioramaPipelineService {
     }
   }
 
-  render(dimName: string, callback?: (markup: string) => void): string {
+  render(dimName: string, callback?: (markup: string) => void, size?: ArtRenderSize): string {
     if (!dimName) return "";
-    const cached = this.cache.get(dimName);
+    const normalizedSize = normalizeSize(size);
+    const key = normalizedSize ? JSON.stringify([dimName, normalizedSize.width, normalizedSize.height]) : dimName;
+    const cached = this.cache.get(key);
     if (cached !== undefined) {
       return cached;
     }
     this.init();
-    if (!this.pending.has(dimName)) {
+    if (!this.pending.has(key)) {
       const started = this.ready
         ?.then(
           () =>
@@ -115,7 +131,12 @@ export class DioramaPipelineService {
                 },
               });
               try {
-                this.bridge?.postMessage({ type: this.mode.requestType, dimName, reqId });
+                this.bridge?.postMessage({
+                  type: this.mode.requestType,
+                  dimName,
+                  reqId,
+                  ...normalizedSize,
+                });
               } catch (error) {
                 this.clearTimeoutFn?.(timeoutId);
                 this.processing.delete(reqId);
@@ -133,16 +154,16 @@ export class DioramaPipelineService {
           const markup = safeSrc
             ? `<img class="${this.mode.className}" src="${safeSrc}" alt="${this.mode.alt}" />`
             : "";
-          this.cache.set(dimName, markup);
+          this.cache.set(key, markup);
           return markup;
         })
         .finally(() => {
-          this.pending.delete(dimName);
+          this.pending.delete(key);
         });
-      this.pending.set(dimName, started ?? Promise.resolve(""));
+      this.pending.set(key, started ?? Promise.resolve(""));
     }
     this.pending
-      .get(dimName)
+      .get(key)
       ?.then((markup) => {
         callback?.(markup);
       })

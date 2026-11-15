@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DioramaPipelineService } from "../src/game/art";
-import type { ArtBridgeHandle, ArtworkKind } from "../src/game/art";
+import type { ArtBridgeHandle, ArtRenderSize, ArtworkKind } from "../src/game/art";
 
-async function renderWithBridge(kind: ArtworkKind, src: string) {
+async function renderWithBridge(
+  kind: ArtworkKind,
+  src: string,
+  size?: ArtRenderSize,
+) {
   let handler: (event: MessageEvent) => void = () => {
     throw new Error("Bridge handler was not registered.");
   };
@@ -15,7 +19,7 @@ async function renderWithBridge(kind: ArtworkKind, src: string) {
     },
   };
   const art = new DioramaPipelineService({ kind, createBridge: () => bridge });
-  const markup = new Promise<string>((resolve) => art.render("Fractured Vale", resolve));
+  const markup = new Promise<string>((resolve) => art.render("Fractured Vale", resolve, size));
   await Promise.resolve();
   await Promise.resolve();
   const request = sent[0] as { reqId?: number };
@@ -36,6 +40,16 @@ describe("DioramaPipelineService", () => {
       { type: "RENDER_VECTOR_DIORAMA", dimName: "Fractured Vale", reqId: 1 },
     ]);
     expect(result.markup).toContain('class="art-vector"');
+  });
+
+  it("requests pixel artwork at the requested viewport size", async () => {
+    const result = await renderWithBridge("pixel", "data:image/png;base64,iVBORw0KGgo=", {
+      width: 1280,
+      height: 720,
+    });
+    expect(result.sent).toEqual([
+      { type: "RENDER_PIXEL_DIORAMA", dimName: "Fractured Vale", reqId: 1, width: 1280, height: 720 },
+    ]);
   });
 
   it("requests pixel artwork and tags the dithered image", async () => {

@@ -754,12 +754,16 @@ const syncSensors = (): void => {
       artDisplay.dataset.dimName = snap.dimName;
     }
   }
-  const markup = art.render(snap.dimName, (asyncMarkup) => {
-    const cur = voyage.getSnapshot();
-    if (asyncMarkup && cur.dimName === snap.dimName) {
-      bridgeScene.innerHTML = asyncMarkup;
-    }
-  });
+  const markup = art.render(
+    snap.dimName,
+    (asyncMarkup) => {
+      const cur = voyage.getSnapshot();
+      if (asyncMarkup && cur.dimName === snap.dimName) {
+        bridgeScene.innerHTML = asyncMarkup;
+      }
+    },
+    { width: window.innerWidth, height: window.innerHeight },
+  );
   if (markup) bridgeScene.innerHTML = markup;
   const vectorMarkup = vectorArt.render(snap.dimName, (asyncMarkup) => {
     const cur = voyage.getSnapshot();
@@ -780,6 +784,12 @@ const syncSensors = (): void => {
     fx.applyThemeStyles(snap.dimName.split(" ")[0] ?? "");
   }
 };
+const ART_RESIZE_DEBOUNCE_MS = 150;
+let artResizeTimer: number | undefined;
+window.addEventListener("resize", () => {
+  window.clearTimeout(artResizeTimer);
+  artResizeTimer = window.setTimeout(syncSensors, ART_RESIZE_DEBOUNCE_MS);
+});
 const syncSettings = (): void => {
   try {
     const savedTutorialChoice = sessionStorage.getItem(TUTORIAL_CHOICE_KEY);

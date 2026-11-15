@@ -10,9 +10,10 @@ const SVG_CONFIG = {
   VIEWBOX: "0 0 800 450",
 };
 
+const DITHER_CELL_SIZE = 5;
 const PIXEL_CONFIG = {
-  WIDTH: 160,
-  HEIGHT: 90,
+  WIDTH: SVG_CONFIG.WIDTH / DITHER_CELL_SIZE,
+  HEIGHT: SVG_CONFIG.HEIGHT / DITHER_CELL_SIZE,
 };
 
 const TONE = {
@@ -2669,8 +2670,13 @@ const GenVectorBG = {
  *  MASTER DOM ASSEMBLER & CONTROLLER
  *  ========================================================================= */
 
-function renderPixelCanvas(noun, adjective, rng, palette) {
-  return renderPixelDitherCanvas(noun, adjective, rng, palette);
+function artDimension(value, fallback) {
+  const size = Math.round(Number(value));
+  return Number.isFinite(size) && size >= 1 ? size : fallback;
+}
+
+function renderPixelCanvas(noun, adjective, rng, palette, size) {
+  return renderPixelDitherCanvas(noun, adjective, rng, palette, size);
 }
 
 /* =========================================================================
@@ -2679,9 +2685,11 @@ function renderPixelCanvas(noun, adjective, rng, palette) {
  *  2. Quantize luminance to the 5-tone palette using the Bayer matrix.
  *  3. Upscale to display size with smoothing disabled.
  *  ======================================================================= */
-function renderPixelDitherCanvas(noun, adjective, rng, palette) {
-  const lw = PIXEL_CONFIG.WIDTH;
-  const lh = PIXEL_CONFIG.HEIGHT;
+function renderPixelDitherCanvas(noun, adjective, rng, palette, size) {
+  const outWidth = artDimension(size?.width, SVG_CONFIG.WIDTH);
+  const outHeight = artDimension(size?.height, SVG_CONFIG.HEIGHT);
+  const lw = Math.max(1, Math.ceil(outWidth / DITHER_CELL_SIZE));
+  const lh = Math.max(1, Math.ceil(outHeight / DITHER_CELL_SIZE));
 
   const lowResCanvas = document.createElement("canvas");
   lowResCanvas.width = lw;
@@ -2702,8 +2710,8 @@ function renderPixelDitherCanvas(noun, adjective, rng, palette) {
     new Blob([svgMarkup], { type: "image/svg+xml" }),
   );
   const outCanvas = document.createElement("canvas");
-  outCanvas.width = SVG_CONFIG.WIDTH;
-  outCanvas.height = SVG_CONFIG.HEIGHT;
+  outCanvas.width = outWidth;
+  outCanvas.height = outHeight;
   const outCtx = outCanvas.getContext("2d");
   outCtx.fillStyle = palette[0];
   outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height);
@@ -3864,7 +3872,7 @@ window.renderVectorDiorama = function (dimName) {
 };
 
 // Share the same Bayer matrix/pipeline with the game, without duplicating it.
-window.renderPixelDiorama = async function (dimName) {
+window.renderPixelDiorama = async function (dimName, size) {
   const parts = (dimName || "Fractured Vale").split(" ");
   const adjective = parts[0] || "Fractured";
   const noun = parts.slice(1).join(" ") || "Vale";
@@ -3873,6 +3881,7 @@ window.renderPixelDiorama = async function (dimName) {
     adjective,
     new SeededRNG(`The ${adjective} ${noun}`),
     PALETTES[adjective] || PALETTES.Fractured,
+    size,
   );
   await canvas.ready;
   return canvas.toDataURL("image/png");
@@ -3891,9 +3900,9 @@ window.addEventListener("message", async (event) => {
       );
     }
   } else if (event.data && event.data.type === "RENDER_PIXEL_DIORAMA") {
-    const { dimName, reqId } = event.data;
+    const { dimName, reqId, width, height } = event.data;
     try {
-      const src = await window.renderPixelDiorama(dimName);
+      const src = await window.renderPixelDiorama(dimName, { width, height });
       if (event.source && event.source.postMessage) {
         event.source.postMessage(
           { type: "DIORAMA_PIXEL_RESULT", reqId, dimName, src },
