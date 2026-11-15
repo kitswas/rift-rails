@@ -14,6 +14,8 @@ export interface ConduitOptions {
   getExtraNodeIds?: () => string[];
   /** Copies per extra node in each bag (default 1, vs baseline pool counts). */
   extraNodeWeight?: number;
+  /** Label lookup for plugin node ids with no procedural nouns. */
+  getNodeLabel?: (id: string) => string | undefined;
 }
 
 export interface DimensionName {
@@ -33,6 +35,7 @@ export class ConduitDeck {
   private extraNodes: string[];
   private readonly getExtraNodeIdsCb?: () => string[];
   private readonly extraNodeWeight: number;
+  private readonly getNodeLabel?: (id: string) => string | undefined;
   private injectedExtras = new Set<string>();
 
   constructor(options: ConduitOptions) {
@@ -45,11 +48,21 @@ export class ConduitDeck {
     this.extraNodes = [...(options.extraNodes ?? [])];
     this.getExtraNodeIdsCb = options.getExtraNodeIds;
     this.extraNodeWeight = Math.max(1, Math.floor(options.extraNodeWeight ?? 1));
+    this.getNodeLabel = options.getNodeLabel;
   }
 
   /** Replace static extra node list (e.g. after plugin registration). */
   setExtraNodes(ids: string[]): void {
     this.extraNodes = [...ids];
+  }
+
+  removePluginNodes(pluginId: string): void {
+    const prefix = `${pluginId}:`;
+    this.sectorBag = this.sectorBag.filter((id) => !id.startsWith(prefix));
+    this.extraNodes = this.extraNodes.filter((id) => !id.startsWith(prefix));
+    for (const id of this.injectedExtras) {
+      if (id.startsWith(prefix)) this.injectedExtras.delete(id);
+    }
   }
 
   private resolveExtraIds(): string[] {
@@ -131,8 +144,11 @@ export class ConduitDeck {
 
   generateDimensionForId(chosenId: DimId): DimensionName {
     const nouns = this.nouns[chosenId] ?? [];
-    // Unknown/plugin dimId: fallback name is the id itself, never a crash.
-    if (nouns.length === 0) return { id: chosenId, name: chosenId };
+    // Unknown/plugin dimId: prefer the plugin label, fall back to the id itself.
+    if (nouns.length === 0) {
+      const label = this.getNodeLabel?.(chosenId);
+      return { id: chosenId, name: label ?? chosenId };
+    }
     const adj = this.adjectives[Math.floor(this.random() * this.adjectives.length)] ?? "";
     const noun = nouns[Math.floor(this.random() * nouns.length)] ?? "";
     const name = `${adj} ${noun}`.trim();

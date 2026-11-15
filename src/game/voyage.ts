@@ -213,14 +213,6 @@ export class Voyage {
     s.jumpCount = clampNum(Math.floor(finiteNum(s.jumpCount, 1)), 1, Number.MAX_SAFE_INTEGER);
   }
 
-  hasObserverDeparted(): boolean {
-    const seen = this.state.seenCutscenes ?? [];
-    return (
-      seen.includes(this.config.CORVUS_FINAL_CUTSCENE) ||
-      (this.config.CORVUS_FINAL_CUTSCENE === "corvus-tutorial:wp5" && seen.includes("wp5"))
-    );
-  }
-
   assertInvariants(): string[] {
     const breaches: string[] = [];
     if (this.state.hull > this.config.MAX_HULL) breaches.push("Hull > Max");
@@ -423,7 +415,9 @@ export class Voyage {
         Number.MAX_SAFE_INTEGER,
       ),
       sectorBag: Array.isArray(saved.sectorBag)
-        ? saved.sectorBag.filter((x): x is string => typeof x === "string")
+        ? saved.sectorBag.filter(
+            (x): x is string => typeof x === "string" && this.registry.getNode(x) !== undefined,
+          )
         : cur.sectorBag,
       hull: clampNum(finiteNum(saved.hull, cur.hull), 0, this.config.MAX_HULL),
       fuel: clampNum(finiteNum(saved.fuel, cur.fuel), 0, Number.MAX_SAFE_INTEGER),
@@ -462,6 +456,11 @@ export class Voyage {
           ? { ...saved.pluginState }
           : {},
     };
+    if (!this.registry.getNode(sanitized.dimId)) {
+      sanitized.dimId = "hub";
+      sanitized.dimName = "Scrapyard Outpost";
+      sanitized.isSurveyed = false;
+    }
     Object.assign(this.state, sanitized);
     this.state.phase = "START";
     this.conduit.init(sanitized.sectorBag);

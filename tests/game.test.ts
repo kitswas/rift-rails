@@ -30,7 +30,53 @@ function makeVoyage(hooks: VoyageHooks = {}) {
   return { registry, voyage };
 }
 
+describe("conduit plugin node names", () => {
+  it("uses a registered plugin node label when no procedural nouns exist", () => {
+    const conduit = new ConduitDeck({
+      runway: GAME_DATA.runway,
+      sectorPoolCounts: GAME_DATA.sectorPoolCounts,
+      waypointHubInterval: GAME_DATA.config.WAYPOINT_HUB_INTERVAL,
+      adjectives: GAME_DATA.procedural.adjectives,
+      nouns: GAME_DATA.procedural.nouns,
+      getNodeLabel: (id) => (id === "plugin:yard" ? "Salvage Yard" : undefined),
+      random: () => 0.5,
+    });
+
+    expect(conduit.generateDimensionForId("plugin:yard")).toEqual({
+      id: "plugin:yard",
+      name: "Salvage Yard",
+    });
+  });
+
+  it("filters removed plugin nodes from the bag and never selects them", () => {
+    const conduit = new ConduitDeck({
+      runway: [],
+      sectorPoolCounts: {},
+      waypointHubInterval: 10,
+      adjectives: [],
+      nouns: {},
+    });
+    conduit.init(["removed:one", "another:one", "removed:two", "res"]);
+
+    conduit.removePluginNodes("removed");
+
+    expect(conduit.serialize()).toEqual(["another:one", "res"]);
+    expect(conduit.resolveNextNodeId(1)).not.toMatch(/^removed:/);
+  });
+});
+
 describe("voyage executeAction", () => {
+  it("keeps deep hunt affordable without an engine upgrade", () => {
+    const { registry, voyage } = makeVoyage();
+    voyage.state.weaponTier = GAME_DATA.config.HUNT_DEEP_WPN_REQ;
+    const action = registry.getAction("hunt_deep");
+
+    expect(action).toBeDefined();
+    if (!action) throw new Error("missing hunt_deep action");
+    expect(voyage.state.energy).toBe(GAME_DATA.config.START_ENERGY);
+    expect(voyage.canAffordAction(action)).toBe(true);
+  });
+
   it("consumes energy and produces flux", () => {
     const { voyage } = makeVoyage();
     const before = { energy: voyage.state.energy, flux: voyage.state.flux };
@@ -106,6 +152,50 @@ describe("voyage canSurvive", () => {
 });
 
 describe("voyage serialize", () => {
+  it("preserves saved plugin nodes that are registered before loadState", () => {
+    const { registry, voyage } = makeVoyage();
+    registry.registerNode("enabled:sector", {
+      id: "enabled:sector",
+      label: "Enabled Sector",
+      desc: "A rehydrated plugin node.",
+      exploreCost: 1,
+      isHub: false,
+      actions: [],
+    });
+    const saved = voyage.serialize();
+    saved.dimId = "enabled:sector";
+    saved.dimName = "Custom Saved Name";
+    saved.isSurveyed = true;
+    saved.sectorBag = ["enabled:sector", "removed:sector"];
+
+    voyage.loadState(saved);
+
+    expect(voyage.getSnapshot()).toMatchObject({
+      dimId: "enabled:sector",
+      dimName: "Custom Saved Name",
+      isSurveyed: true,
+    });
+    expect(voyage.serialize().sectorBag).toEqual(["enabled:sector"]);
+  });
+
+  it("falls back from missing plugin dimensions and filters stale saved sector ids", () => {
+    const { voyage } = makeVoyage();
+    const saved = voyage.serialize();
+    saved.dimId = "missing-plugin:sector";
+    saved.dimName = "Lost Sector";
+    saved.isSurveyed = true;
+    saved.sectorBag = ["res", "missing-plugin:sector", "missing-plugin:next"];
+
+    voyage.loadState(saved);
+
+    expect(voyage.getSnapshot()).toMatchObject({
+      dimId: "hub",
+      dimName: "Scrapyard Outpost",
+      isSurveyed: false,
+    });
+    expect(voyage.serialize().sectorBag).toEqual(["res"]);
+  });
+
   it("round-trips serialize and loadState without changing hull", () => {
     const { voyage } = makeVoyage();
     voyage.markCutsceneSeen(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
@@ -116,17 +206,15 @@ describe("voyage serialize", () => {
     expect(after.seenCutscenes).toEqual(before.seenCutscenes);
   });
 
-  it("marks observer departed after final cutscene", () => {
+  it("stores the final cutscene in the seen list", () => {
     const { voyage } = makeVoyage();
-    expect(voyage.hasObserverDeparted()).toBe(false);
     voyage.markCutsceneSeen(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
-    expect(voyage.hasObserverDeparted()).toBe(true);
     expect(voyage.getSnapshot().seenCutscenes).toContain(GAME_DATA.config.CORVUS_FINAL_CUTSCENE);
   });
 
-  it("recognizes legacy saves containing the old final cutscene id", () => {
+  it("preserves legacy saves containing the old final cutscene id", () => {
     const { voyage } = makeVoyage();
     voyage.markCutsceneSeen("wp5");
-    expect(voyage.hasObserverDeparted()).toBe(true);
+    expect(voyage.getSnapshot().seenCutscenes).toContain("wp5");
   });
 });

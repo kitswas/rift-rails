@@ -383,7 +383,3 @@ export class SoundFXService {
     }
   }
 }
-
-export function createSoundFX(deps: AudioDeps): SoundFXService {
-  return new SoundFXService(deps);
-}

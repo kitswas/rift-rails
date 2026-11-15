@@ -597,7 +597,6 @@ h2 {
   animation: cutsceneFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-#cutscene-overlay[hidden],
 .cutscene-frame {
   position: relative;
   isolation: isolate;
@@ -1606,6 +1605,10 @@ button:disabled {
   .screen-shake,
   .chromatic-flash {
     animation-duration: 0.01ms !important;
+  }
+
+  .screen-shake {
+    animation: none !important;
   }
 }
 

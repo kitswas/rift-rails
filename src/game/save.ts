@@ -303,7 +303,3 @@ export class SaveSystem {
     }
   }
 }
-
-export function createSaveSystem(deps: SaveDeps): SaveSystem {
-  return new SaveSystem(deps);
-}

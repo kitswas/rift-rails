@@ -321,7 +321,7 @@
             <h3 id="location-type"></h3>
 
 
-            <div id="story-log" aria-live="polite"></div>
+            <div id="story-log" role="log" aria-live="polite"></div>
 
             <div id="action-buttons">
               <button id="btn-explore" class="btn-energy"></button>
@@ -441,9 +441,9 @@
                 </p>
               </div>
 
-              <div class="manual-section" id="story-journal-section">
+              <div class="manual-section">
                 <h3>[5] Story Journal</h3>
-                <div id="story-journal" aria-live="polite">
+                <div id="story-journal" role="log" aria-live="polite">
                   <p>Stories installed by active plugins appear here.</p>
                 </div>
               </div>
@@ -456,7 +456,7 @@
       <nav id="bottom-nav" aria-label="Game panels">
         <button class="nav-tab" id="tab-settings">Settings</button>
         <button class="nav-tab" id="tab-sensors">Sensors</button>
-        <button class="nav-tab active" id="tab-bridge">Bridge</button>
+        <button class="nav-tab active" id="tab-bridge" aria-current="page">Bridge</button>
         <button class="nav-tab" id="tab-forge">Workshop</button>
         <button class="nav-tab" id="tab-manual">Manual</button>
       </nav>

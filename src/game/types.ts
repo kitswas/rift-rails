@@ -105,9 +105,6 @@ export type GameConfig = {
   MAX_TIER: number;
   DEATH_HULL_THRESHOLD: number;
   CRITICAL_HULL_THRESHOLD: number;
-  STRANDED_HULL_THRESHOLD: number;
-  MIN_FLUX_TO_BUY_FUEL: number;
-  NAV_CHOICES_COUNT: number;
   TRAVEL_BASE_FUEL_COST: number;
   TRAVEL_TIER_MULT: number;
   FORGE_BASE_FLUX_COST: number;
@@ -261,7 +258,6 @@ export interface TextStrings {
   logDesperate: string;
   logDead: string;
   logStranded: string;
-  logInsuffEnergy: string;
   formatActionBtn: (
     label: string,
     costStrs: string[],

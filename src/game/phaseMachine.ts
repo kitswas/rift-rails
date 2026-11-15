@@ -260,7 +260,3 @@ export class PhaseMachine {
     };
   }
 }
-
-export function createPhaseMachine(deps: PhaseMachineDeps): PhaseMachine {
-  return new PhaseMachine(deps);
-}

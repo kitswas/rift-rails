@@ -7,9 +7,6 @@ export const GAME_DATA: GameData = {
     MAX_TIER: 3,
     DEATH_HULL_THRESHOLD: 0,
     CRITICAL_HULL_THRESHOLD: 30,
-    STRANDED_HULL_THRESHOLD: 15,
-    MIN_FLUX_TO_BUY_FUEL: 20,
-    NAV_CHOICES_COUNT: 2,
 
     TRAVEL_BASE_FUEL_COST: 15,
     TRAVEL_TIER_MULT: 10,
@@ -34,7 +31,7 @@ export const GAME_DATA: GameData = {
     HUNT_PACK_WIN_RATE: 0.5,
     HUNT_PACK_FLUX: 60,
 
-    HUNT_DEEP_ENERGY: 3,
+    HUNT_DEEP_ENERGY: 2,
     HUNT_DEEP_WIN_RATE: 0.3,
     HUNT_DEEP_FLUX: 90,
     HUNT_DEEP_FUEL: 25,
@@ -166,9 +163,6 @@ export const GAME_DATA: GameData = {
       btnTravel: "btn-travel",
       btnDesperate: "btn-desperate",
       btnNewGame: "btn-new-game",
-      navBtn: "nav-btn",
-      dimName: "dim-name",
-      dimType: "dim-type",
       screenShake: "screen-shake",
       chromaticFlash: "chromatic-flash",
       fxActive: "active",
@@ -192,7 +186,6 @@ export const GAME_DATA: GameData = {
       cutsceneBtnB: "cutscene-btn-b",
       locationName: "location-name",
       locationType: "location-type",
-      corvusPortrait: "corvus-portrait",
       encounterChoices: "encounter-choices",
       statHull: "stat-hull",
       statFuel: "stat-fuel",
@@ -292,7 +285,6 @@ export const GAME_DATA: GameData = {
     logDead: "CRITICAL BREACH. The train is destroyed. Refresh to restart.",
     logStranded:
       "STRANDED IN VOID. Zero fuel, depleted hull reserves, engine dead. Refresh to re-initialize.",
-    logInsuffEnergy: "Insufficient Energy to perform this action.",
     formatActionBtn: (label, costStrs, prodStrs, reqStrs = []) => {
       const costs = costStrs.length ? `-${costStrs.join(", -")}` : "";
       const prods = prodStrs.length ? `+${prodStrs.join(", +")}` : "";

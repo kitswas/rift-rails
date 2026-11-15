@@ -26,6 +26,7 @@ export interface FXDeps {
   vibrate?: (pattern: number[]) => void;
   requestFrame?: (cb: (now: number) => void) => number;
   cancelFrame?: (id: number) => void;
+  reducedMotion?: () => boolean;
   now?: () => number;
   random?: () => number;
   setTimeoutFn?: (cb: () => void, ms: number) => number;
@@ -53,10 +54,12 @@ export class TransitionFXService {
   private readonly vibrate: ((pattern: number[]) => void) | undefined;
   private readonly requestFrame: ((cb: (now: number) => void) => number) | undefined;
   private readonly cancelFrame: ((id: number) => void) | undefined;
+  private readonly reducedMotion: () => boolean;
   private readonly now: () => number;
   private readonly random: () => number;
   private readonly setTimeoutFn: ((cb: () => void, ms: number) => number) | undefined;
   private readonly getViewportSize: (() => { width: number; height: number }) | undefined;
+  private effectId = 0;
   private readonly onResize = (): void => this.resize();
 
   constructor(deps: FXDeps) {
@@ -67,6 +70,7 @@ export class TransitionFXService {
     this.vibrate = deps.vibrate;
     this.requestFrame = deps.requestFrame;
     this.cancelFrame = deps.cancelFrame;
+    this.reducedMotion = deps.reducedMotion ?? (() => false);
     this.now = deps.now ?? (() => performance.now());
     this.random = deps.random ?? Math.random;
     this.setTimeoutFn = deps.setTimeoutFn;
@@ -142,20 +146,23 @@ export class TransitionFXService {
     if (this.running) return; // re-entry: a second jump effect would double-fire onBreach/onComplete
     this.sound.init();
     this.sound.playJumpCharge(this.config.JUMP_CHARGE_MS / 1000);
-    this.vibrate?.(this.config.FX_VIBRATE_PATTERN);
+    if (!this.reducedMotion()) this.vibrate?.(this.config.FX_VIBRATE_PATTERN);
     const gameEl = this.gameEl;
     const bridgeEl = this.bridgeEl;
     const fxEl = this.fxEl;
-    gameEl?.classList.add("screen-shake");
-    bridgeEl?.classList.add("screen-shake");
-    fxEl?.classList.add("active");
+    if (!this.reducedMotion()) {
+      gameEl?.classList.add("screen-shake");
+      bridgeEl?.classList.add("screen-shake");
+      fxEl?.classList.add("active");
+    }
     this.running = true;
+    const effectId = ++this.effectId;
     const adjective = targetDimName.split(" ")[0] ?? "";
     const theme: ProceduralTheme = this.themes.getTheme(adjective) ?? this.themes.getDefaultTheme();
     const startTime = this.now();
 
     const renderFrame = (frameNow: number): void => {
-      if (!this.running) return;
+      if (!this.running || this.reducedMotion()) return;
       const canvas = this.canvas;
       const ctx = this.ctx;
       if (!canvas || !ctx) return;
@@ -234,7 +241,7 @@ export class TransitionFXService {
       }
     };
 
-    if (this.requestFrame) {
+    if (this.requestFrame && !this.reducedMotion()) {
       this.animId = this.requestFrame(renderFrame);
     }
     const schedule = (cb: () => void, ms: number): void => {
@@ -242,15 +249,19 @@ export class TransitionFXService {
       else cb();
     };
     schedule(() => {
+      if (effectId !== this.effectId) return;
       onBreach();
       this.applyThemeStyles(adjective);
       gameEl?.classList.remove("screen-shake");
       bridgeEl?.classList.remove("screen-shake");
-      gameEl?.classList.add("chromatic-flash");
-      bridgeEl?.classList.add("chromatic-flash");
+      if (!this.reducedMotion()) {
+        gameEl?.classList.add("chromatic-flash");
+        bridgeEl?.classList.add("chromatic-flash");
+      }
       this.sound.playArrivalChime();
     }, this.config.JUMP_CHARGE_MS);
     schedule(() => {
+      if (effectId !== this.effectId) return;
       this.running = false;
       this.cancelFrame?.(this.animId);
       fxEl?.classList.remove("active");
@@ -259,8 +270,13 @@ export class TransitionFXService {
       onComplete();
     }, this.config.JUMP_TOTAL_MS);
   }
-}
 
-export function createTransitionFX(deps: FXDeps): TransitionFXService {
-  return new TransitionFXService(deps);
+  cancelJumpEffect(): void {
+    this.effectId++;
+    this.running = false;
+    this.cancelFrame?.(this.animId);
+    this.fxEl?.classList.remove("active");
+    this.gameEl?.classList.remove("screen-shake", "chromatic-flash");
+    this.bridgeEl?.classList.remove("screen-shake", "chromatic-flash");
+  }
 }

@@ -85,7 +85,3 @@ export class RiftMotionService {
     }
   }
 }
-
-export function createMotion(deps: MotionDeps = {}): RiftMotionService {
-  return new RiftMotionService(deps);
-}

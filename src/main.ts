@@ -51,6 +51,7 @@ let storylineService: StorylineService | undefined;
 const TUTORIAL_PLUGIN_ID = "corvus-tutorial";
 const TUTORIAL_CHOICE_KEY = "rift.tutorial.next-game";
 let bundledPluginsReady: Promise<string[]> = Promise.resolve([]);
+let rehydratedPluginsReady: Promise<string[]> = Promise.resolve([]);
 let refreshPluginsPanel = (): void => {};
 
 async function setTutorialForNewGame(enabled: boolean): Promise<void> {
@@ -136,6 +137,7 @@ const conduit = new ConduitDeck({
   nouns: GAME_DATA.procedural.nouns,
   random: () => Math.random(),
   getExtraNodeIds: () => registry.listNodeIds().filter((id) => id.includes(":")),
+  getNodeLabel: (id) => registry.getNode(id)?.label ?? GAME_DATA.nodes[id]?.label,
 });
 conduit.init();
 
@@ -156,11 +158,11 @@ const storylines = {
 
 const hostDeps: HostDeps = {
   voyage: {
-    getSnapshot: () => voyage.getSnapshot() as never,
-    executeAction: (id) => voyage.executeAction(id) as never,
+    getSnapshot: () => voyage.getSnapshot(),
+    executeAction: (id) => voyage.executeAction(id),
     exploreNode: () => voyage.exploreNode(),
     desperateScavenge: () => voyage.desperateScavenge(),
-    state: voyage.state as never,
+    state: voyage.state,
     enforceStateBounds: () => voyage.enforceStateBounds(),
   },
   registry: {
@@ -172,12 +174,42 @@ const hostDeps: HostDeps = {
       registry.registerCutscene(id, { ...def, id } as never);
     },
     removePlugin: (pluginId) => {
+      cutscene.cancelPluginScenes(pluginId);
       for (const id of registry.listActionIds())
         if (id.startsWith(`${pluginId}:`)) registry.unregisterAction(id);
       for (const id of registry.listNodeIds())
         if (id.startsWith(`${pluginId}:`)) registry.unregisterNode(id);
       for (const id of registry.listCutsceneIds())
         if (id.startsWith(`${pluginId}:`)) registry.unregisterCutscene(id);
+      conduit.removePluginNodes(pluginId);
+      if (voyage.state.dimId.startsWith(`${pluginId}:`)) {
+        const phase = voyage.getPhase();
+        const terminal =
+          phase === (GAME_DATA.phases.dead ?? "DEAD") ||
+          phase === (GAME_DATA.phases.stranded ?? "STRANDED");
+        if (phase === (GAME_DATA.phases.jumping ?? "JUMPING")) fx.cancelJumpEffect();
+        voyage.state.dimId = "hub";
+        voyage.state.dimName = "Scrapyard Outpost";
+        voyage.state.isSurveyed = false;
+        voyage.state.targetDimId = null;
+        voyage.state.targetDimName = null;
+        voyage.state.navChoices = [];
+        const idle = GAME_DATA.phases.idle ?? "IDLE";
+        if (!terminal && !cutscene.activeCutscene) {
+          const yardCategory = GAME_DATA.phases.yard_category ?? "YARD_CATEGORY";
+          const yardRoot = GAME_DATA.phases.yard_root ?? "YARD_ROOT";
+          if (phase === yardCategory) engine.transitionTo(yardRoot);
+          if (voyage.getPhase() === yardRoot)
+            engine.transitionTo(GAME_DATA.phases.encounter ?? "ENCOUNTER");
+          if (voyage.getPhase() === idle) {
+            if (phase === idle) engine.updateUI();
+          } else if (!engine.transitionTo(idle)) {
+            engine.updateUI();
+          }
+        } else {
+          engine.updateUI();
+        }
+      }
     },
   },
   storylines,
@@ -232,7 +264,6 @@ const artDeps: ArtDeps = {
         iframe.src = "artwork-browser.html?bridge=1";
         iframe.style.display = "none";
         iframe.title = "Artwork bridge";
-        iframe.sandbox.add("allow-scripts", "allow-same-origin");
         document.body.appendChild(iframe);
       }
       const frame = iframe;
@@ -281,6 +312,7 @@ const fx = new TransitionFXService({
   vibrate: (pattern) => navigator.vibrate?.(pattern),
   requestFrame: (cb) => window.requestAnimationFrame(cb),
   cancelFrame: (id) => window.cancelAnimationFrame(id),
+  reducedMotion: () => reducedMotionQuery.matches,
   now: () => performance.now(),
   random: () => Math.random(),
   setTimeoutFn: (cb, ms) => window.setTimeout(cb, ms),
@@ -368,12 +400,6 @@ function setNeedle(angle: number): void {
   const delta = ((angle - entry.value + 540) % 360) - 180;
   motion.set(entry, entry.value + delta);
 }
-
-function slotGeometry(index: number, count: number): { left: number; top: number; width: number } {
-  if (count === 1) return { left: 29, top: 46, width: 42 };
-  return index === 0 ? { left: 4, top: 46, width: 42 } : { left: 54, top: 46, width: 42 };
-}
-void slotGeometry;
 
 function buildRailSvg(count: number): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -510,6 +536,7 @@ function armNavSlot(index: number): void {
   updateNavButtons();
 }
 function confirmNavSlot(index: number): boolean {
+  if (lockSlot >= 0) return false;
   if (armedSlot !== index || index < 0 || index >= navChoices.length) return false;
   const choice = navChoices[index];
   if (!choice) return false;
@@ -646,11 +673,15 @@ reducedMotionQuery.addEventListener?.("change", () => {
 });
 
 let menuSeq = 0;
+const nodeDeps = {
+  getTravelCost: () => voyage.getTravelCost(),
+  getNode: (id: string) => registry.getNode(id) ?? GAME_DATA.nodes[id],
+};
 const syncUI = (): void => {
   const s = voyage.getSnapshot();
-  renderVitals(s);
+  renderVitals(s, nodeDeps);
   const perms = GAME_DATA.permissions[s.phase] ?? { explore: false, travel: false, forge: false };
-  renderActionButtons(s, perms);
+  renderActionButtons(s, perms, nodeDeps);
   renderForge(s, perms.forge);
 };
 const addMenuItem = (
@@ -883,8 +914,35 @@ const showNavScreen = (visible: boolean): void => {
     requestAnimationFrame(() => s.querySelector<HTMLButtonElement>("button")?.focus());
   } else {
     s.style.display = "none";
-    navReturnFocus?.focus?.();
+    const returnFocus = navReturnFocus;
+    returnFocus?.focus?.();
+    if (document.activeElement !== returnFocus) el("location-name")?.focus();
     navReturnFocus = null;
+  }
+};
+// Keep Tab within the visible nav dialog; inert while the screen is hidden.
+const trapNavTab = (event: KeyboardEvent): void => {
+  if (event.key !== "Tab") return;
+  const screen = el("nav-screen");
+  if (!screen || getComputedStyle(screen).display === "none") return;
+  const focusables = Array.from(
+    screen.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+  );
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (!first || !last) return;
+  const active = document.activeElement;
+  if (!screen.contains(active)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+    return;
+  }
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
   }
 };
 const schedule = (fn: () => void, ms: number): void => {
@@ -932,7 +990,12 @@ const onSyncTabs = (): void => {
       closestIdx = idx;
     }
   });
-  tabs.forEach((tab, i) => tab.classList.toggle("active", i === closestIdx));
+  tabs.forEach((tab, i) => {
+    const active = i === closestIdx;
+    tab.classList.toggle("active", active);
+    if (active) tab.setAttribute("aria-current", "true");
+    else tab.removeAttribute("aria-current");
+  });
 };
 
 const deps: EngineDeps = {
@@ -1011,7 +1074,7 @@ engine = new EngineService({
 });
 
 hostDeps.engine = {
-  executeActionResult: (id) => engine.executeActionResult(id as never),
+  executeActionResult: (id) => engine.executeActionResult(id),
   exploreNode: () => engine.exploreNode(),
   desperateScavenge: () => engine.desperateScavenge(),
   notePluginMutation: () => engine.notePluginMutation(),
@@ -1140,6 +1203,7 @@ function bind(): void {
   btn("cutscene-btn-a")?.addEventListener("click", () => cutscene.advance(0));
   btn("cutscene-btn-b")?.addEventListener("click", () => cutscene.advance(1));
   document.addEventListener("keydown", (e) => cutscene.trapFocus(e));
+  document.addEventListener("keydown", trapNavTab);
   document.addEventListener("focusin", (e) => cutscene.trapFocus(e));
 
   const sel = document.getElementById("select-ambient-mode") as HTMLSelectElement | null;
@@ -1181,6 +1245,7 @@ function bind(): void {
     void (async () => {
       try {
         await bundledPluginsReady;
+        await rehydratedPluginsReady;
         if (save.hasSave()) {
           if (host.isPluginActive(TUTORIAL_PLUGIN_ID))
             await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
@@ -1300,14 +1365,20 @@ bind();
   const overlay = el("cutscene-overlay") as (HTMLElement & { hidden: boolean }) | null;
   if (overlay) overlay.hidden = true;
   const tabs = getTabs();
-  tabs.forEach((t, i) => t.classList.toggle("active", i === 2));
+  tabs.forEach((t, i) => {
+    const active = i === 2;
+    t.classList.toggle("active", active);
+    if (active) t.setAttribute("aria-current", "true");
+    else t.removeAttribute("aria-current");
+  });
 }
 const panel = mountPluginsPanel(host, {
   onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
 });
 refreshPluginsPanel = panel.refresh;
-void rehydratePlugins(host).then((ids) => {
+rehydratedPluginsReady = rehydratePlugins(host).then((ids) => {
   if (ids.length) panel.refresh();
+  return ids;
 });
 bundledPluginsReady = loadBundledPlugins(host, {
   onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),

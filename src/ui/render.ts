@@ -1,11 +1,20 @@
 // Pure state→DOM render functions. No voyage/game logic here; main.ts owns state.
 import { GAME_DATA } from "../game/data";
-import type { Cutscene, GameAction, SaveState, Trajectory } from "../game/types";
+import type { Cutscene, SaveState } from "../game/types";
 
 const ids = GAME_DATA.dom.ids;
 const cls = GAME_DATA.dom.classes;
 
 export type DomRefs = Record<string, HTMLElement | null>;
+
+export interface RenderDeps {
+  getTravelCost?: () => number;
+  getNode?: (id: string) => { label?: string; exploreCost?: number; isHub?: boolean } | undefined;
+}
+
+function travelCost(s: SaveState): number {
+  return GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
+}
 
 export function cacheDom(root: ParentNode = document): DomRefs {
   const refs: DomRefs = {};
@@ -25,7 +34,7 @@ function el(key: string): HTMLElement | null {
   return id ? document.getElementById(id) : null;
 }
 
-export function renderVitals(s: SaveState): void {
+export function renderVitals(s: SaveState, deps?: RenderDeps): void {
   const loc = el("locationName");
   if (loc) loc.textContent = GAME_DATA.text.formatDimName(s.dimName);
   const set = (key: string, v: string | number) => {
@@ -46,9 +55,9 @@ export function renderVitals(s: SaveState): void {
   set("eqModule", s.module);
   set("eqCarriage", s.carriage);
   set("eqCrew", s.crew);
-  const nodeLabel = GAME_DATA.nodes[s.dimId]?.label ?? s.dimId;
-  const travelCost =
-    GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
+  const node = deps?.getNode?.(s.dimId) ?? GAME_DATA.nodes[s.dimId];
+  const nodeLabel = node?.label ?? s.dimId;
+  const cost = deps?.getTravelCost?.() ?? travelCost(s);
   const lt = el("locationType");
   if (lt) lt.textContent = GAME_DATA.text.formatDimType(nodeLabel);
   const codex = el("dimTypeCodex");
@@ -58,21 +67,17 @@ export function renderVitals(s: SaveState): void {
     hullEl.style.color =
       s.hull <= GAME_DATA.config.CRITICAL_HULL_THRESHOLD ? "var(--danger)" : "var(--success)";
   const fuelEl = el("statFuel");
-  if (fuelEl) fuelEl.style.color = s.fuel < travelCost ? "var(--danger)" : "var(--action)";
+  if (fuelEl) fuelEl.style.color = s.fuel < cost ? "var(--danger)" : "var(--action)";
   const energyEl = el("statEnergy");
   if (energyEl) energyEl.style.color = s.energy === 0 ? "var(--warning)" : "var(--energy)";
-  const corvus = el("corvusPortrait");
-  if (corvus)
-    (corvus as HTMLElement & { hidden: boolean }).hidden = (s.seenCutscenes ?? []).includes(
-      GAME_DATA.config.CORVUS_FINAL_CUTSCENE,
-    );
 }
 
 export function renderActionButtons(
   s: SaveState,
   perms: { explore: boolean; travel: boolean },
+  deps?: RenderDeps,
 ): void {
-  const node = GAME_DATA.nodes[s.dimId];
+  const node = deps?.getNode?.(s.dimId) ?? GAME_DATA.nodes[s.dimId];
   const exploreCost = node?.exploreCost ?? 1;
   const isHub = node?.isHub ?? s.dimId === "hub";
   const ex = el("btnExplore");
@@ -82,8 +87,7 @@ export function renderActionButtons(
       : GAME_DATA.text.btnExploreClosed(exploreCost);
     (ex as HTMLButtonElement).disabled = !(perms.explore && s.energy >= exploreCost);
   }
-  const cost =
-    GAME_DATA.config.TRAVEL_BASE_FUEL_COST + s.engineTier * GAME_DATA.config.TRAVEL_TIER_MULT;
+  const cost = deps?.getTravelCost?.() ?? travelCost(s);
   const tr = el("btnTravel");
   if (tr) {
     tr.textContent = GAME_DATA.text.btnJump(cost);
@@ -156,67 +160,6 @@ export function appendLog(text: string, styleClass = cls.logSystem): void {
   } else {
     log.scrollTop = log.scrollHeight;
   }
-}
-
-export interface NodeLookup {
-  getNode: (id: string) => { actions?: string[] } | undefined;
-}
-
-export function renderEncounterChoices(
-  nodeId: string,
-  actions: Record<string, GameAction>,
-  onPick: (actId: string) => void,
-  registry?: NodeLookup,
-): void {
-  const host = el("encounterChoices");
-  if (!host) return;
-  host.innerHTML = "";
-  const nodeActions = registry?.getNode(nodeId)?.actions ?? GAME_DATA.nodes[nodeId]?.actions ?? [];
-  for (const actId of nodeActions) {
-    const act = actions[actId];
-    if (!act) continue;
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = act.label;
-    if (act.uiClass) b.className = act.uiClass;
-    b.dataset.actId = actId;
-    b.addEventListener("click", () => onPick(actId));
-    host.appendChild(b);
-  }
-}
-
-let navReturnFocus: HTMLElement | null = null;
-export function renderNavScreen(choices: Trajectory[], onPick: (t: Trajectory) => void): void {
-  const screen = el("navScreen");
-  if (screen) {
-    screen.setAttribute("role", "dialog");
-    screen.setAttribute("aria-modal", "true");
-    screen.setAttribute("aria-label", "Navigation choices");
-    screen.style.display = "flex";
-    navReturnFocus = document.activeElement as HTMLElement | null;
-  }
-  const title = el("lblNavTitle");
-  if (title) title.textContent = GAME_DATA.text.lblNavTitle;
-  const host = el("navChoices");
-  if (!host) return;
-  host.innerHTML = "";
-  for (const t of choices) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = cls.navBtn ?? "nav-btn";
-    b.textContent = GAME_DATA.text.formatDimName(t.name);
-    b.dataset.dimId = t.id;
-    b.addEventListener("click", () => onPick(t));
-    host.appendChild(b);
-  }
-  host.querySelector("button")?.focus();
-}
-
-export function hideNavScreen(): void {
-  const screen = el("navScreen");
-  if (screen) screen.style.display = "none";
-  navReturnFocus?.focus?.();
-  navReturnFocus = null;
 }
 
 export function renderCutscene(cut: Cutscene, beatIdx: number): void {

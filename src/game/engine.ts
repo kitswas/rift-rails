@@ -1,4 +1,3 @@
-import { PhaseMachine } from "./phaseMachine";
 import type { PhaseMachineDeps } from "./phaseMachine";
 import type { Registry } from "./registry";
 import type { Voyage } from "./voyage";
@@ -149,10 +148,6 @@ export class EngineService {
 
   logClass(name: keyof LogClasses): string {
     return this.logClasses[name];
-  }
-
-  depsClearMenu(): void {
-    this.deps.clearMenu();
   }
 
   attachHooks(hooks: Record<string, StateHook>): void {
@@ -423,6 +418,10 @@ export class EngineService {
         this.logClasses.logSystem,
       );
     } else {
+      if (this.save?.hasSave()) {
+        this.save.clear();
+        this.log("Auto-save unreadable; starting a new voyage.", this.logClasses.logSystem);
+      }
       this.voyage.resetState();
     }
     this.transitionTo(this.phaseOf("idle", "IDLE"));
@@ -470,39 +469,4 @@ export class EngineService {
   scrollToPane(index: number): void {
     this.deps.onScrollToPane?.(index);
   }
-}
-
-export function createEngine(factoryDeps: EngineServiceDeps): EngineService {
-  const engine = new EngineService(factoryDeps);
-  const d = factoryDeps.deps;
-  const phaseMachine = new PhaseMachine({
-    transitionTo: (phase) => engine.transitionTo(phase),
-    executeAction: (actId) => engine.executeAction(actId),
-    log: (text, cls) => engine.log(text, cls ?? engine.logClass("logSystem")),
-    updateUI: () => engine.updateUI(),
-    lockdownGameOver: (msg) => engine.lockdownGameOver(msg),
-    setChoices: d.setChoices,
-    resetNav: d.resetNav,
-    addMenuItem: d.addMenuItem,
-    clearMenu: d.clearMenu,
-    registry: factoryDeps.registry,
-    voyage: factoryDeps.voyage,
-    text: factoryDeps.text,
-    showNavScreen: d.showNavScreen,
-    schedule: d.schedule,
-    fx: factoryDeps.fx,
-    sound: factoryDeps.sound,
-    cutscene: factoryDeps.cutscene,
-    ...(factoryDeps.phaseMachine ?? {}),
-  });
-  engine.attachHooks(phaseMachine.hooks);
-  return engine;
-}
-
-export function stateHooksOf(engine: EngineService): Record<string, StateHook> {
-  return engine.hooks;
-}
-
-export function clearEncounterChoices(engine: EngineService): void {
-  engine.depsClearMenu();
 }
