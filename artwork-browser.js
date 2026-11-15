@@ -11,18 +11,6 @@ const SVG_CONFIG = {
 };
 
 const DITHER_CELL_SIZE = 5;
-const PIXEL_CONFIG = {
-  WIDTH: SVG_CONFIG.WIDTH / DITHER_CELL_SIZE,
-  HEIGHT: SVG_CONFIG.HEIGHT / DITHER_CELL_SIZE,
-};
-
-const TONE = {
-  DEEP_DARK: 0,
-  SHADOW: 1,
-  MIDTONE: 2,
-  LIGHT: 3,
-  GLOW: 4,
-};
 
 const ENGINE_MODE = {
   DUAL: "dual",
@@ -49,15 +37,6 @@ const DITHER_CONFIG = {
   THRESHOLD_OFFSET: 0.5,
   DIVISOR: 16,
   STRENGTH: 64,
-};
-
-const GLITCH_CONFIG = {
-  MIN_SLICES: 3,
-  MAX_SLICES: 8,
-  MIN_HEIGHT: 1,
-  MAX_HEIGHT: 4,
-  MIN_OFFSET: -5,
-  MAX_OFFSET: 5,
 };
 
 function createEnumArray(items) {
@@ -220,501 +199,6 @@ const NOUN_DATA = {
 const NOUNS = createEnumArray(Object.values(NOUN_DATA).flat());
 
 /** =========================================================================
- *  ENGINE 1: PROCEDURAL PIXEL ART (CANVAS DITHER)
- *  ========================================================================= */
-class PixelRenderer {
-  constructor(width = PIXEL_CONFIG.WIDTH, height = PIXEL_CONFIG.HEIGHT) {
-    this.w = width;
-    this.h = height;
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = this.w;
-    this.canvas.height = this.h;
-    this.ctx = this.canvas.getContext("2d");
-    this.imageData = this.ctx.createImageData(this.w, this.h);
-    this.buf = new Uint32Array(this.imageData.data.buffer);
-    this.bayer = BAYER_4X4;
-  }
-  setPalette(hexColors) {
-    const OPAQUE_ALPHA_SHIFT = 24;
-    const FULL_ALPHA = 255;
-    const BLUE_SHIFT = 16;
-    const GREEN_SHIFT = 8;
-    const HEX_RADIX = 16;
-
-    this.palette = hexColors.map((hex) => {
-      const r = parseInt(hex.slice(1, 3), HEX_RADIX),
-        g = parseInt(hex.slice(3, 5), HEX_RADIX),
-        b = parseInt(hex.slice(5, 7), HEX_RADIX);
-      return (
-        (FULL_ALPHA << OPAQUE_ALPHA_SHIFT) |
-        (b << BLUE_SHIFT) |
-        (g << GREEN_SHIFT) |
-        r
-      );
-    });
-  }
-  setPixel(x, y, toneIndex) {
-    if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
-      this.buf[y * this.w + x] =
-        this.palette[
-          Math.min(Math.max(toneIndex, TONE.DEEP_DARK), TONE.GLOW)
-        ];
-    }
-  }
-  setPixelDither(x, y, toneA, toneB, ratio) {
-    if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
-      const threshold =
-        (this.bayer[y % DITHER_CONFIG.BAYER_SIZE][
-          x % DITHER_CONFIG.BAYER_SIZE
-        ] +
-          DITHER_CONFIG.THRESHOLD_OFFSET) /
-        DITHER_CONFIG.DIVISOR;
-      this.buf[y * this.w + x] =
-        this.palette[ratio > threshold ? toneB : toneA];
-    }
-  }
-  fill(tone = TONE.DEEP_DARK) {
-    this.buf.fill(
-      this.palette[Math.min(Math.max(tone, TONE.DEEP_DARK), TONE.GLOW)],
-    );
-  }
-  fillSkyDither(toneA = TONE.DEEP_DARK, toneB = TONE.SHADOW, mult = 1.0) {
-    for (let y = 0; y < this.h; y++) {
-      const ratio = (y / this.h) * mult;
-      for (let x = 0; x < this.w; x++) {
-        this.setPixelDither(x, y, toneA, toneB, ratio);
-      }
-    }
-  }
-  applyGlitch(rng) {
-    const slices = rng.range(
-      GLITCH_CONFIG.MIN_SLICES,
-      GLITCH_CONFIG.MAX_SLICES,
-    );
-    const BYTES_PER_PIXEL = 4;
-    for (let i = 0; i < slices; i++) {
-      const y = rng.range(0, this.h),
-        h = rng.range(GLITCH_CONFIG.MIN_HEIGHT, GLITCH_CONFIG.MAX_HEIGHT),
-        offset = rng.range(
-          GLITCH_CONFIG.MIN_OFFSET,
-          GLITCH_CONFIG.MAX_OFFSET,
-        );
-      if (offset === 0) continue;
-      for (let yy = y; yy < y + h && yy < this.h; yy++) {
-        const row = new Uint32Array(
-          this.buf.buffer,
-          yy * this.w * BYTES_PER_PIXEL,
-          this.w,
-        );
-        const shifted = new Uint32Array(this.w);
-        if (offset > 0)
-          shifted.set(row.subarray(0, this.w - offset), offset);
-        else shifted.set(row.subarray(-offset), 0);
-        row.set(shifted);
-      }
-    }
-  }
-  present() {
-    this.ctx.putImageData(this.imageData, 0, 0);
-    return this.canvas;
-  }
-}
-
-const GenPixel = {
-  Station: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.2);
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        if (rng.chance(0.008)) r.setPixel(x, y, 4);
-      }
-    }
-    const cx = r.w / 2,
-      cy = 42;
-    for (let deg = 0; deg < 360; deg += 3) {
-      const rad = (deg * Math.PI) / 180;
-      const px = Math.floor(cx + Math.cos(rad) * 28);
-      const py = Math.floor(cy + Math.sin(rad) * 28);
-      r.setPixel(px, py, 3);
-      r.setPixel(px + 1, py, 2);
-    }
-    for (let y = 30; y < 55; y++) {
-      for (let x = cx - 12; x <= cx + 12; x++) {
-        if (Math.hypot(x - cx, y - cy) < 16) r.setPixel(x, y, 4);
-      }
-    }
-    for (let y = 60; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) r.setPixel(x, y, 0);
-    }
-  },
-  Bazaar: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let b = 0; b < 5; b++) {
-      const bx = 10 + b * 30,
-        by = 42 + rng.range(0, 10);
-      for (let x = bx; x < bx + 28; x++) {
-        const th = Math.sin(((x - bx) / 28) * Math.PI) * 10;
-        for (let y = Math.floor(by - th); y < r.h; y++) {
-          r.setPixel(x, y, (x + y) % 4 === 0 ? 3 : 2);
-        }
-      }
-      r.setPixel(bx + 14, by + 4, 4);
-    }
-  },
-  Outpost: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.2);
-    for (let x = 20; x < r.w - 20; x++) {
-      for (let y = 50; y < r.h; y++) r.setPixel(x, y, 1);
-    }
-    for (let x = 60; x < 100; x++) {
-      const h = x % 8 < 4 ? 28 : 34;
-      for (let y = h; y < 50; y++) r.setPixel(x, y, 2);
-    }
-    for (let y = 14; y < 45; y++) {
-      r.setPixel(80, y, 3);
-      r.setPixel(81, y, 4);
-    }
-  },
-  Nexus: (r, rng) => {
-    const cx = r.w / 2,
-      cy = r.h / 2;
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-        r.setPixelDither(x, y, 0, 1, Math.min(1, d / 60));
-      }
-    }
-    for (let y = cy - 25; y <= cy + 25; y++) {
-      const w = 25 - Math.abs(y - cy);
-      for (let x = cx - w; x <= cx + w; x++) {
-        r.setPixel(x, y, Math.abs(x - cx) < 2 ? 4 : 3);
-      }
-    }
-  },
-  Sanctuary: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    const cx = r.w / 2;
-    for (let y = 10; y < r.h; y++) {
-      const archW = Math.sin((y / r.h) * Math.PI) * 35;
-      for (let x = cx - archW; x <= cx + archW; x++) {
-        if (
-          Math.abs(x - (cx - archW)) < 3 ||
-          Math.abs(x - (cx + archW)) < 3
-        ) {
-          r.setPixel(Math.floor(x), y, 3);
-        }
-      }
-    }
-    r.setPixel(cx, 35, 4);
-  },
-  Wilds: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let i = 0; i < 35; i++) {
-      const tx = rng.range(10, r.w - 10),
-        ty = rng.range(45, r.h - 10),
-        th = rng.range(15, 30),
-        bw = Math.floor(th * 0.45);
-      for (let y = ty; y < ty + 4 && y < r.h; y++) r.setPixel(tx, y, 1);
-      for (let y = ty; y > ty - th; y--) {
-        const progress = (y - (ty - th)) / th;
-        const tw = Math.max(0, Math.floor(progress * bw));
-        for (let x = tx - tw; x <= tx + tw; x++) {
-          r.setPixel(x, y, x === tx || y % 2 === 0 ? 3 : 2);
-        }
-      }
-    }
-  },
-  Expanse: (r, rng) => {
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        r.setPixelDither(x, y, 0, 1, y < 45 ? y / 45 : (y - 45) / 45);
-      }
-    }
-    const cx = r.w / 2;
-    for (let deg = 0; deg <= 180; deg += 4) {
-      const rad = (deg * Math.PI) / 180;
-      const px = Math.floor(cx + Math.cos(rad) * 40);
-      const py = Math.floor(55 - Math.sin(rad) * 28);
-      r.setPixel(px, py, 4);
-      r.setPixel(px, py + 1, 3);
-    }
-  },
-  Tundra: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    const waterY = 52;
-    for (let b = 0; b < 4; b++) {
-      const bx = 15 + b * 36,
-        bw = rng.range(26, 42),
-        bh = rng.range(16, 28);
-      const peakX = bx + Math.floor(bw * 0.4);
-      for (let y = waterY - bh; y <= waterY; y++) {
-        const prog = (waterY - y) / bh;
-        const xL = bx + Math.floor((peakX - bx) * (1 - prog));
-        const xR = bx + bw - Math.floor((bx + bw - peakX) * (1 - prog));
-        for (let x = xL; x <= xR; x++) {
-          r.setPixel(x, y, x < peakX ? 4 : 3);
-        }
-      }
-    }
-    for (let y = waterY; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        r.setPixelDither(x, y, 1, 2, (y - waterY) / (r.h - waterY));
-        if (y === waterY && x % 4 === 0) r.setPixel(x, y, 4);
-      }
-    }
-  },
-  Jungle: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let i = 0; i < 25; i++) {
-      const tx = rng.range(10, r.w - 10),
-        ty = rng.range(35, r.h - 5),
-        rad = rng.range(8, 16);
-      for (let y = ty; y < ty + 8 && y < r.h; y++) r.setPixel(tx, y, 1);
-      for (let dy = -rad; dy <= rad; dy++) {
-        for (let dx = -rad; dx <= rad; dx++) {
-          if (dx * dx + dy * dy <= rad * rad) {
-            r.setPixel(tx + dx, ty - rad + dy, dy < 0 ? 3 : 2);
-          }
-        }
-      }
-    }
-  },
-  Dominion: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let x = 20; x < r.w - 20; x++) {
-      const isMerlon = x % 8 < 4;
-      const wallTop = isMerlon ? 48 : 54;
-      for (let y = wallTop; y < r.h; y++) r.setPixel(x, y, 1);
-    }
-    for (let x = 32; x < 52; x++) {
-      for (let y = 30; y < 60; y++) r.setPixel(x, y, x < 42 ? 3 : 2);
-    }
-    for (let x = r.w - 52; x < r.w - 32; x++) {
-      for (let y = 30; y < 60; y++)
-        r.setPixel(x, y, x < r.w - 42 ? 3 : 2);
-    }
-    const cx = r.w / 2;
-    for (let x = cx - 14; x <= cx + 14; x++) {
-      for (let y = 20; y < 65; y++) r.setPixel(x, y, x < cx ? 4 : 2);
-    }
-    for (let y = 5; y < 20; y++) {
-      const w = Math.floor(((20 - y) / 15) * 10);
-      for (let x = cx - w; x <= cx + w; x++) r.setPixel(x, y, 3);
-    }
-  },
-  Wastes: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let l = 0; l < 4; l++) {
-      const sy = 35 + l * 14;
-      for (let x = 0; x < r.w; x++) {
-        const y = Math.floor(sy + Math.sin(x * 0.05 + l) * 6);
-        for (let yy = y; yy < r.h; yy++)
-          r.setPixelDither(x, yy, l, l + 1, (yy - y) / (r.h - y));
-      }
-    }
-  },
-  Quarry: (r, rng) => {
-    r.fill(0);
-    for (let s = 0; s < 5; s++) {
-      const inset = s * 14,
-        y = 30 + s * 11;
-      for (let x = inset; x < r.w - inset; x++) {
-        for (let yy = y; yy < r.h; yy++) {
-          r.setPixel(
-            x,
-            yy,
-            x === inset || x === r.w - inset - 1 || yy === y
-              ? 3
-              : s % 2 === 0
-                ? 1
-                : 2,
-          );
-        }
-      }
-    }
-  },
-  Nebula: (r, rng) => {
-    const gw = 20,
-      gh = 12,
-      noise = new Array(gw * gh);
-    for (let i = 0; i < noise.length; i++) noise[i] = rng.next();
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        const gx = (x / r.w) * (gw - 1),
-          gy = (y / r.h) * (gh - 1);
-        const gxi = Math.floor(gx),
-          gyi = Math.floor(gy);
-        const tx = gx - gxi,
-          ty = gy - gyi;
-        const top =
-          noise[gyi * gw + gxi] * (1 - tx) +
-          noise[gyi * gw + gxi + 1] * tx;
-        const bot =
-          noise[(gyi + 1) * gw + gxi] * (1 - tx) +
-          noise[(gyi + 1) * gw + gxi + 1] * tx;
-        let v = (top * (1 - ty) + bot * ty) * 1.5;
-        if (v < 0.3) r.setPixelDither(x, y, 0, 1, v / 0.3);
-        else if (v < 0.6) r.setPixelDither(x, y, 1, 2, (v - 0.3) / 0.3);
-        else if (v < 0.9) r.setPixelDither(x, y, 2, 3, (v - 0.6) / 0.3);
-        else r.setPixelDither(x, y, 3, 4, Math.min(1, (v - 0.9) / 0.3));
-        if (rng.chance(0.003)) r.setPixel(x, y, 4);
-      }
-    }
-  },
-  Crags: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.4);
-    for (let i = 0; i < 5; i++) {
-      const peakX = 18 + i * 32 + rng.range(-6, 6),
-        peakY = rng.range(12, 28);
-      const baseL = peakX - rng.range(12, 20),
-        baseR = peakX + rng.range(10, 18);
-      const ridgeX = peakX - rng.range(2, 6);
-      for (let y = peakY; y < r.h; y++) {
-        const prog = (y - peakY) / (r.h - peakY);
-        const curL = peakX - Math.floor((peakX - baseL) * prog);
-        const curR = peakX + Math.floor((baseR - peakX) * prog);
-        const curRidge = peakX - Math.floor((peakX - ridgeX) * prog);
-        for (let x = curL; x <= curR; x++) {
-          r.setPixel(
-            x,
-            y,
-            x < curRidge ? 4 : x === curRidge ? 3 : y % 3 === 0 ? 1 : 2,
-          );
-        }
-      }
-    }
-  },
-  Fields: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let y = 45; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        const stripe = (x * 2 + y * 3) % 8 < 4;
-        r.setPixel(x, y, stripe ? 2 : 3);
-      }
-    }
-  },
-  Vale: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.5);
-    for (let x = 0; x < r.w; x++) {
-      const my = Math.floor(25 + Math.abs(Math.sin(x * 0.03)) * 25);
-      for (let y = my; y < r.h; y++) r.setPixel(x, y, 2);
-    }
-    for (let y = 52; y < 68; y++) {
-      for (let x = 0; x < r.w; x++)
-        r.setPixel(x, y, (x + y) % 6 === 0 ? 3 : 4);
-    }
-    for (let x = 0; x < r.w; x++) {
-      const fy = Math.floor(65 + Math.sin(x * 0.05) * 8);
-      for (let y = fy; y < r.h; y++) r.setPixel(x, y, 0);
-    }
-    for (let i = 0; i < 15; i++) {
-      const tx = 10 + i * 11,
-        ty = 70 + rng.range(-3, 8),
-        th = rng.range(10, 18),
-        tw = Math.floor(th * 0.45);
-      for (let y = ty; y > ty - th; y--) {
-        const progress = (y - (ty - th)) / th;
-        const w = Math.max(0, Math.floor(progress * tw));
-        for (let x = tx - w; x <= tx + w; x++) r.setPixel(x, y, 1);
-      }
-    }
-  },
-  Canyon: (r, rng) => {
-    r.fill(0);
-    for (let l = 0; l < 4; l++) {
-      const y = 30 + l * 15;
-      for (let x = 0; x < r.w; x++) {
-        if (Math.abs(x - r.w / 2) > 15 + l * 8) {
-          for (let yy = y; yy < r.h; yy++) r.setPixel(x, yy, l + 1);
-        }
-      }
-    }
-  },
-  Dunes: (r, rng) => {
-    r.fill(0);
-    for (let l = 0; l < 3; l++) {
-      const by = 42 + l * 18,
-        f1 = rng.next() * 0.05 + 0.02,
-        p = rng.next() * 10;
-      for (let x = 0; x < r.w; x++) {
-        const ys = Math.floor(by + Math.sin(x * f1 + p) * 10);
-        for (let y = ys; y < r.h; y++) {
-          r.setPixelDither(x, y, l + 1, l, ((y - ys) / (r.h - ys)) * 1.5);
-        }
-      }
-    }
-  },
-  Catacombs: (r, rng) => {
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        const wall = Math.sin(x * 0.1) * 15 + 20;
-        if (y < wall || y > r.h - wall) r.setPixel(x, y, 1);
-        else r.setPixelDither(x, y, 0, 2, (y - wall) / (r.h - wall * 2));
-      }
-    }
-  },
-  Labyrinth: (r, rng) => {
-    const cx = r.w / 2,
-      cy = r.h / 2;
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        const dx = Math.abs(x - cx),
-          dy = Math.abs(y - cy);
-        let d = dy * (r.w / r.h) < dx ? r.w / (dx + 1) : r.h / (dy + 1);
-        let nd = Math.max(0, Math.min(1, 1 - d / 10));
-        if (dy * (r.w / r.h) < dx) {
-          const seg = Math.floor(d * 4) % 2 === 0;
-          r.setPixelDither(x, y, seg ? 1 : 2, seg ? 2 : 3, nd);
-        } else {
-          if (y > cy) r.setPixelDither(x, y, 0, 2, nd);
-          else r.setPixel(x, y, 0);
-        }
-      }
-    }
-  },
-  Spire: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.5);
-    const cx = r.w / 2;
-    for (let y = 8; y < r.h; y++) {
-      const w = Math.floor(((y - 8) / (r.h - 8)) ** 2 * 35 + 4);
-      for (let x = cx - w; x <= cx + w; x++)
-        r.setPixel(x, y, x < cx ? 2 : 3);
-    }
-  },
-  Ruins: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let c = 0; c < 5; c++) {
-      const cx = 20 + c * 28,
-        top = 25 + (c % 3) * 12;
-      for (let x = cx; x < cx + 10; x++) {
-        for (let y = top; y < r.h; y++)
-          r.setPixel(x, y, x === cx ? 4 : 2);
-      }
-    }
-  },
-  Abyss: (r, rng) => {
-    for (let y = 0; y < r.h; y++) {
-      for (let x = 0; x < r.w; x++) {
-        const riftW = (y / r.h) * 40 + 10;
-        const distToEdge = Math.abs(x - r.w / 2);
-        if (distToEdge < riftW) r.setPixelDither(x, y, 0, 4, y / r.h);
-        else r.setPixel(x, y, distToEdge < riftW + 6 ? 2 : 1);
-      }
-    }
-  },
-  Woods: (r, rng) => {
-    r.fillSkyDither(0, 1, 1.0);
-    for (let i = 0; i < 40; i++) {
-      const tx = rng.range(0, r.w),
-        ty = rng.range(20, 50);
-      for (let y = ty; y < r.h; y++) {
-        r.setPixel(tx, y, rng.chance(0.5) ? 2 : 3);
-        r.setPixel(tx + 1, y, 1);
-      }
-    }
-  },
-};
-
-/** =========================================================================
  *  ENGINE 2: FACETED VECTOR DIORAMA
  *  ========================================================================= */
 const EFFECT_PRESETS = {
@@ -861,29 +345,6 @@ class DioramaLayer {
     const styleAttr =
       styleParts.length > 0 ? `style="${styleParts.join(" ")}"` : "";
     return `<g class="layer-${this.index}" data-layer="${this.index}" ${svgFilterAttr} ${styleAttr}>${this.content}</g>`;
-  }
-}
-
-class UnifiedPathAccumulator {
-  constructor() {
-    this.channels = new Map();
-  }
-  add(channel, pathData) {
-    if (!pathData) return;
-    const trimmed = pathData.trim();
-    if (!trimmed) return;
-    if (!this.channels.has(channel)) {
-      this.channels.set(channel, []);
-    }
-    this.channels.get(channel).push(trimmed);
-  }
-  get(channel) {
-    return (this.channels.get(channel) || []).join(" ");
-  }
-  renderPath(channel, attributes = "") {
-    const d = this.get(channel);
-    if (!d) return "";
-    return `<path d="${d}" ${attributes} />`;
   }
 }
 
@@ -2672,11 +2133,9 @@ const GenVectorBG = {
 
 function artDimension(value, fallback) {
   const size = Math.round(Number(value));
-  return Number.isFinite(size) && size >= 1 ? size : fallback;
-}
-
-function renderPixelCanvas(noun, adjective, rng, palette, size) {
-  return renderPixelDitherCanvas(noun, adjective, rng, palette, size);
+  if (!Number.isFinite(size) || size < 1) return fallback;
+  if (size > 2048) return 2048;
+  return size;
 }
 
 /* =========================================================================
@@ -3267,7 +2726,7 @@ class FractalSnowflakeEngine {
   }
 }
 
-function getFrozenFrameSnowflakes(rng) {
+function getFrozenFrameSnowflakes(_rng) {
   const engine = new FractalSnowflakeEngine();
   // 4 Corner Major Stellar Snowflakes
   engine.addSnowflake(34, 34, 30, 2);
@@ -3498,7 +2957,7 @@ function buildCard(adjective, noun, category, engineMode) {
 
     const pRng = new SeededRNG(fullName);
     pixelContainer.appendChild(
-      renderPixelCanvas(noun, adjective, pRng, palette),
+      renderPixelDitherCanvas(noun, adjective, pRng, palette),
     );
 
     const vectorContainer = makeArtTile(
@@ -3530,7 +2989,7 @@ function buildCard(adjective, noun, category, engineMode) {
       `Inspect pixel diorama: The ${adjective} ${noun}`,
     );
     container.appendChild(
-      renderPixelCanvas(noun, adjective, rng, palette),
+      renderPixelDitherCanvas(noun, adjective, rng, palette),
     );
     mediaWrapper.appendChild(container);
   } else {
@@ -3729,7 +3188,7 @@ function renderModalPreview() {
   modalPreview.innerHTML = "";
   if (engine === ENGINE_MODE.PIXEL) {
     modalPreview.appendChild(
-      renderPixelCanvas(noun, adjective, rng, palette),
+      renderPixelDitherCanvas(noun, adjective, rng, palette),
     );
   } else {
     modalPreview.innerHTML = createVectorSVG(
@@ -3876,7 +3335,7 @@ window.renderPixelDiorama = async function (dimName, size) {
   const parts = (dimName || "Fractured Vale").split(" ");
   const adjective = parts[0] || "Fractured";
   const noun = parts.slice(1).join(" ") || "Vale";
-  const canvas = renderPixelCanvas(
+  const canvas = renderPixelDitherCanvas(
     noun,
     adjective,
     new SeededRNG(`The ${adjective} ${noun}`),
@@ -3889,6 +3348,7 @@ window.renderPixelDiorama = async function (dimName, size) {
 
 window.addEventListener("message", async (event) => {
   if (event.origin !== window.location.origin) return;
+  if (event.source !== window.parent) return;
   if (event.data && event.data.type === "RENDER_VECTOR_DIORAMA") {
     const { dimName, reqId } = event.data;
     const svg = window.renderVectorDiorama(dimName);

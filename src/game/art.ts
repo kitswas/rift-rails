@@ -35,12 +35,14 @@ const ARTWORK_MODES = {
   pixel: {
     requestType: "RENDER_PIXEL_DIORAMA",
     responseType: "DIORAMA_PIXEL_RESULT",
+    errorType: "DIORAMA_PIXEL_ERROR",
     alt: "Dithered dimension diorama",
     className: "art-pixel",
   },
   vector: {
     requestType: "RENDER_VECTOR_DIORAMA",
     responseType: "DIORAMA_VECTOR_RESULT",
+    errorType: null,
     alt: "Vector dimension diorama",
     className: "art-vector",
   },
@@ -48,8 +50,8 @@ const ARTWORK_MODES = {
 
 function normalizeSize(size?: ArtRenderSize): ArtRenderSize | undefined {
   if (!size) return undefined;
-  const width = Math.round(size.width);
-  const height = Math.round(size.height);
+  const width = Math.min(2048, Math.round(size.width));
+  const height = Math.min(2048, Math.round(size.height));
   return Number.isFinite(width) && Number.isFinite(height) && width >= 1 && height >= 1
     ? { width, height }
     : undefined;
@@ -88,6 +90,7 @@ export class DioramaPipelineService {
   onMessage(event: MessageEvent): void {
     const data = event.data as ArtResultMessage | null;
     if (!data || !data.reqId) return;
+    if (data.type !== this.mode.responseType && data.type !== this.mode.errorType) return;
     const entry = this.processing.get(data.reqId);
     if (!entry) return;
     this.processing.delete(data.reqId);
@@ -101,7 +104,9 @@ export class DioramaPipelineService {
   render(dimName: string, callback?: (markup: string) => void, size?: ArtRenderSize): string {
     if (!dimName) return "";
     const normalizedSize = normalizeSize(size);
-    const key = normalizedSize ? JSON.stringify([dimName, normalizedSize.width, normalizedSize.height]) : dimName;
+    const key = normalizedSize
+      ? JSON.stringify([dimName, normalizedSize.width, normalizedSize.height])
+      : dimName;
     const cached = this.cache.get(key);
     if (cached !== undefined) {
       return cached;
@@ -170,8 +175,4 @@ export class DioramaPipelineService {
       .catch((error: unknown) => console.error("Diorama rendering failed:", error));
     return "";
   }
-}
-
-export function createDioramaPipeline(deps: ArtDeps): DioramaPipelineService {
-  return new DioramaPipelineService(deps);
 }
