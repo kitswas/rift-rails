@@ -1,3 +1,5 @@
+export type ArtworkKind = "pixel" | "vector";
+
 interface ArtResultMessage {
   type?: string;
   reqId?: number;
@@ -18,10 +20,26 @@ export interface ArtBridgeHandle {
 
 export interface ArtDeps {
   createBridge: () => ArtBridgeHandle | null;
+  kind?: ArtworkKind;
   setTimeoutFn?: (cb: () => void, ms: number) => number;
   clearTimeoutFn?: (id: number) => void;
   timeoutMs?: number;
 }
+
+const ARTWORK_MODES = {
+  pixel: {
+    requestType: "RENDER_PIXEL_DIORAMA",
+    responseType: "DIORAMA_PIXEL_RESULT",
+    alt: "Dithered dimension diorama",
+    className: "art-pixel",
+  },
+  vector: {
+    requestType: "RENDER_VECTOR_DIORAMA",
+    responseType: "DIORAMA_VECTOR_RESULT",
+    alt: "Vector dimension diorama",
+    className: "art-vector",
+  },
+} as const;
 
 export class DioramaPipelineService {
   bridge: ArtBridgeHandle | null = null;
@@ -31,12 +49,14 @@ export class DioramaPipelineService {
   processing = new Map<number, PendingEntry>();
   requestId = 0;
   private readonly createBridge: () => ArtBridgeHandle | null;
+  private readonly mode: (typeof ARTWORK_MODES)[ArtworkKind];
   private readonly setTimeoutFn: ((cb: () => void, ms: number) => number) | undefined;
   private readonly clearTimeoutFn: ((id: number) => void) | undefined;
   private readonly timeoutMs: number;
 
   constructor(deps: ArtDeps) {
     this.createBridge = deps.createBridge;
+    this.mode = ARTWORK_MODES[deps.kind ?? "pixel"];
     this.setTimeoutFn = deps.setTimeoutFn;
     this.clearTimeoutFn = deps.clearTimeoutFn;
     this.timeoutMs = deps.timeoutMs ?? 8000;
@@ -57,7 +77,7 @@ export class DioramaPipelineService {
     const entry = this.processing.get(data.reqId);
     if (!entry) return;
     this.processing.delete(data.reqId);
-    if (data.type === "DIORAMA_PIXEL_RESULT" && data.src) {
+    if (data.type === this.mode.responseType && data.src) {
       entry.resolve(data.src);
     } else {
       entry.reject(new Error(data.error || "Artwork rendering failed."));
@@ -95,7 +115,7 @@ export class DioramaPipelineService {
                 },
               });
               try {
-                this.bridge?.postMessage({ type: "RENDER_PIXEL_DIORAMA", dimName, reqId });
+                this.bridge?.postMessage({ type: this.mode.requestType, dimName, reqId });
               } catch (error) {
                 this.clearTimeoutFn?.(timeoutId);
                 this.processing.delete(reqId);
@@ -110,7 +130,9 @@ export class DioramaPipelineService {
             /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/i.test(src)
               ? src
               : "";
-          const markup = safeSrc ? `<img src="${safeSrc}" alt="Dithered dimension diorama" />` : "";
+          const markup = safeSrc
+            ? `<img class="${this.mode.className}" src="${safeSrc}" alt="${this.mode.alt}" />`
+            : "";
           this.cache.set(dimName, markup);
           return markup;
         })

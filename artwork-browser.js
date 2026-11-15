@@ -3835,6 +3835,13 @@ if (!isBridgeMode) renderGallery();
 /* ========================================================
    CROSS-ORIGIN / IFRAME ARTWORK BRIDGE FOR RIFT RAILS
    ======================================================== */
+function toBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 window.renderVectorDiorama = function (dimName) {
   try {
     const parts = (dimName || "Fractured Vale").split(" ");
@@ -3873,16 +3880,13 @@ window.renderPixelDiorama = async function (dimName) {
 
 window.addEventListener("message", async (event) => {
   if (event.origin !== window.location.origin) return;
-  if (event.data && event.data.type === "RENDER_DIORAMA") {
-    const svg = window.renderVectorDiorama(event.data.dimName);
+  if (event.data && event.data.type === "RENDER_VECTOR_DIORAMA") {
+    const { dimName, reqId } = event.data;
+    const svg = window.renderVectorDiorama(dimName);
+    const src = svg ? `data:image/svg+xml;base64,${toBase64(svg)}` : "";
     if (event.source && event.source.postMessage) {
       event.source.postMessage(
-        {
-          type: "DIORAMA_RESULT",
-          reqId: event.data.reqId,
-          dimName: event.data.dimName,
-          svg,
-        },
+        { type: "DIORAMA_VECTOR_RESULT", reqId, dimName, src },
         window.location.origin,
       );
     }

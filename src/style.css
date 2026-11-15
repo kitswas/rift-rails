@@ -253,6 +253,7 @@ body {
   object-fit: cover;
   opacity: 0.42;
   filter: saturate(0.72) brightness(0.78);
+  image-rendering: pixelated;
   -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
 }
@@ -466,7 +467,7 @@ h2 {
   border-radius: calc(var(--radius) - 2px);
 }
 
-#art-display img {
+#art-display img.art-pixel {
   image-rendering: pixelated;
 }
 

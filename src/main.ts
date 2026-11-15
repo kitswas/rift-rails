@@ -12,7 +12,7 @@ import { PhaseMachine } from "./game/phaseMachine";
 import { SoundFXService } from "./game/audio";
 import type { AmbientMode, MotionEntry, Trajectory } from "./game/types";
 import { DioramaPipelineService } from "./game/art";
-import type { ArtBridgeHandle } from "./game/art";
+import type { ArtBridgeHandle, ArtDeps } from "./game/art";
 import { TransitionFXService } from "./game/fx";
 import { CutsceneEngine } from "./game/cutscene";
 import { StorylineService } from "./game/storyline";
@@ -222,7 +222,7 @@ const sound = new SoundFXService({
   },
 });
 
-const art = new DioramaPipelineService({
+const artDeps: ArtDeps = {
   createBridge: (): ArtBridgeHandle | null => {
     try {
       let iframe = document.getElementById("art-bridge") as HTMLIFrameElement | null;
@@ -264,7 +264,9 @@ const art = new DioramaPipelineService({
   setTimeoutFn: (cb, ms) => window.setTimeout(cb, ms),
   clearTimeoutFn: (id) => window.clearTimeout(id),
   timeoutMs: 8000,
-});
+};
+const art = new DioramaPipelineService({ ...artDeps, kind: "pixel" });
+const vectorArt = new DioramaPipelineService({ ...artDeps, kind: "vector" });
 
 const fx = new TransitionFXService({
   config: GAME_DATA.config,
@@ -748,20 +750,25 @@ const syncSensors = (): void => {
   if (bridgeScene.dataset.dimName !== snap.dimName) {
     bridgeScene.innerHTML = "";
     bridgeScene.dataset.dimName = snap.dimName;
+    if (artDisplay.dataset.dimName !== snap.dimName) {
+      artDisplay.dataset.dimName = snap.dimName;
+    }
   }
   const markup = art.render(snap.dimName, (asyncMarkup) => {
     const cur = voyage.getSnapshot();
     if (asyncMarkup && cur.dimName === snap.dimName) {
       bridgeScene.innerHTML = asyncMarkup;
-      if (cur.isSurveyed) {
-        const curDisplay = el("art-display");
-        if (curDisplay) curDisplay.innerHTML = asyncMarkup;
-      }
     }
   });
   if (markup) bridgeScene.innerHTML = markup;
+  const vectorMarkup = vectorArt.render(snap.dimName, (asyncMarkup) => {
+    const cur = voyage.getSnapshot();
+    if (asyncMarkup && cur.dimName === snap.dimName && cur.isSurveyed) {
+      artDisplay.innerHTML = asyncMarkup;
+    }
+  });
   if (snap.isSurveyed) {
-    if (markup) artDisplay.innerHTML = markup;
+    if (vectorMarkup) artDisplay.innerHTML = vectorMarkup;
   } else {
     if (!document.getElementById("art-glyph") || !document.getElementById("art-label")) {
       artDisplay.innerHTML = '<div id="art-glyph"></div><span id="art-label">SIGNAL LOCKED</span>';
