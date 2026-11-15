@@ -1,6 +1,8 @@
 import { defineConfig, configDefaults } from "vitest/config";
 
 export default defineConfig({
+  // Relative URLs so the build works inside an itch.io iframe mounted under an arbitrary path.
+  base: "./",
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {
