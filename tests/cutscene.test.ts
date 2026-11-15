@@ -4,6 +4,7 @@ import { CutsceneEngine } from "../src/game/cutscene";
 import { GAME_DATA } from "../src/game/data";
 import { Registry } from "../src/game/registry";
 import type { StoryScene } from "../src/game/storyline";
+import type { CutsceneId, Phase } from "../src/game/types";
 import { Voyage } from "../src/game/voyage";
 
 function makeVoyage() {
@@ -39,7 +40,15 @@ function makeScene(choiceCount = 2): StoryScene {
   };
 }
 
-function makeEngine(voyage: Voyage): CutsceneEngine {
+function makeEngine(
+  voyage: Voyage,
+  registry: Registry = new Registry(),
+  transitionTo: (phase: Phase) => boolean = (phase) => {
+    voyage.setPhase(phase);
+    return true;
+  },
+  firstCutsceneId?: CutsceneId,
+): CutsceneEngine {
   const ids = {
     gameContainer: "game-container",
     cutsceneOverlay: "cutscene-overlay",
@@ -66,22 +75,103 @@ function makeEngine(voyage: Voyage): CutsceneEngine {
   const overlay = document.getElementById("cutscene-overlay");
   if (overlay) overlay.hidden = true;
   return new CutsceneEngine({
-    registry: new Registry(),
+    registry,
     voyage,
-    transitionTo: (phase) => {
-      voyage.setPhase(phase);
-      return true;
-    },
+    transitionTo,
     log: () => {},
     sound: { playDialogueChime: () => {} },
     refs: {
       get: (key) => document.getElementById(ids[key as keyof typeof ids] ?? ""),
       getActiveElement: () => document.activeElement,
     },
+    firstCutsceneId,
   });
 }
 
+const WP3 = {
+  id: "corvus-tutorial:wp3",
+  beats: [{ text: "Waypoint three.", choiceA: "Continue", choiceB: "" }],
+};
+
+function makeRegistryWith(id: string, cutscene: typeof WP3): Registry {
+  const registry = new Registry();
+  registry.registerCutscene(id, cutscene);
+  return registry;
+}
+
+describe("firstCutscene", () => {
+  it("does not fall back to another plugin when the configured scene is missing", () => {
+    const registry = makeRegistryWith("other-plugin:scene", {
+      ...WP3,
+      id: "other-plugin:scene",
+    });
+    const engine = makeEngine(
+      makeVoyage(),
+      registry,
+      undefined,
+      "corvus-tutorial:wp1",
+    );
+
+    expect(engine.firstCutscene()).toBeNull();
+  });
+});
+
+describe("cutsceneForJump", () => {
+  it("returns the namespaced wp3 cutscene at jump 3 when unseen", () => {
+    const voyage = makeVoyage();
+    voyage.state.jumpCount = 3;
+    const engine = makeEngine(voyage, makeRegistryWith("corvus-tutorial:wp3", WP3));
+    expect(engine.cutsceneForJump(3, [])).toBe("corvus-tutorial:wp3");
+  });
+
+  it("returns null once the wp3 cutscene has been seen", () => {
+    const voyage = makeVoyage();
+    voyage.state.jumpCount = 3;
+    const engine = makeEngine(voyage, makeRegistryWith("corvus-tutorial:wp3", WP3));
+    expect(engine.cutsceneForJump(3, ["corvus-tutorial:wp3"])).toBeNull();
+  });
+
+  it("returns null for a legacy bare wp3 entry in seenCutscenes", () => {
+    const voyage = makeVoyage();
+    voyage.state.jumpCount = 3;
+    const engine = makeEngine(voyage, makeRegistryWith("corvus-tutorial:wp3", WP3));
+    expect(engine.cutsceneForJump(3, ["wp3"])).toBeNull();
+  });
+
+  it("returns null when the registry has no wp3 cutscene", () => {
+    const voyage = makeVoyage();
+    voyage.state.jumpCount = 3;
+    const engine = makeEngine(voyage);
+    expect(engine.cutsceneForJump(3, [])).toBeNull();
+  });
+
+  it("returns null when only a prefix-mismatched cutscene is registered", () => {
+    const voyage = makeVoyage();
+    voyage.state.jumpCount = 3;
+    const engine = makeEngine(
+      voyage,
+      makeRegistryWith("other-plugin:wp3", { ...WP3, id: "other-plugin:wp3" }),
+    );
+    expect(engine.cutsceneForJump(3, [])).toBeNull();
+  });
+});
+
 describe("interactive story dialogue", () => {
+  it("falls back to IDLE when the interrupted phase cannot resume", () => {
+    const voyage = makeVoyage();
+    voyage.setPhase("ENCOUNTER");
+    const engine = makeEngine(voyage, new Registry(), (phase) => {
+      if (phase === "ENCOUNTER" && voyage.getPhase() === "DIALOGUE") return false;
+      voyage.setPhase(phase);
+      return true;
+    });
+
+    engine.playStory(makeScene(), () => {});
+    engine.advance(0);
+
+    expect(voyage.getPhase()).toBe("IDLE");
+  });
+
   it("recognizes legacy unnamespaced Corvus cutscene saves", () => {
     const engine = makeEngine(makeVoyage());
     expect(engine.hasSeen("corvus-tutorial:wp1", ["wp1"])).toBe(true);

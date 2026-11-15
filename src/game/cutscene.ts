@@ -98,14 +98,12 @@ export class CutsceneEngine {
   }
 
   firstCutscene(): string | null {
+    if (this.firstCutsceneId !== undefined) {
+      return this.registry.getCutscene(this.firstCutsceneId) ? this.firstCutsceneId : null;
+    }
     const wp1 = `${WAYPOINT_ID_PREFIX}1`;
     if (this.registry.getCutscene(wp1)) return wp1;
-    const first = this.registry.listCutsceneIds()[0];
-    if (first) return first;
-    if (this.firstCutsceneId && this.registry.getCutscene(this.firstCutsceneId)) {
-      return this.firstCutsceneId;
-    }
-    return null;
+    return this.registry.listCutsceneIds()[0] ?? null;
   }
 
   trapFocus(event: Event): void {
@@ -145,7 +143,6 @@ export class CutsceneEngine {
       this.log(`cutscene not found: ${cutsceneId}`, this.logLoreClass);
       return;
     }
-    if (!resolved) return;
     this.enqueue({
       cutscene: resolved,
       speaker: "MASTER CORVUS // VEILED SCHOLAR",
@@ -318,7 +315,11 @@ export class CutsceneEngine {
         ? this.interruptedPhase
         : this.idlePhase;
     this.interruptedPhase = null;
-    this.transitionTo(returnPhase);
+    if (!this.transitionTo(returnPhase) && returnPhase !== this.idlePhase) {
+      if (!this.transitionTo(this.idlePhase)) {
+        this.log(`cutscene close: cannot return to ${this.idlePhase} phase`, this.logLoreClass);
+      }
+    }
     const next = this.voyage.evaluateSurvival();
     if (next) this.transitionTo(next);
     const nextScene = this.pending.shift();
@@ -327,9 +328,5 @@ export class CutsceneEngine {
 }
 
 export function createCutscene(deps: CutsceneDeps): CutsceneEngine {
-  return new CutsceneEngine(deps);
-}
-
-export function createCutsceneEngine(deps: CutsceneDeps): CutsceneEngine {
   return new CutsceneEngine(deps);
 }
