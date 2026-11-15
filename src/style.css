@@ -257,9 +257,17 @@ body {
   mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
 }
 
+#game-container > main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 #snap-slider {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
@@ -303,7 +311,7 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 10px 0 14px;
-    height: calc(100% - 110px);
+    height: 100%;
   }
 
   .pane {
@@ -370,16 +378,40 @@ body {
   pointer-events: none;
   z-index: 1;
   background:
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       0 0 / 7px 7px no-repeat,
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       100% 0 / 7px 7px no-repeat,
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       0 100% / 7px 7px no-repeat,
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       100% 100% / 7px 7px no-repeat,
-    repeating-linear-gradient(45deg, var(--border-bright) 0 1px, transparent 1px 5px) 0 0 / 100% 4px
-      no-repeat;
+    repeating-linear-gradient(
+        45deg,
+        var(--border-bright) 0 1px,
+        transparent 1px 5px
+      )
+      0 0 / 100% 4px no-repeat;
 }
 
 .hud-cell {
@@ -1129,13 +1161,33 @@ button:disabled {
   pointer-events: none;
   z-index: 2;
   background:
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       0 0 / 7px 7px no-repeat,
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       100% 0 / 7px 7px no-repeat,
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       0 100% / 7px 7px no-repeat,
-    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
+    radial-gradient(
+        circle,
+        var(--panel-bg) 0 1px,
+        var(--text-muted) 1.4px 2.4px,
+        transparent 2.8px
+      )
       100% 100% / 7px 7px no-repeat;
 }
 
@@ -1212,8 +1264,12 @@ button:disabled {
   padding: 6px 8px 5px;
   border-bottom: 1px solid var(--border);
   background:
-    repeating-linear-gradient(45deg, var(--border-bright) 0 1px, transparent 1px 5px) 0 0 / 100% 4px
-      no-repeat,
+    repeating-linear-gradient(
+        45deg,
+        var(--border-bright) 0 1px,
+        transparent 1px 5px
+      )
+      0 0 / 100% 4px no-repeat,
     var(--panel-sub-bg);
 }
 
@@ -1308,8 +1364,12 @@ button:disabled {
   padding: 6px 8px 5px;
   border-bottom: 1px solid var(--border-bright);
   background:
-    repeating-linear-gradient(45deg, var(--border-bright) 0 1px, transparent 1px 5px) 0 0 / 100% 4px
-      no-repeat,
+    repeating-linear-gradient(
+        45deg,
+        var(--border-bright) 0 1px,
+        transparent 1px 5px
+      )
+      0 0 / 100% 4px no-repeat,
     var(--panel-sub-bg);
 }
 
