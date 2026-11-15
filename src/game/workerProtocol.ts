@@ -5,6 +5,42 @@
 export const HOST_API_VERSION = 4;
 export const MIN_SUPPORTED_API_VERSION = 4;
 
+/**
+ * Wire message types, both directions. Single source: the host switches on
+ * these and the in-blob worker bootstrap interpolates them, so the two
+ * sides cannot drift.
+ */
+export const WORKER_MSG = {
+  // worker -> host
+  ready: "ready",
+  unmounted: "unmounted",
+  unmountError: "unmount-error",
+  fatal: "fatal",
+  apiCall: "api-call",
+  log: "log",
+  registerAction: "register-action",
+  registerNode: "register-node",
+  registerStoryline: "register-storyline",
+  registerCutscene: "register-cutscene",
+  grant: "grant",
+  storageGet: "storage-get",
+  storageSet: "storage-set",
+  eventSettled: "event-settled",
+  // host -> worker
+  init: "init",
+  event: "event",
+  grantResult: "grant-result",
+  storageResult: "storage-result",
+  shutdown: "shutdown",
+} as const;
+
+/** api-call trace phases. */
+export const API_CALL_PHASE = {
+  call: "call",
+  result: "result",
+  event: "event",
+} as const;
+
 /** Frozen game-state snapshot (SaveState shape, JSON-only). */
 export type StateSnapshot = {
   phase: string;
@@ -153,6 +189,10 @@ export interface VoyageLike {
   /** Live state bag, used as fallback when adjustResource is absent. */
   state?: StateSnapshot;
   enforceStateBounds?(): void;
+  /** Affordability check for plugin-granted actions (optional; host falls back to numeric check). */
+  canAffordAction?(action: unknown): boolean;
+  /** Legacy public registry handle, used as fallback action lookup when the registry does not expose getAction. */
+  registry?: { getAction?: (id: string) => unknown };
 }
 
 export interface RegistryLike {
@@ -160,6 +200,8 @@ export interface RegistryLike {
   registerNode(pluginId: string, def: RegisteredNode): void;
   registerCutscene(pluginId: string, def: RegisteredCutscene): void;
   removePlugin(pluginId: string): void;
+  /** Optional action lookup, used to validate and price plugin executeAction grants. */
+  getAction?(id: string): unknown;
 }
 
 export interface StorylineRegistryLike {

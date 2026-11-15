@@ -9,13 +9,16 @@
 
 import JSZip from "jszip";
 
+import { GAME_DATA } from "./data";
 import { ID_RE, isCompatible, ManifestError, parseManifest } from "./manifest";
 import type { PluginManifest } from "./manifest";
 import {
   ADJUSTABLE_RESOURCES,
+  API_CALL_PHASE,
   GRANT_PERMISSIONS,
   KNOWN_EVENTS,
   MAX_GRANT_AMOUNT,
+  WORKER_MSG,
 } from "./workerProtocol";
 import type {
   GrantOp,
@@ -47,12 +50,20 @@ export const MAX_GRANT_PER_PLUGIN_PER_WINDOW = 10000;
 export const MAX_GRANTS_PER_PLUGIN_PER_WINDOW = 50;
 /** Fixed per-plugin one-second window for grant budgets (not tied to emitted events). */
 const GRANT_WINDOW_MS = 1000;
+/** Phases where plugins must not mutate the game. Sourced from GAME_DATA so content overrides carry through. */
+const BLOCKED_GRANT_PHASES: ReadonlySet<string> = new Set([
+  GAME_DATA.phases.jumping ?? "JUMPING",
+  GAME_DATA.phases.dead ?? "DEAD",
+  GAME_DATA.phases.stranded ?? "STRANDED",
+  GAME_DATA.phases.dialogue ?? "DIALOGUE",
+]);
 export const PLUGIN_MOUNT_TIMEOUT_MS = 5000;
 export const PLUGIN_SHUTDOWN_TIMEOUT_MS = 1000;
 
-// ---- Worker source (plain JS; no backticks / ${ so this template is safe) --
+// ---- Worker source (plain JS; ${} interpolations inject the typed WORKER_MSG /
+// API_CALL_PHASE constants from workerProtocol.ts so both sides speak one vocabulary) --
 
-const WORKER_BOOTSTRAP = `
+export const WORKER_BOOTSTRAP = `
 "use strict";
 // Sandbox: plugin workers run with network globals blocked by default.
 // fetch / WebSocket / XMLHttpRequest / EventSource are shadowed with
@@ -91,7 +102,7 @@ function __post(m) { self.postMessage(m); }
 function __trace(method, args, phase) {
   let safeArgs = args;
   try { safeArgs = __clone(args); } catch (e) { safeArgs = "[unserializable arguments]"; }
-  __post({ type: "api-call", method: method, args: safeArgs, phase: phase || "call" });
+  __post({ type: "${WORKER_MSG.apiCall}", method: method, args: safeArgs, phase: phase || "${API_CALL_PHASE.call}" });
 }
 function __call(m) {
   return new Promise(function (res) {
@@ -114,14 +125,14 @@ function __dispatchEvent(m) {
   const runs = [];
   for (const fn of fns) {
     runs.push(Promise.resolve().then(function () {
-      try { __trace("event:" + m.event, m.payload, "event"); } catch (e) {}
+      try { __trace("event:" + m.event, m.payload, "${API_CALL_PHASE.event}"); } catch (e) {}
       return fn(m.payload);
     }).catch(function (err) {
-      __post({ type: "log", msg: "handler error: " + ((err && err.message) || err) });
+      __post({ type: "${WORKER_MSG.log}", msg: "handler error: " + ((err && err.message) || err) });
     }));
   }
   Promise.allSettled(runs).then(function () {
-    __post({ type: "event-settled", event: m.event });
+    __post({ type: "${WORKER_MSG.eventSettled}", event: m.event });
   });
 }
 function __start(plugin) {
@@ -137,11 +148,11 @@ function __start(plugin) {
     __mountAttempted = true;
     await plugin.mount(__api);
     __mounted = true;
-    self.postMessage({ type: "ready" });
+    self.postMessage({ type: "${WORKER_MSG.ready}" });
     const queued = __queuedEvents.splice(0);
     for (const event of queued) __dispatchEvent(event);
   })().catch(function (err) {
-    self.postMessage({ type: "fatal", message: String((err && err.message) || err) });
+    self.postMessage({ type: "${WORKER_MSG.fatal}", message: String((err && err.message) || err) });
   });
 }
 async function __shutdownPlugin() {
@@ -151,35 +162,35 @@ async function __shutdownPlugin() {
   try {
     await __mountPromise;
     if (__mountAttempted) await __plugin.unmount();
-    self.postMessage({ type: "unmounted" });
+    self.postMessage({ type: "${WORKER_MSG.unmounted}" });
   } catch (err) {
-    self.postMessage({ type: "unmount-error", message: String((err && err.message) || err) });
+    self.postMessage({ type: "${WORKER_MSG.unmountError}", message: String((err && err.message) || err) });
   } finally {
     if (typeof self.close === "function") self.close();
   }
 }
 self.onerror = function (e) {
-  __post({ type: "fatal", message: String((e && e.message) || "worker error") });
+  __post({ type: "${WORKER_MSG.fatal}", message: String((e && e.message) || "worker error") });
 };
 self.onunhandledrejection = function (e) {
-  __post({ type: "fatal", message: String((e && e.reason && e.reason.message) || "unhandled rejection") });
+  __post({ type: "${WORKER_MSG.fatal}", message: String((e && e.reason && e.reason.message) || "unhandled rejection") });
 };
 self.onmessage = function (e) {
   const m = e.data;
   if (!m || typeof m.type !== "string") return;
-  if (m.type === "init") {
+  if (m.type === "${WORKER_MSG.init}") {
     __snapshot = m.snapshot || null;
     __permissions = Array.isArray(m.permissions) ? m.permissions : [];
     __applySandbox();
     __resolveInit();
-  } else if (m.type === "event") {
+  } else if (m.type === "${WORKER_MSG.event}") {
     if (__shutdownRequested) return;
     if (__mounted) __dispatchEvent(m);
     else __queuedEvents.push(m);
-  } else if (m.type === "grant-result" || m.type === "storage-result") {
+  } else if (m.type === "${WORKER_MSG.grantResult}" || m.type === "${WORKER_MSG.storageResult}") {
     const r = __pending.get(m.reqId);
     if (r) { __pending.delete(m.reqId); r(m); }
-  } else if (m.type === "shutdown") {
+  } else if (m.type === "${WORKER_MSG.shutdown}") {
     __shutdownPlugin();
   }
 };
@@ -190,9 +201,9 @@ const __storage = Object.freeze({
   get: function (key) {
     key = String(key);
     __trace("storage.get", { key: key });
-    return __call({ type: "storage-get", key: key }).then(function (m) {
+    return __call({ type: "${WORKER_MSG.storageGet}", key: key }).then(function (m) {
       const value = m.value === undefined ? undefined : __clone(m.value);
-      __trace("storage.get", { key: key, value: value }, "result");
+      __trace("storage.get", { key: key, value: value }, "${API_CALL_PHASE.result}");
       return value;
     });
   },
@@ -200,9 +211,9 @@ const __storage = Object.freeze({
     key = String(key);
     value = __clone(value);
     __trace("storage.set", { key: key, value: value });
-    return __call({ type: "storage-set", key: key, value: value }).then(function (m) {
+    return __call({ type: "${WORKER_MSG.storageSet}", key: key, value: value }).then(function (m) {
       const ok = !!m.value;
-      __trace("storage.set", { key: key, ok: ok }, "result");
+      __trace("storage.set", { key: key, ok: ok }, "${API_CALL_PHASE.result}");
       return ok;
     });
   }
@@ -215,25 +226,25 @@ const __api = {
     list.push(fn);
     __listeners.set(event, list);
   },
-  registerAction: function (def) { __trace("registerAction", def); __post({ type: "register-action", def: def }); },
-  registerNode: function (def) { __trace("registerNode", def); __post({ type: "register-node", def: def }); },
-  registerStoryline: function (def) { __trace("registerStoryline", def); __post({ type: "register-storyline", def: def }); },
-  registerCutscene: function (def) { __trace("registerCutscene", def); __post({ type: "register-cutscene", def: def }); },
+  registerAction: function (def) { __trace("registerAction", def); __post({ type: "${WORKER_MSG.registerAction}", def: def }); },
+  registerNode: function (def) { __trace("registerNode", def); __post({ type: "${WORKER_MSG.registerNode}", def: def }); },
+  registerStoryline: function (def) { __trace("registerStoryline", def); __post({ type: "${WORKER_MSG.registerStoryline}", def: def }); },
+  registerCutscene: function (def) { __trace("registerCutscene", def); __post({ type: "${WORKER_MSG.registerCutscene}", def: def }); },
   grant: function (op) {
     __trace("grant", op);
-    return __call({ type: "grant", op: op }).then(function (m) {
+    return __call({ type: "${WORKER_MSG.grant}", op: op }).then(function (m) {
       const result = { ok: !!m.ok, reason: m.reason };
-      __trace("grant", result, "result");
+      __trace("grant", result, "${API_CALL_PHASE.result}");
       return result;
     });
   },
   state: function () {
     __trace("state", undefined);
     const state = __frozen(__clone(__snapshot));
-    __trace("state", state, "result");
+    __trace("state", state, "${API_CALL_PHASE.result}");
     return state;
   },
-  log: function (msg) { __trace("log", msg); __post({ type: "log", msg: String(msg) }); },
+  log: function (msg) { __trace("log", msg); __post({ type: "${WORKER_MSG.log}", msg: String(msg) }); },
   storage: __storage
 };
 return Object.freeze({ api: Object.freeze(__api), start: __start });
@@ -241,11 +252,11 @@ return Object.freeze({ api: Object.freeze(__api), start: __start });
 const pluginApi = __runtime.api;
 `;
 
-const WORKER_KICKOFF = `
+export const WORKER_KICKOFF = `
 try {
   __runtime.start(typeof plugin === "undefined" ? undefined : plugin);
 } catch (err) {
-  self.postMessage({ type: "fatal", message: String((err && err.message) || err) });
+  self.postMessage({ type: "${WORKER_MSG.fatal}", message: String((err && err.message) || err) });
 }
 `;
 
@@ -705,7 +716,7 @@ export class PluginHost {
     worker.onmessageerror = () => this.stopRecord(manifest.id, record, "message decode error");
 
     const init: HostMessage = {
-      type: "init",
+      type: WORKER_MSG.init,
       pluginId: manifest.id,
       permissions: manifest.permissions,
       snapshot: clone(this.deps.voyage.getSnapshot()),
@@ -737,7 +748,7 @@ export class PluginHost {
     const snapshot: StateSnapshot = clone(this.deps.voyage.getSnapshot());
     for (const record of this.plugins.values()) {
       if (!record.active || record.stopping) continue;
-      const msg: HostMessage = { type: "event", event: event as never, payload, snapshot };
+      const msg: HostMessage = { type: WORKER_MSG.event, event: event as never, payload, snapshot };
       record.worker.postMessage(msg);
       this.pendingEvents += 1;
     }
@@ -763,7 +774,7 @@ export class PluginHost {
       this.finishShutdown(id, record, "unmount timed out");
     }, PLUGIN_SHUTDOWN_TIMEOUT_MS);
     try {
-      record.worker.postMessage({ type: "shutdown" });
+      record.worker.postMessage({ type: WORKER_MSG.shutdown });
     } catch (err) {
       this.finishShutdown(id, record, `shutdown message failed: ${String(err)}`);
     }
@@ -865,18 +876,18 @@ export class PluginHost {
     const record = source ?? this.plugins.get(id);
     if (!record) return;
     if (this.plugins.get(id) !== record && !record.stopping) return;
-    if (msg.type === "unmounted") {
+    if (msg.type === WORKER_MSG.unmounted) {
       this.finishShutdown(id, record);
       return;
     }
-    if (msg.type === "unmount-error") {
+    if (msg.type === WORKER_MSG.unmountError) {
       this.finishShutdown(id, record, msg.message);
       return;
     }
     if (!record.active && !record.stopping) return;
-    if (record.stopping && msg.type === "grant") {
+    if (record.stopping && msg.type === WORKER_MSG.grant) {
       record.worker.postMessage({
-        type: "grant-result",
+        type: WORKER_MSG.grantResult,
         reqId: msg.reqId,
         ok: false,
         reason: "plugin is shutting down",
@@ -885,19 +896,27 @@ export class PluginHost {
     }
     if (
       record.stopping &&
-      !["api-call", "log", "storage-get", "storage-set", "event-settled"].includes(msg.type)
+      !(
+        [
+          WORKER_MSG.apiCall,
+          WORKER_MSG.log,
+          WORKER_MSG.storageGet,
+          WORKER_MSG.storageSet,
+          WORKER_MSG.eventSettled,
+        ] as readonly string[]
+      ).includes(msg.type)
     ) {
       return;
     }
     switch (msg.type) {
-      case "ready":
+      case WORKER_MSG.ready:
         record.ready = true;
         this.resolveReadyWaiters(id);
         break;
-      case "fatal":
+      case WORKER_MSG.fatal:
         this.stopRecord(id, record, msg.message);
         break;
-      case "api-call":
+      case WORKER_MSG.apiCall:
         if (import.meta.env.DEV) {
           console.log(`[plugin-api] ${id}.${msg.method}`, {
             phase: msg.phase ?? "call",
@@ -905,35 +924,35 @@ export class PluginHost {
           });
         }
         break;
-      case "log":
+      case WORKER_MSG.log:
         this.deps.log(`[${id}] ${msg.msg}`);
         break;
-      case "register-action":
+      case WORKER_MSG.registerAction:
         this.registerOne(id, "action", msg.def);
         break;
-      case "register-node":
+      case WORKER_MSG.registerNode:
         this.registerOne(id, "node", msg.def);
         break;
-      case "register-storyline":
+      case WORKER_MSG.registerStoryline:
         this.registerStoryline(id, msg.def);
         break;
-      case "register-cutscene":
+      case WORKER_MSG.registerCutscene:
         this.registerCutscene(id, msg.def);
         break;
-      case "grant":
+      case WORKER_MSG.grant:
         this.handleGrant(id, msg.reqId, msg.op);
         break;
-      case "storage-get":
+      case WORKER_MSG.storageGet:
         record.worker.postMessage({
-          type: "storage-result",
+          type: WORKER_MSG.storageResult,
           reqId: msg.reqId,
           value: clone(this.storage.get(id)?.get(msg.key)),
         });
         break;
-      case "storage-set":
+      case WORKER_MSG.storageSet:
         this.handleStorageSet(id, msg.reqId, msg.key, msg.value);
         break;
-      case "event-settled":
+      case WORKER_MSG.eventSettled:
         this.noteEventSettled();
         break;
     }
@@ -1094,7 +1113,7 @@ export class PluginHost {
     const reply = (ok: boolean, reason?: string) => {
       const record = this.plugins.get(id);
       if (!record?.active) return;
-      const msg: HostMessage = { type: "grant-result", reqId, ok, reason };
+      const msg: HostMessage = { type: WORKER_MSG.grantResult, reqId, ok, reason };
       record.worker.postMessage(msg);
     };
 
@@ -1129,12 +1148,7 @@ export class PluginHost {
       } catch {
         phaseNow = "";
       }
-      if (
-        phaseNow === "DEAD" ||
-        phaseNow === "JUMPING" ||
-        phaseNow === "STRANDED" ||
-        phaseNow === "DIALOGUE"
-      ) {
+      if (BLOCKED_GRANT_PHASES.has(phaseNow)) {
         reply(false, `cannot grant while ${phaseNow}`);
         return;
       }
@@ -1175,27 +1189,22 @@ export class PluginHost {
           }
           let act: unknown;
           let hasLookup = false;
-          const regGet = (this.deps.registry as unknown as { getAction?: unknown }).getAction;
+          const registry = this.deps.registry;
+          const voyageRegistry = voyage.registry;
+          const getAction =
+            typeof registry.getAction === "function"
+              ? registry.getAction.bind(registry)
+              : typeof voyageRegistry?.getAction === "function"
+                ? voyageRegistry.getAction.bind(voyageRegistry)
+                : undefined;
           let actionId = `${id}:${op.actionId}`;
-          if (typeof regGet === "function") {
+          if (getAction) {
             hasLookup = true;
-            const getAction = regGet as (v: string) => unknown;
-            act = getAction.call(this.deps.registry, actionId);
+            act = getAction(actionId);
             // Fallback only for base-game (un-namespaced) action ids; never another plugin's.
             if (!act && !op.actionId.includes(":")) {
               actionId = op.actionId;
-              act = getAction.call(this.deps.registry, actionId);
-            }
-          } else {
-            const vreg = (voyage as unknown as { registry?: { getAction?: unknown } }).registry;
-            if (vreg && typeof vreg.getAction === "function") {
-              hasLookup = true;
-              const getAction = vreg.getAction as (v: string) => unknown;
-              act = getAction.call(vreg, actionId);
-              if (!act && !op.actionId.includes(":")) {
-                actionId = op.actionId;
-                act = getAction.call(vreg, actionId);
-              }
+              act = getAction(actionId);
             }
           }
           if (hasLookup && !act) {
@@ -1203,11 +1212,14 @@ export class PluginHost {
             return;
           }
           if (act !== undefined && act !== null) {
-            const canAfford = (voyage as unknown as { canAffordAction?: unknown }).canAffordAction;
-            if (typeof canAfford === "function") {
+            const canAfford =
+              typeof voyage.canAffordAction === "function"
+                ? voyage.canAffordAction.bind(voyage)
+                : undefined;
+            if (canAfford) {
               let affordable = false;
               try {
-                affordable = (canAfford as (a: unknown) => boolean).call(voyage, act) === true;
+                affordable = canAfford(act) === true;
               } catch {
                 affordable = this.checkNumericAfford(act, voyage);
               }
@@ -1260,7 +1272,7 @@ export class PluginHost {
     const reply = (ok: boolean) => {
       const record = this.plugins.get(id);
       if (!record || (!record.active && !record.stopping)) return;
-      const msg: HostMessage = { type: "storage-result", reqId, value: ok };
+      const msg: HostMessage = { type: WORKER_MSG.storageResult, reqId, value: ok };
       record.worker.postMessage(msg);
     };
     const map = this.storage.get(id);
