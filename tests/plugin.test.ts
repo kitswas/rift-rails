@@ -377,4 +377,87 @@ describe("host grant bounds", () => {
     });
     expect(voyageState.fuel).toBe(55);
   });
+
+  it("refuses all grants while the voyage is DEAD", () => {
+    const { grant, voyageState } = makeHost(["voyage:adjustResource"]);
+    voyageState.phase = "DEAD";
+    expect(grant({ kind: "adjustResource", resource: "fuel", amount: 5 })).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("DEAD"),
+    });
+    expect(voyageState.fuel).toBe(50);
+  });
+
+  it("rate-limits the 51st adjustResource grant inside the 1s window", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    try {
+      const { grant } = makeHost(["voyage:adjustResource"]);
+      for (let i = 0; i < 50; i++) {
+        expect(grant({ kind: "adjustResource", resource: "fuel", amount: 1 })).toMatchObject({
+          ok: true,
+        });
+      }
+      expect(grant({ kind: "adjustResource", resource: "fuel", amount: 1 })).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("rate limit"),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rate-limits the 51st explore grant inside the 1s window", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    try {
+      const { grant, voyage } = makeHost(["voyage:explore"]);
+      for (let i = 0; i < 50; i++) {
+        expect(grant({ kind: "explore" })).toMatchObject({ ok: true });
+      }
+      expect(grant({ kind: "explore" })).toMatchObject({
+        ok: false,
+        reason: "grant rate limit exceeded",
+      });
+      expect(voyage.exploreNode).toHaveBeenCalledTimes(50);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rate-limits cumulative grant volume above 10000 inside the 1s window", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    try {
+      const { grant, voyageState } = makeHost(["voyage:adjustResource"]);
+      expect(grant({ kind: "adjustResource", resource: "fuel", amount: 10000 })).toMatchObject({
+        ok: true,
+      });
+      expect(grant({ kind: "adjustResource", resource: "fuel", amount: 1 })).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("rate limit"),
+      });
+      expect(voyageState.fuel).toBe(10050);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refuses explore grants without voyage:explore permission", () => {
+    const { grant, voyage } = makeHost([]);
+    expect(grant({ kind: "explore" })).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("voyage:explore"),
+    });
+    expect(voyage.exploreNode).not.toHaveBeenCalled();
+  });
+
+  it("refuses desperateScavenge grants without voyage:desperate permission", () => {
+    const { grant, voyage } = makeHost([]);
+    expect(grant({ kind: "desperateScavenge" })).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("voyage:desperate"),
+    });
+    expect(voyage.desperateScavenge).not.toHaveBeenCalled();
+  });
 });

@@ -43,8 +43,10 @@ export const MAX_LOG_CHARS = 500;
 export const MAX_RULES = 20;
 export const MAX_REQUIRES = 20;
 export const MAX_RESOURCE_VALUE = 100000;
-export const MAX_GRANT_PER_PLUGIN_PER_EVENT = 10000;
-export const MAX_GRANTS_PER_PLUGIN_PER_EVENT = 50;
+export const MAX_GRANT_PER_PLUGIN_PER_WINDOW = 10000;
+export const MAX_GRANTS_PER_PLUGIN_PER_WINDOW = 50;
+/** Fixed per-plugin one-second window for grant budgets (not tied to emitted events). */
+const GRANT_WINDOW_MS = 1000;
 export const PLUGIN_MOUNT_TIMEOUT_MS = 5000;
 export const PLUGIN_SHUTDOWN_TIMEOUT_MS = 1000;
 
@@ -588,8 +590,10 @@ export class PluginHost {
     { resolve: () => void; reject: (error: Error) => void }[]
   >();
   private readonly storage = new Map<string, Map<string, unknown>>();
-  private grantSeq = 0;
-  private readonly grantUsage = new Map<string, { seq: number; total: number; count: number }>();
+  private readonly grantUsage = new Map<
+    string,
+    { windowStart: number; total: number; count: number }
+  >();
   private pendingEvents = 0;
   private readonly idleWaiters: (() => void)[] = [];
   private loadChain: Promise<unknown> = Promise.resolve();
@@ -730,7 +734,6 @@ export class PluginHost {
 
   /** Forward a game event to every active plugin worker. */
   emit(event: string, payload: unknown): void {
-    this.grantSeq += 1;
     const snapshot: StateSnapshot = clone(this.deps.voyage.getSnapshot());
     for (const record of this.plugins.values()) {
       if (!record.active || record.stopping) continue;
@@ -895,10 +898,12 @@ export class PluginHost {
         this.stopRecord(id, record, msg.message);
         break;
       case "api-call":
-        console.log(`[plugin-api] ${id}.${msg.method}`, {
-          phase: msg.phase ?? "call",
-          args: msg.args,
-        });
+        if (import.meta.env.DEV) {
+          console.log(`[plugin-api] ${id}.${msg.method}`, {
+            phase: msg.phase ?? "call",
+            args: msg.args,
+          });
+        }
         break;
       case "log":
         this.deps.log(`[${id}] ${msg.msg}`);
@@ -1037,10 +1042,11 @@ export class PluginHost {
     }
   }
 
-  private usageFor(id: string): { seq: number; total: number; count: number } {
+  private usageFor(id: string): { windowStart: number; total: number; count: number } {
+    const now = Date.now();
     const existing = this.grantUsage.get(id);
-    if (existing && existing.seq === this.grantSeq) return existing;
-    const fresh = { seq: this.grantSeq, total: 0, count: 0 };
+    if (existing && now - existing.windowStart < GRANT_WINDOW_MS) return existing;
+    const fresh = { windowStart: now, total: 0, count: 0 };
     this.grantUsage.set(id, fresh);
     return fresh;
   }
@@ -1108,6 +1114,12 @@ export class PluginHost {
       reply(false, `missing permission ${GRANT_PERMISSIONS[op.kind]}`);
       return;
     }
+    const usage = this.usageFor(id);
+    if (usage.count >= MAX_GRANTS_PER_PLUGIN_PER_WINDOW) {
+      reply(false, "grant rate limit exceeded");
+      return;
+    }
+    usage.count += 1;
     try {
       const voyage = this.deps.voyage;
       const engine = this.deps.engine;
@@ -1117,7 +1129,12 @@ export class PluginHost {
       } catch {
         phaseNow = "";
       }
-      if (phaseNow === "DEAD" || phaseNow === "JUMPING" || phaseNow === "STRANDED") {
+      if (
+        phaseNow === "DEAD" ||
+        phaseNow === "JUMPING" ||
+        phaseNow === "STRANDED" ||
+        phaseNow === "DIALOGUE"
+      ) {
         reply(false, `cannot grant while ${phaseNow}`);
         return;
       }
@@ -1135,13 +1152,8 @@ export class PluginHost {
             reply(false, "amount out of range");
             return;
           }
-          const usage = this.usageFor(id);
           const nextTotal = usage.total + Math.abs(op.amount);
-          const nextCount = usage.count + 1;
-          if (
-            nextTotal > MAX_GRANT_PER_PLUGIN_PER_EVENT ||
-            nextCount > MAX_GRANTS_PER_PLUGIN_PER_EVENT
-          ) {
+          if (nextTotal > MAX_GRANT_PER_PLUGIN_PER_WINDOW) {
             reply(false, "grant rate limit exceeded");
             return;
           }
@@ -1152,7 +1164,6 @@ export class PluginHost {
             return;
           }
           usage.total = nextTotal;
-          usage.count = nextCount;
           engine?.notePluginMutation();
           reply(true);
           return;
