@@ -39,14 +39,11 @@ describe("tabs", () => {
   it("scrolls the target pane into view on narrow screens", () => {
     const original = window.innerWidth;
     Object.defineProperty(window, "innerWidth", { value: 500, configurable: true });
-    const pane = document.getElementById("pane-sensors") as HTMLElement & {
-      scrollIntoView: ReturnType<typeof vi.fn>;
-    };
-    pane.scrollIntoView = vi.fn();
+    const pane = document.getElementById("pane-sensors")!;
+    const scrollIntoView = vi.fn();
+    pane.scrollIntoView = scrollIntoView as unknown as HTMLElement["scrollIntoView"];
     onScrollToPane(1);
-    expect(pane.scrollIntoView).toHaveBeenCalledWith(
-      expect.objectContaining({ behavior: "smooth" }),
-    );
+    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: "smooth" }));
     Object.defineProperty(window, "innerWidth", { value: original, configurable: true });
   });
 });

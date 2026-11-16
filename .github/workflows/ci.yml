@@ -35,6 +35,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Check plugin bundles are up to date
+        run: |
+          pnpm plugins:build
+          git diff --exit-code public/plugins/
+
       - name: Run tests
         run: pnpm test
 

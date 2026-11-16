@@ -1,4 +1,9 @@
-const plugin = {
+import type { PluginLifecycle } from "../../src/game/workerProtocol";
+// Corvus tutorial plugin entry - runs inside the plugin worker.
+// The host concatenates worker bootstrap + build output + kickoff into one
+// module, so `plugin` must be declared at top level for the host lifecycle;
+// the default export keeps the file importable as a normal ES module.
+const plugin: PluginLifecycle = {
   mount(api) {
     api.registerCutscene({
       id: "wp1",

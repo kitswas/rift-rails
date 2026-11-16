@@ -41,8 +41,9 @@ while the hull is still comfortable.
 - `manifest.json` — plugin identity + permissions (see `src/game/manifest.ts`).
   Only `voyage:adjustResource` is requested: the entire mutation surface is
   one clamped hull delta. No network access, no core changes.
-- `main.js` — single self-contained ES module; no imports (the host inlines
-  the file into a blob worker, so relative imports would not resolve).
+- `main.ts` - TypeScript source, bundled by `pnpm plugins:build` into the
+  single self-contained ES module stored in the zip (the host inlines the
+  entry into a blob worker, so the bundle must not import anything).
 - The entry default-exports a top-level `plugin` object with required
   `mount(api)` and `unmount()` methods; host API v4.
 
@@ -55,9 +56,11 @@ the right time without a nonfunctional menu action or node.
 ## Zip + install
 
 ```sh
-cd packages/field-repair && zip -r field-repair.zip manifest.json main.js
+pnpm plugins:build
 ```
 
-Then install `field-repair.zip` from the game's plugin install UI (file
-input) — or `PluginHost.loadZip()` in code. See `src/game/host.ts`. The
-bundled copy served by the game lives at `public/plugins/field-repair.zip`.
+This bundles `main.ts` and rewrites `public/plugins/field-repair.zip`
+deterministically; commit the result (CI fails on drift). To install the zip
+by hand, use the game's plugin install UI (file input) or
+`PluginHost.loadZip()` in code. See `src/game/host.ts`. The bundled copy
+served by the game lives at `public/plugins/field-repair.zip`.

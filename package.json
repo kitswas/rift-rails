@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "plugins:build": "node scripts/build-plugins.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 8000",
@@ -21,6 +22,7 @@
   "packageManager": "pnpm@12.16.1",
   "devDependencies": {
     "@playwright/test": "^1.65.0",
+    "esbuild": "^0.28.2",
     "jsdom": "^31.0.0",
     "oxfmt": "^0.77.0",
     "oxlint": "^1.92.0",

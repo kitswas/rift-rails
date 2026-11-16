@@ -12,6 +12,7 @@ import type { HostDeps, VoyageLike } from "../src/game/workerProtocol";
 import { Voyage } from "../src/game/voyage";
 import type { GameAction, NodeDefinition } from "../src/game/types";
 import manifestJson from "../packages/rift-salvager/manifest.json";
+import riftSalvager from "../packages/rift-salvager/main";
 
 type Rule = { res: string; amount: number };
 type ActionDef = {
@@ -53,10 +54,7 @@ function makeMockApi() {
 
 async function loadPluginDefs() {
   const mock = makeMockApi();
-  const mod = (await import("../packages/rift-salvager/main.js")) as {
-    default: { mount: (api: unknown) => void; unmount: () => void };
-  };
-  mod.default.mount(mock.api);
+  riftSalvager.mount(mock.api as unknown as Parameters<typeof riftSalvager.mount>[0]);
   return mock;
 }
 
@@ -230,8 +228,9 @@ describe("rift-salvager bundle", () => {
     expect(names.sort()).toEqual(["main.js", "manifest.json"]);
     const zippedManifest = JSON.parse((await zip.file("manifest.json")?.async("text")) ?? "{}");
     expect(zippedManifest).toMatchObject({ id: "rift-salvager", entry: "main.js" });
-    expect(await zip.file("main.js")?.async("text")).toBe(
-      readFileSync("packages/rift-salvager/main.js", "utf8"),
-    );
+    // main.js is esbuild output; CI enforces it matches the sources.
+    const entryText = (await zip.file("main.js")?.async("text")) ?? "";
+    expect(entryText).toContain("salvage_melt");
+    expect(entryText).toContain("salvage_yard");
   });
 });

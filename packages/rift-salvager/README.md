@@ -39,8 +39,9 @@ grants no passive income, and needs no permissions.
 ## Files
 
 - `manifest.json` — plugin identity + permissions (see `src/game/manifest.ts`).
-- `main.js` — single self-contained ES module; no imports (the host inlines
-  the file into a blob worker, so relative imports would not resolve).
+- `main.ts` - TypeScript source, bundled by `pnpm plugins:build` into the
+  single self-contained ES module stored in the zip (the host inlines the
+  entry into a blob worker, so the bundle must not import anything).
 
 ## Manifest
 
@@ -74,10 +75,11 @@ and awaits `unmount` before worker shutdown.
 ## Zip + install
 
 ```sh
-cd packages/rift-salvager && zip -r rift-salvager.zip manifest.json main.js
+pnpm plugins:build
 ```
 
-The bundled copy lives at `public/plugins/rift-salvager.zip`. Install
-it from the game's plugin install UI (file input) — or
-`PluginHost.loadZip()` in code. See `src/game/host.ts`. Focused proof:
-`tests/rift-salvager.test.ts`.
+This bundles `main.ts` and rewrites `public/plugins/rift-salvager.zip`
+deterministically; commit the result (CI fails on drift). The bundled copy
+lives at `public/plugins/rift-salvager.zip`. Install it from the game's
+plugin install UI (file input) - or `PluginHost.loadZip()` in code. See
+`src/game/host.ts`. Focused proof: `tests/rift-salvager.test.ts`.

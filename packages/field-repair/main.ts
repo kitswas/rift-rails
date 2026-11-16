@@ -1,6 +1,6 @@
-// @ts-nocheck - plain-JS plugin entry, type-checked via tests/field-repair.test.ts.
-// Field Repair plugin entry — runs inside the plugin worker.
-// The host concatenates worker bootstrap + this file + kickoff into one
+import type { PluginLifecycle } from "../../src/game/workerProtocol";
+// Field Repair plugin entry - runs inside the plugin worker.
+// The host concatenates worker bootstrap + build output + kickoff into one
 // module, so `plugin` must be declared at top level for the host lifecycle;
 // the default export keeps the file importable as a normal ES module.
 //
@@ -15,11 +15,16 @@
 //   * Log discipline: a deploy line on use, a ready/spent status line on
 //     every `afterJump`, and a failure line if the grant is rejected (no
 //     charge is burned when the host refuses the grant).
-const plugin = {
+const plugin: PluginLifecycle = {
   mount(api) {
     const CRITICAL_HULL = 30;
     const REPAIR_AMOUNT = 25;
     const STORAGE_KEY = "stabilizer";
+
+    const readUsed = (saved: unknown): boolean =>
+      !!saved && typeof saved === "object" && (saved as { used?: unknown }).used === true;
+
+    const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
     // `expended` is process-local; persisted truth lives in api.storage, so the
     // single charge survives save/load and plugin reloads (fresh worker).
@@ -30,21 +35,21 @@ const plugin = {
     const seeded = api.storage
       .get(STORAGE_KEY)
       .then((saved) => {
-        if (saved && saved.used === true) expended = true;
+        if (readUsed(saved)) expended = true;
       })
-      .catch((err) => {
-        api.log("field-repair: stabilizer seed error (" + ((err && err.message) || err) + ")");
+      .catch((err: unknown) => {
+        api.log(`field-repair: stabilizer seed error (${errText(err)})`);
       });
 
-    function isTerminal(phase) {
+    function isTerminal(phase: string): boolean {
       return phase === "DEAD" || phase === "STRANDED";
     }
 
-    function isCritical(hull) {
-      return typeof hull === "number" && Number.isFinite(hull) && hull <= CRITICAL_HULL;
+    function isCritical(hull: number): boolean {
+      return Number.isFinite(hull) && hull <= CRITICAL_HULL;
     }
 
-    async function maybeDeploy() {
+    async function maybeDeploy(): Promise<void> {
       // Cheap synchronous guards first: at most one deploy attempt in flight,
       // and none at all once spent.
       if (expended || inFlight) return;
@@ -53,8 +58,7 @@ const plugin = {
 
       inFlight = true;
       try {
-        const saved = await api.storage.get(STORAGE_KEY);
-        if (saved && saved.used === true) {
+        if (readUsed(await api.storage.get(STORAGE_KEY))) {
           expended = true;
           return;
         }
@@ -71,9 +75,7 @@ const plugin = {
         });
         if (!result || result.ok !== true) {
           api.log(
-            "field-repair: stabilizer failed to deploy (" +
-              ((result && result.reason) || "unknown") +
-              "); it stays armed while hull is critical",
+            `field-repair: stabilizer failed to deploy (${(result && result.reason) || "unknown"}); it stays armed while hull is critical`,
           );
           return;
         }
@@ -84,16 +86,10 @@ const plugin = {
           hullBefore: during.hull,
         });
         api.log(
-          "field-repair: emergency hull stabilizer deployed at jump " +
-            during.jumpCount +
-            " (hull " +
-            during.hull +
-            ", +" +
-            REPAIR_AMOUNT +
-            " hull)",
+          `field-repair: emergency hull stabilizer deployed at jump ${during.jumpCount} (hull ${during.hull}, +${REPAIR_AMOUNT} hull)`,
         );
       } catch (err) {
-        api.log("field-repair: stabilizer error (" + ((err && err.message) || err) + ")");
+        api.log(`field-repair: stabilizer error (${errText(err)})`);
       } finally {
         inFlight = false;
       }
@@ -109,7 +105,7 @@ const plugin = {
       await maybeDeploy();
       if (expended) {
         const s = api.state();
-        api.log("field-repair: stabilizer spent (jump " + (s ? s.jumpCount : "?") + ")");
+        api.log(`field-repair: stabilizer spent (jump ${s ? s.jumpCount : "?"})`);
       } else {
         api.log("field-repair: stabilizer ready");
       }

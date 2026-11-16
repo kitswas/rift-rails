@@ -15,16 +15,7 @@ import type {
 import fieldRepairManifest from "../packages/field-repair/manifest.json";
 
 // Import the real lifecycle object exactly as written, not copied logic.
-type TestPlugin = { mount: (api: unknown) => void; unmount: () => void };
-let cachedPlugin: TestPlugin | null = null;
-async function loadPlugin(): Promise<TestPlugin> {
-  if (cachedPlugin) return cachedPlugin;
-  const mod = (await import("../packages/field-repair/main.js")) as {
-    default: TestPlugin;
-  };
-  cachedPlugin = mod.default;
-  return cachedPlugin;
-}
+import fieldRepair from "../packages/field-repair/main";
 
 function clone<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
@@ -162,7 +153,7 @@ async function makeHarness(stored?: Store): Promise<Harness> {
     },
   };
 
-  (await loadPlugin()).mount(api);
+  fieldRepair.mount(api as unknown as Parameters<typeof fieldRepair.mount>[0]);
 
   const settle = async (): Promise<void> => {
     // Deterministic drain: the plugin's async chain (storage round-trips,
@@ -223,7 +214,9 @@ describe("field-repair bundled zip", () => {
     expect(parseManifest(JSON.parse(manifestText ?? "{}"))).toEqual(
       parseManifest(fieldRepairManifest),
     );
-    expect(entryText).toBe(readFileSync("packages/field-repair/main.js", "utf8"));
+    expect(entryText).toContain("stabilizer");
+    // main.js is esbuild output; CI enforces it matches the sources.
+    expect(entryText).toContain("adjustResource");
   });
 });
 
