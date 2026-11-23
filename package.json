@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "plugins:build": "node scripts/build-plugins.mjs",
+    "audio:sonic-pi": "node scripts/fetch-sonic-pi.mjs",
+    "predev": "node scripts/fetch-sonic-pi.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/fetch-sonic-pi.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 8000",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 8100",

@@ -423,6 +423,7 @@ const syncSettings = (): void => {
     const opts: [AmbientMode, string][] = [
       ["rails", "Rails (Classic)"],
       ["telemetry", "Bridge Telemetry (Lo-Fi)"],
+      ["sonicpi", "Sonic Pi (Acid Walk)"],
       ["none", "Silence"],
     ];
     for (const [val, label] of opts) {
@@ -745,7 +746,8 @@ function bind(): void {
   const sel = document.getElementById("select-ambient-mode") as HTMLSelectElement | null;
   sel?.addEventListener("change", (e) => {
     const t = e.target as HTMLSelectElement;
-    sound.setAmbientMode(t.value as AmbientMode);
+    const mode = t.value as AmbientMode;
+    sound.setAmbientMode(mode);
     engine.log(
       `[ACOUSTICS] Soundscape shifted to: ${t.options[t.selectedIndex]?.text ?? t.value}`,
       GAME_DATA.dom.classes.logSystem ?? "log-system",
@@ -774,7 +776,7 @@ function bind(): void {
   });
 
   btn("btn-ignite")?.addEventListener("click", () => {
-    // SoundFXService.init(): void - creates context, calls startActiveSoundscape().
+    // SoundFXService.init(): void - boots Sonic Pi, then syncs prefs into the runtime.
     sound.init();
     const ignite = btn("btn-ignite");
     if (ignite) ignite.disabled = true;
