@@ -25,6 +25,7 @@ vi.mock("../src/game/sonicPi", async (importOriginal) => {
   };
 });
 
+import { ambientProgram } from "../src/game/sonicPi";
 import { GAME_DATA } from "../src/game/data";
 import { SoundFXService } from "../src/game/audio";
 
@@ -57,6 +58,20 @@ describe("SoundFXService Sonic Pi backend", () => {
 
     sound.setAmbientMode("none");
     expect(sp.playAmbient).toHaveBeenCalledWith(null);
+  });
+
+  it("maps every original soundscape to its own standalone program", () => {
+    const modes = [
+      ["rift-drift", "live_loop :rift_drift"],
+      ["waypoint-pulse", "live_loop :waypoint_kick"],
+      ["event-horizon", "live_loop :event_drone"],
+    ] as const;
+    for (const [mode, loop] of modes) {
+      const program = ambientProgram(mode, 0.5);
+      expect(program).toContain("set :ambient_amp, 0.5");
+      expect(program).toContain(loop);
+    }
+    expect(ambientProgram("none", 1)).toBeNull();
   });
 
   it("sends one-shot SFX snippets and respects mute", () => {

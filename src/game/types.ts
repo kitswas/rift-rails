@@ -306,7 +306,13 @@ export interface MotionEntry {
   last?: number;
 }
 
-export type AmbientMode = "rails" | "telemetry" | "sonicpi" | "none";
+export type AmbientMode =
+  | "rails"
+  | "telemetry"
+  | "rift-drift"
+  | "waypoint-pulse"
+  | "event-horizon"
+  | "none";
 
 export interface AudioPrefs {
   mode?: AmbientMode;

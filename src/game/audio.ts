@@ -18,6 +18,16 @@ export interface AudioDeps {
   timers?: AudioTimers;
 }
 
+// Saved prefs from older builds may name a soundscape that no longer exists.
+const VALID_AMBIENT_MODES: AmbientMode[] = [
+  "rails",
+  "telemetry",
+  "rift-drift",
+  "waypoint-pulse",
+  "event-horizon",
+  "none",
+];
+
 // Public surface stays the Web Audio-era API; every sound comes from Sonic Pi.
 export class SoundFXService {
   isMuted = false;
@@ -52,7 +62,7 @@ export class SoundFXService {
   }
 
   applyPrefs(prefs: AudioPrefs): void {
-    if (prefs.mode) this.ambientMode = prefs.mode;
+    if (prefs.mode && VALID_AMBIENT_MODES.includes(prefs.mode)) this.ambientMode = prefs.mode;
     if (typeof prefs.ambientSlider === "number") {
       this.ambientSliderVal = prefs.ambientSlider;
       this.ambientVolume = this.sliderToGain(prefs.ambientSlider);

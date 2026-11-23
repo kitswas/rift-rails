@@ -421,9 +421,11 @@ const syncSettings = (): void => {
   const sel = document.getElementById("select-ambient-mode") as HTMLSelectElement | null;
   if (sel && sel.options.length === 0) {
     const opts: [AmbientMode, string][] = [
-      ["rails", "Rails (Classic)"],
+      ["rails", "Ley-Rail Rhythm (Kinetic)"],
       ["telemetry", "Bridge Telemetry (Lo-Fi)"],
-      ["sonicpi", "Sonic Pi (Acid Walk)"],
+      ["rift-drift", "Rift Drift (Ambient)"],
+      ["waypoint-pulse", "Waypoint Pulse (Rhythmic)"],
+      ["event-horizon", "Event Horizon (Sparse)"],
       ["none", "Silence"],
     ];
     for (const [val, label] of opts) {

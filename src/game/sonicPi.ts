@@ -4,8 +4,11 @@
 
 import railsSource from "./audio/rails.rb?raw";
 import telemetrySource from "./audio/telemetry.rb?raw";
-import acidSource from "./audio/acid-walk.rb?raw";
+import riftDriftSource from "./audio/rift-drift.rb?raw";
+import waypointPulseSource from "./audio/waypoint-pulse.rb?raw";
+import eventHorizonSource from "./audio/event-horizon.rb?raw";
 import sfxSource from "./audio/sfx.rb?raw";
+import type { AmbientMode } from "./types";
 
 const BASE = "/sonic-pi/";
 const BOOT_TIMEOUT_MS = 20000;
@@ -24,17 +27,18 @@ type Module = {
   createLiveSession(runtime: Runtime, engine: Engine, handlers: object): Session;
 };
 
-export type AmbientKind = "rails" | "telemetry" | "sonicpi" | "none";
+export type AmbientKind = AmbientMode;
 
 export function ambientProgram(kind: AmbientKind, amp: number): string | null {
-  const source =
-    kind === "rails"
-      ? railsSource
-      : kind === "telemetry"
-        ? telemetrySource
-        : kind === "sonicpi"
-          ? acidSource
-          : null;
+  const sources: Record<AmbientKind, string | null> = {
+    rails: railsSource,
+    telemetry: telemetrySource,
+    "rift-drift": riftDriftSource,
+    "waypoint-pulse": waypointPulseSource,
+    "event-horizon": eventHorizonSource,
+    none: null,
+  };
+  const source = sources[kind] ?? null;
   if (!source) return null;
   // The .rb files default to 1.0; the game's value wins because the default is guarded.
   return `set :ambient_amp, ${amp}\n${source}`;
