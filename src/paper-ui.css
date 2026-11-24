@@ -332,32 +332,12 @@ select,
 .panel-card::before,
 .cutscene-frame::before {
   background:
-    radial-gradient(
-        circle,
-        var(--wood-text) 0 1px,
-        var(--wood-shadow) 1.4px 2.4px,
-        transparent 2.8px
-      )
-      0 0 / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--wood-text) 0 1px,
-        var(--wood-shadow) 1.4px 2.4px,
-        transparent 2.8px
-      )
-      100% 0 / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--wood-text) 0 1px,
-        var(--wood-shadow) 1.4px 2.4px,
-        transparent 2.8px
-      )
-      0 100% / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--wood-text) 0 1px,
-        var(--wood-shadow) 1.4px 2.4px,
-        transparent 2.8px
-      )
-      100% 100% / 7px 7px no-repeat;
+    radial-gradient(circle, var(--wood-accent) 0 4px, var(--wood-shadow) 4px 6px, transparent 7px) 0
+      0 / 13px 13px no-repeat,
+    radial-gradient(circle, var(--wood-accent) 0 4px, var(--wood-shadow) 4px 6px, transparent 7px)
+      100% 0 / 13px 13px no-repeat,
+    radial-gradient(circle, var(--wood-accent) 0 4px, var(--wood-shadow) 4px 6px, transparent 7px) 0
+      100% / 13px 13px no-repeat,
+    radial-gradient(circle, var(--wood-accent) 0 4px, var(--wood-shadow) 4px 6px, transparent 7px)
+      100% 100% / 13px 13px no-repeat;
 }
