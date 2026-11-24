@@ -17,5 +17,5 @@
 15. Frontend devs must be able to develop and preview the frontend without the backend running.
 16. Every external API call or operation that costs real money or resources must have a mock adapter or dry-run mode for testing.
 17. Large model (main thread) orchestrates. Subagents are smaller models that carry out well-defined tasks. To avoid concurrent edits to a shared resource, we can have n read-only subagents in parallel or 1 write-capable subagent per resource (like a git worktree, database, directory-tree). Subagent types - investigator (findings with citations), builder (implements a plan), reviewer (cross-checks), and general-purpose. Subagents are not allowed to spawn other subagents. Use subagents to avoid filling up the context window with irrelevant information.
-18. Follow the design guidelines in Design.md.
+18. Follow the design guidelines for SVGs in Artwork-rules.md.
 19. Do not dump documentation in the Readme.md. Use a separate documentation file for each topic and link to it from the README.md.
