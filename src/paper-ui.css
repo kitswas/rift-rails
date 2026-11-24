@@ -61,17 +61,18 @@ body {
 }
 
 .log-entry {
-  --base-l: 0.45;
-  --text-l: 0.28;
+  --base-l: 0.5;
+  --text-l: 0.32;
+  --bg-l: 0.94;
 
-  background-color: rgb(52 40 28 / 5%);
-  border-left-color: var(--border-bright);
-  color: var(--text);
+  background-color: oklch(var(--bg-l) calc(var(--c) * 0.25) var(--h));
+  border-left-color: oklch(var(--base-l) var(--c) var(--h));
+  color: oklch(var(--text-l) calc(var(--c) * 0.6) var(--h));
   font-weight: 400;
 }
 
 .log-entry b {
-  color: var(--text);
+  color: oklch(0.26 calc(var(--c) * 0.5) var(--h));
 }
 
 button {
@@ -91,14 +92,34 @@ button:hover:not(:disabled) {
 }
 
 .btn-travel,
-.btn-action,
-.btn-success,
-.btn-energy,
-.btn-desperate,
+.btn-action {
+  color: var(--action);
+  border-color: var(--action);
+  background: rgb(140 59 50 / 8%);
+}
+
+.btn-desperate {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgb(160 44 40 / 8%);
+}
+
+.btn-success {
+  color: var(--success);
+  border-color: var(--success);
+  background: rgb(63 107 69 / 8%);
+}
+
+.btn-energy {
+  color: var(--energy);
+  border-color: var(--energy);
+  background: rgb(91 74 122 / 8%);
+}
+
 .btn-new-game {
-  background: transparent;
   color: var(--text);
   border-color: var(--border-bright);
+  background: transparent;
 }
 
 .nav-tab.active {
@@ -115,6 +136,37 @@ button:hover:not(:disabled) {
 
 .cutscene-pips span {
   border-color: var(--border-bright);
+}
+
+.panel-card {
+  background-image: radial-gradient(rgb(52 40 28 / 5%) 0.5px, transparent 0.5px);
+  background-size: 6px 6px;
+}
+
+.panel-card::after {
+  content: "AETHELGARD // TRANSIT";
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 14px;
+  rotate: -4deg;
+  padding: 2px 6px;
+  border: 2px solid var(--action);
+  color: var(--action);
+  font:
+    700 0.58rem/1 ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.manual-section h3,
+.settings-section h3 {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 3px;
 }
 
 .tutorial-highlight,
