@@ -172,9 +172,24 @@ button:hover:not(:disabled) {
 }
 
 .cutscene-text,
-.cutscene-speaker,
 .cutscene-chain {
   color: var(--text);
+}
+
+.cutscene-speaker,
+.cutscene-pips,
+#nav-screen h1 {
+  color: var(--wood-text);
+}
+
+.btn-cutscene-choice:hover:not(:disabled),
+.btn-cutscene-choice:focus-visible {
+  color: var(--text);
+}
+
+#art-glyph {
+  color: var(--paper-ink) !important;
+  filter: none !important;
 }
 
 .cutscene-pips span {
@@ -340,4 +355,9 @@ select,
       100% / 13px 13px no-repeat,
     radial-gradient(circle, var(--wood-accent) 0 4px, var(--wood-shadow) 4px 6px, transparent 7px)
       100% 100% / 13px 13px no-repeat;
+}
+
+.manual-section h3,
+.settings-section h3 {
+  color: var(--action);
 }
