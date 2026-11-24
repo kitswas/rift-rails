@@ -61,18 +61,56 @@ body {
 }
 
 .log-entry {
-  --base-l: 0.5;
-  --text-l: 0.32;
-  --bg-l: 0.94;
-
-  background-color: oklch(var(--bg-l) calc(var(--c) * 0.25) var(--h));
-  border-left-color: oklch(var(--base-l) var(--c) var(--h));
-  color: oklch(var(--text-l) calc(var(--c) * 0.6) var(--h));
+  background-color: var(--wash);
+  border-left-color: var(--rule);
+  color: var(--ink);
   font-weight: 400;
 }
 
 .log-entry b {
-  color: oklch(0.26 calc(var(--c) * 0.5) var(--h));
+  color: var(--ink-strong);
+}
+
+.log-damage {
+  --rule: #8f2f29;
+  --ink: #6d1f1c;
+  --ink-strong: #4c1310;
+  --wash: #f2dbd6;
+}
+
+.log-lore {
+  --rule: #8a5a10;
+  --ink: #5c3d0a;
+  --ink-strong: #422b06;
+  --wash: #efe1bd;
+}
+
+.log-success {
+  --rule: #2f6b3f;
+  --ink: #20492b;
+  --ink-strong: #15331e;
+  --wash: #dbe8da;
+}
+
+.log-system {
+  --rule: #2f5f7a;
+  --ink: #1f4257;
+  --ink-strong: #152e3d;
+  --wash: #d9e8ef;
+}
+
+.log-event {
+  --rule: #5a3f86;
+  --ink: #3d2b5c;
+  --ink-strong: #2b1c45;
+  --wash: #e3daf0;
+}
+
+.log-help {
+  --rule: #5b5f66;
+  --ink: #3d4148;
+  --ink-strong: #292c31;
+  --wash: #e4e3df;
 }
 
 button {
