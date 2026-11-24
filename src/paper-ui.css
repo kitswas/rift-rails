@@ -67,9 +67,43 @@ body {
 
 .log-entry {
   background-color: var(--wash);
-  border-left-color: var(--rule);
+  border-left: 0;
   color: var(--ink);
   font-weight: 400;
+  padding-left: 84px;
+  position: relative;
+}
+
+.log-entry::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  color: var(--rule);
+  font:
+    700 0.58rem ui-monospace,
+    "SF Mono",
+    monospace;
+  letter-spacing: 0.1em;
+}
+
+.log-system::after {
+  content: "SYSTEM";
+}
+.log-help::after {
+  content: "HELP";
+}
+.log-lore::after {
+  content: "LORE";
+}
+.log-event::after {
+  content: "EVENT";
+}
+.log-success::after {
+  content: "SUCCESS";
+}
+.log-damage::after {
+  content: "DAMAGE";
 }
 
 .log-entry b {
