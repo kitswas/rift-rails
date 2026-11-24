@@ -9,7 +9,7 @@
   --wood-line: #51251d;
   --wood-shadow: #30120e;
   --wood-text: #f3e2bd;
-  --wood-accent: #e0ae9b;
+  --wood-accent: #f2c9b6;
   --text: #34281c;
   --text-muted: #6b5a44;
   --border: #b49f79;
@@ -161,6 +161,15 @@ button {
 
 button:hover:not(:disabled) {
   background: rgb(52 40 28 / 8%);
+}
+
+button:disabled {
+  opacity: 1;
+  color: var(--text-muted);
+  background: rgb(52 40 28 / 5%);
+  border-color: var(--border);
+  box-shadow: none;
+  filter: none;
 }
 
 .btn-start {
