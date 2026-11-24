@@ -1,0 +1,124 @@
+/* Experiment: in-game UI as paper sheets pinned to the same bulkhead. Throwaway. */
+
+:root {
+  --bg: #0d1118;
+  --panel-bg: #efe4c8;
+  --panel-sub-bg: #e6d9b8;
+  --panel-sheen: #f7eed7;
+  --text: #34281c;
+  --text-muted: #6b5a44;
+  --border: #b49f79;
+  --border-bright: #8a7454;
+  --action: #8c3b32;
+  --action-rgb: 140 59 50;
+  --danger: #a02c28;
+  --warning: #9a6b1f;
+  --success: #3f6b45;
+  --energy: #5b4a7a;
+  --info: #3d667a;
+  --help: #34281c;
+  --overlay-bg: rgb(13 17 24 / 88%);
+  --font-mono: Georgia, "Times New Roman", serif;
+}
+
+body {
+  background: var(--bg);
+}
+
+#bridge-scene {
+  background: radial-gradient(ellipse at 50% 30%, #1d232c, var(--bg) 78%);
+}
+
+#hud-bar,
+#bottom-nav,
+.panel-card,
+#story-log,
+.cutscene-frame,
+.manual-section,
+.settings-section {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  box-shadow: 3px 4px 0 rgb(0 0 0 / 35%);
+  border-radius: 2px;
+}
+
+#pane-bridge .panel-card {
+  background: var(--panel-sheen);
+}
+
+.hud-cell {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.hud-cell:hover {
+  background: rgb(52 40 28 / 6%);
+  border-color: var(--border-bright);
+}
+
+#story-log {
+  background: var(--panel-sub-bg);
+}
+
+.log-entry {
+  --base-l: 0.45;
+  --text-l: 0.28;
+
+  background-color: rgb(52 40 28 / 5%);
+  border-left-color: var(--border-bright);
+  color: var(--text);
+  font-weight: 400;
+}
+
+.log-entry b {
+  color: var(--text);
+}
+
+button {
+  color: var(--text);
+  border-color: var(--border-bright);
+  background: transparent;
+  box-shadow: none;
+}
+
+button:hover:not(:disabled) {
+  background: rgb(52 40 28 / 8%);
+}
+
+.btn-start {
+  background: var(--action);
+  color: #fff4d6;
+}
+
+.btn-travel,
+.btn-action,
+.btn-success,
+.btn-energy,
+.btn-desperate,
+.btn-new-game {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-bright);
+}
+
+.nav-tab.active {
+  background: var(--border);
+  border-color: var(--border-bright);
+  color: var(--text);
+}
+
+.cutscene-text,
+.cutscene-speaker,
+.cutscene-chain {
+  color: var(--text);
+}
+
+.cutscene-pips span {
+  border-color: var(--border-bright);
+}
+
+.tutorial-highlight,
+.contextual-cue {
+  border-color: var(--action) !important;
+  box-shadow: 0 0 0 2px rgb(140 59 50 / 35%) !important;
+}
