@@ -1,5 +1,4 @@
 import "./style.css";
-import "./paper-ui.css";
 import { GAME_DATA } from "./game/data";
 import { Registry } from "./game/registry";
 import { ConduitDeck } from "./game/conduit";
