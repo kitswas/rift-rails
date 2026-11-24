@@ -27,6 +27,14 @@
   --radius: 8px;
   --safe-bottom: env(safe-area-inset-bottom, 8px);
 
+  /* Title screen: paper documents on a desk */
+  --paper: #e8dcc0;
+  --paper-ink: #34281c;
+  --desk: #4a3326;
+  --desk-shadow: #2b1d15;
+  --stamp: #8c3b32;
+  --font-paper: Georgia, "Times New Roman", serif;
+
   --layer-scene: 0;
   --layer-game-ui: 10;
   --layer-narrative: 30;
@@ -109,134 +117,132 @@ body {
   position: fixed;
   inset: 0;
   z-index: var(--layer-start-screen);
-  background:
-    radial-gradient(circle at 50% 0%, rgb(var(--action-rgb) / 0.07), transparent 55%), var(--bg);
-  padding: 24px 16px;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  background: var(--desk);
 }
 
-.start-card {
-  width: min(100%, 760px);
-  background: var(--panel-bg);
-  border: 1px solid var(--border-bright);
-  padding: 28px;
-}
-
-.start-hero {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 96px;
-  margin-bottom: 14px;
-}
-
-.start-hero-rail {
-  fill: none;
-  stroke: var(--border-bright);
-  stroke-width: 3;
-}
-
-.start-hero-tie {
-  fill: none;
-  stroke: var(--border);
-  stroke-width: 1;
-}
-
-.start-hero-rift {
-  fill: var(--panel-sub-bg);
-  stroke: var(--border-bright);
-  stroke-width: 1;
-}
-
-.start-hero-spark {
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-.start-header {
-  text-align: center;
-  border-bottom: 1px dashed var(--border-bright);
-  padding-bottom: 12px;
-  margin-bottom: 18px;
-}
-
-.start-eyebrow {
-  margin: 0 0 6px;
-  color: var(--text-muted);
-  font-size: 0.7em;
-  letter-spacing: 2px;
-}
-
-.start-card h1 {
-  color: var(--action);
-  font-size: 1.8em;
-  letter-spacing: 4px;
-  margin: 0;
-}
-
-.start-tagline {
-  line-height: 1.55;
-  color: var(--text-muted);
-  margin: 8px 0 0;
-  font-size: 0.88em;
-}
-
-.start-tagline strong {
-  color: var(--text);
-}
-
-.briefing-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.briefing-card {
+.title-desk {
   position: relative;
-  background: var(--panel-sub-bg);
-  border: 1px solid var(--border);
-  padding: 12px 12px 12px 52px;
-  min-height: 84px;
+  min-height: 100dvh;
+  container-type: inline-size;
+  padding: clamp(24px, 5vw, 80px);
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 12%) 0 3px, transparent 3px 9px), var(--desk);
+  font-family: var(--font-paper);
+  color: var(--paper-ink);
 }
 
-.briefing-num {
+.desk-map,
+.desk-ledger,
+.desk-letter,
+.desk-stamp {
   position: absolute;
-  top: 10px;
-  left: 12px;
-  color: var(--border-bright);
-  font-size: 1.4em;
-  font-weight: 800;
-  opacity: 0.7;
+  box-shadow: 6px 8px 0 var(--desk-shadow);
 }
 
-.briefing-card h2 {
-  margin: 0 0 4px;
-  color: var(--text);
-  font-size: 0.86em;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+.desk-map {
+  width: min(52cqw, 560px);
+  left: 4%;
+  top: 8%;
+  transform: rotate(-3deg);
 }
 
-.briefing-card p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.78em;
-  line-height: 1.45;
+.desk-ledger {
+  width: min(32cqw, 320px);
+  right: 5%;
+  top: 10%;
+  padding: 18px;
+  background: var(--paper);
+  transform: rotate(2deg);
+  font-family: ui-monospace, "SF Mono", monospace;
 }
 
-.start-hint {
-  color: var(--text-muted);
-  font-size: 0.78em;
+.desk-ledger h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.desk-ledger p {
+  margin: 4px 0;
+  font-size: 0.72rem;
+}
+
+.desk-letter {
+  width: min(28cqw, 280px);
+  right: 9%;
+  bottom: 8%;
+  padding: 20px;
+  background: var(--paper);
+  transform: rotate(-4deg);
+}
+
+.desk-letter p {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.desk-stamp {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border: 4px double var(--stamp);
+  border-radius: 50%;
+  color: var(--stamp);
+  font-size: 1.6rem;
+  opacity: 0.85;
+  box-shadow: none;
+}
+
+.desk-stamp-one {
+  left: 46%;
+  top: 6%;
+  transform: rotate(12deg);
+}
+
+.desk-stamp-two {
+  left: 8%;
+  bottom: 12%;
+  transform: rotate(-8deg);
+}
+
+.desk-ticket {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 92%);
+  margin: clamp(180px, 26cqw, 300px) auto 0;
+  padding: 28px;
+  background: var(--paper);
+  border: 3px double var(--paper-ink);
+  box-shadow: 8px 10px 0 var(--desk-shadow);
   text-align: center;
+}
+
+.ticket-kicker {
+  margin: 0;
+  font:
+    0.65rem ui-monospace,
+    "SF Mono",
+    monospace;
+  letter-spacing: 0.2em;
+}
+
+#start-title {
+  margin: 10px 0 2px;
+  font-size: clamp(2rem, 1.2rem + 4vw, 3.6rem);
+  font-weight: 400;
+}
+
+.ticket-sub {
   margin: 0 0 12px;
+  font-style: italic;
+}
+
+.ticket-copy {
+  margin: 0 0 18px;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .start-option {
@@ -245,30 +251,78 @@ body {
   justify-content: center;
   gap: 8px;
   margin: 0 0 10px;
-  color: var(--text);
-  font-size: 0.9em;
+  font-size: 0.85rem;
   cursor: pointer;
 }
 
 .start-option input {
-  accent-color: var(--action);
+  accent-color: var(--stamp);
 }
 
 .start-error {
   min-height: 1.2em;
-  color: var(--danger) !important;
-  font-size: 0.8em !important;
+  color: var(--stamp) !important;
+  font:
+    0.8em ui-monospace,
+    "SF Mono",
+    monospace !important;
 }
 
-.start-actions {
+#start-screen .start-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+#start-screen .start-actions button {
+  width: 100%;
+  margin: 0;
+  padding: 10px;
+  border: 2px solid var(--paper-ink);
+  background: transparent;
+  color: var(--paper-ink);
+  font-family: var(--font-paper);
+  letter-spacing: 0.1em;
+  box-shadow: none;
+}
+
+#start-screen .start-actions button:hover:not(:disabled) {
+  background: var(--paper-ink);
+  color: var(--paper);
+}
+
 #start-screen :focus-visible {
-  outline: 2px solid var(--info);
+  outline: 2px solid var(--stamp);
   outline-offset: 3px;
+}
+
+@container (max-width: 620px) {
+  .desk-map,
+  .desk-ledger,
+  .desk-letter {
+    position: static;
+    width: auto;
+    transform: none;
+    margin: 0 auto 12px;
+  }
+
+  .desk-map {
+    width: min(100%, 260px);
+  }
+
+  .desk-ledger,
+  .desk-letter {
+    padding: 12px;
+  }
+
+  .desk-stamp {
+    display: none;
+  }
+
+  .desk-ticket {
+    margin: 16px auto 0;
+    padding: 20px;
+  }
 }
 
 /* ================= TOP PERSISTENT HUD ================= */

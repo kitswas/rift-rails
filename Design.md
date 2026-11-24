@@ -18,7 +18,7 @@ UI rules for Rift Rails. Art follows `Artwork-rules.md`; sound follows `Audio-ru
    Procedural realm colors arrive at runtime. Components stay neutral and consume them indirectly. Never bake one realm's colors into a control or screen.
 
 6. **Blueprint, Not Dashboard**
-   Identity comes from square structural surfaces, hard offset shadows, crisp edges, monospace type, and uppercase labels. Status color communicates meaning and nothing else. Decoration never competes with information.
+   Identity comes from square structural surfaces, hard offset shadows, crisp edges, monospace type, and uppercase labels. Status color communicates meaning and nothing else. Decoration never competes with information. The title screen is the exception: diegetic paper documents on a desk.
 
 7. **Hierarchy Over Density**
    One primary action per screen. Group by meaning, not by implementation order. If everything is emphasized, nothing is.

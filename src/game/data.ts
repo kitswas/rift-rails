@@ -241,7 +241,7 @@ export const GAME_DATA: GameData = {
     initLog: "The Crucible Engine hums to life. The Ley-Rails stretch into infinity.",
     lblForge: "Crucible Mutations (Workshop)",
     lblNavTitle: "Select Dimensional Trajectory",
-    btnIgnite: "Ignite the Crucible Engine",
+    btnIgnite: "Begin Voyage",
     btnContinue: (jump) => `Continue Voyage (Waypoint ${jump})`,
     btnNewGame: "New Game",
     cueExplore: "EXPLORE: Spend Energy on the Bridge to reveal local actions.",

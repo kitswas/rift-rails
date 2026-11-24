@@ -72,63 +72,50 @@
     <div id="bridge-scene" aria-hidden="true"></div>
 
     <div id="start-screen">
-      <section class="start-card" aria-labelledby="start-title">
-        <svg class="start-hero" viewBox="0 0 480 96" aria-hidden="true" focusable="false">
-          <path class="start-hero-rift" d="M234 8h12l8 30h-28z" />
-          <path class="start-hero-rail" d="M168 26H312" />
-          <path class="start-hero-rail" d="M32 88H448" />
-          <path class="start-hero-tie" d="M180 26 70 88M300 26 410 88" />
-          <path class="start-hero-tie" d="M198 26 130 88M282 26 350 88" />
-          <path class="start-hero-spark" d="M240 20V8m-8 8-6-6m22 6 6-6" />
+      <main class="title-desk" aria-labelledby="start-title">
+        <svg class="desk-map" viewBox="0 0 520 380" aria-hidden="true" focusable="false">
+          <rect width="520" height="380" rx="3" fill="var(--paper)" stroke="var(--paper-ink)" stroke-width="3" />
+          <path d="M30 80q90-60 180 20t270 10M20 220q120-80 240 10t240-20M60 320q160-90 300 0" fill="none" stroke="var(--paper-ink)" stroke-width="2" />
+          <circle cx="150" cy="140" r="10" fill="var(--stamp)" />
+          <circle cx="350" cy="260" r="10" fill="var(--stamp)" />
+          <path d="M160 146q90 60 180 106" fill="none" stroke="var(--stamp)" stroke-width="3" stroke-dasharray="8 6" />
+          <text x="40" y="52" fill="var(--paper-ink)" font-family="Georgia, serif" font-size="28">LEY-RAIL CHART</text>
         </svg>
-        <header class="start-header">
-          <p class="start-eyebrow">AETHELGARD TRANSIT AUTHORITY // CREW BRIEFING</p>
-          <h1 id="start-title">RIFT RAILS</h1>
-          <p class="start-tagline">
-            Command the <strong>Aethelgard Express</strong> across the infinite
-            Ley-Rails. Keep the train fueled and intact.
-          </p>
-        </header>
-        <section class="briefing-grid" aria-label="Operations briefing">
-          <article class="briefing-card">
-            <span class="briefing-num" aria-hidden="true">01</span>
-            <h2>Explore</h2>
-            <p>Spend Energy to reveal actions in the local realm.</p>
-          </article>
-          <article class="briefing-card">
-            <span class="briefing-num" aria-hidden="true">02</span>
-            <h2>Gather</h2>
-            <p>Collect Fuel and Flux from revealed actions.</p>
-          </article>
-          <article class="briefing-card">
-            <span class="briefing-num" aria-hidden="true">03</span>
-            <h2>Upgrade</h2>
-            <p>Spend Flux in the Workshop to strengthen the train.</p>
-          </article>
-          <article class="briefing-card">
-            <span class="briefing-num" aria-hidden="true">04</span>
-            <h2>Rift Jump</h2>
-            <p>Spend Fuel to reach the next realm and restore Energy.</p>
-          </article>
-        </section>
-        <p class="start-hint">
-          Select a HUD stat for help. Progress auto-saves after each Rift Jump.
-        </p>
-        <label class="start-option" for="enable-tutorial">
-          <input id="enable-tutorial" type="checkbox" checked />
-          Enable Corvus tutorial for new games
-        </label>
-        <p id="start-error" class="start-error" role="alert"></p>
-        <div class="start-actions">
-          <button class="btn-start" id="btn-ignite" type="button"></button>
-          <button
-            id="btn-start-fresh"
-            class="btn-new-game"
-            style="display: none"
-            type="button"
-          ></button>
+        <div class="desk-ledger" aria-hidden="true">
+          <h2>Fare Table</h2>
+          <p>DISTANCE · FUEL · RISK</p>
+          <p>Near · 10 · Low</p>
+          <p>Deep · 25 · High</p>
         </div>
-      </section>
+        <div class="desk-letter" aria-hidden="true">
+          <p>To the new conductor —</p>
+          <p>The rails remember every stop. Yours will be no different.</p>
+        </div>
+        <div class="desk-stamp desk-stamp-one" aria-hidden="true">✦</div>
+        <div class="desk-stamp desk-stamp-two" aria-hidden="true">R</div>
+        <section class="desk-ticket" aria-label="Operations briefing">
+          <p class="ticket-kicker">AETHELGARD TRANSIT AUTHORITY</p>
+          <h1 id="start-title">Rift Rails</h1>
+          <p class="ticket-sub">The Infinite Express</p>
+          <p class="ticket-copy">
+            A crossing of infinite Ley-Rails. Keep the train fueled. Keep the crew together.
+          </p>
+          <label class="start-option" for="enable-tutorial">
+            <input id="enable-tutorial" type="checkbox" checked />
+            Enable Corvus tutorial for new games
+          </label>
+          <p id="start-error" class="start-error" role="alert"></p>
+          <div class="start-actions">
+            <button class="btn-start" id="btn-ignite" type="button"></button>
+            <button
+              id="btn-start-fresh"
+              class="btn-new-game"
+              style="display: none"
+              type="button"
+            ></button>
+          </div>
+        </section>
+      </main>
     </div>
 
     <div id="nav-screen">
