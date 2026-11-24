@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("redesigned landing page", () => {
-  test("shows diegetic desk documents and a Begin Voyage CTA", async ({ page }) => {
+  test("shows diegetic bulkhead documents and a Begin Voyage CTA", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("#start-screen")).toBeVisible();
-    await expect(page.locator(".desk-map")).toBeVisible();
-    await expect(page.locator(".desk-ledger")).toBeVisible();
-    await expect(page.locator(".desk-letter")).toBeVisible();
-    await expect(page.locator(".desk-ticket")).toBeVisible();
+    await expect(page.locator(".brief-map")).toBeVisible();
+    await expect(page.locator(".brief-ledger")).toBeVisible();
+    await expect(page.locator(".brief-letter")).toBeVisible();
+    await expect(page.locator(".brief-ticket")).toBeVisible();
     await expect(page.locator("#start-title")).toHaveText("Rift Rails");
     await expect(page.locator("#btn-ignite")).toHaveText("Begin Voyage");
     await expect(page.locator("#btn-start-fresh")).toBeHidden();
@@ -48,20 +48,20 @@ test.describe("redesigned landing page", () => {
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("btn-ignite");
   });
 
-  test("keeps the desk chart still, with or without reduced motion", async ({ page }) => {
+  test("keeps the briefing chart still, with or without reduced motion", async ({ page }) => {
     await page.goto("/");
     const animation = (): Promise<string> =>
-      page.locator(".desk-map").evaluate((node) => getComputedStyle(node).animationName);
+      page.locator(".brief-map").evaluate((node) => getComputedStyle(node).animationName);
     expect(await animation()).toBe("none");
     await page.emulateMedia({ reducedMotion: "reduce" });
     expect(await animation()).toBe("none");
   });
 
-  test("reflows desk documents at small and large widths", async ({ page }) => {
+  test("reflows bulkhead documents at small and large widths", async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 800 });
     await page.goto("/");
     const position = (): Promise<string> =>
-      page.locator(".desk-map").evaluate((node) => getComputedStyle(node).position);
+      page.locator(".brief-map").evaluate((node) => getComputedStyle(node).position);
     expect(await position()).toBe("absolute");
 
     await page.setViewportSize({ width: 390, height: 844 });

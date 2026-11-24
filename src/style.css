@@ -27,11 +27,9 @@
   --radius: 8px;
   --safe-bottom: env(safe-area-inset-bottom, 8px);
 
-  /* Title screen: paper documents on a desk */
+  /* Title screen: paper documents pinned to the in-game bulkhead */
   --paper: #e8dcc0;
   --paper-ink: #34281c;
-  --desk: #4a3326;
-  --desk-shadow: #2b1d15;
   --stamp: #8c3b32;
   --font-paper: Georgia, "Times New Roman", serif;
 
@@ -118,36 +116,65 @@ body {
   inset: 0;
   z-index: var(--layer-start-screen);
   overflow-y: auto;
-  background: var(--desk);
+  background: var(--panel-bg);
 }
 
-.title-desk {
+.title-bulkhead {
   position: relative;
   min-height: 100dvh;
   container-type: inline-size;
   padding: clamp(24px, 5vw, 80px);
   background:
-    repeating-linear-gradient(90deg, rgb(0 0 0 / 12%) 0 3px, transparent 3px 9px), var(--desk);
+    radial-gradient(
+      circle at 22px 22px,
+      var(--border-bright) 0 4px,
+      var(--panel-sub-bg) 4px 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at calc(100% - 22px) 22px,
+      var(--border-bright) 0 4px,
+      var(--panel-sub-bg) 4px 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at 22px calc(100% - 22px),
+      var(--border-bright) 0 4px,
+      var(--panel-sub-bg) 4px 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at calc(100% - 22px) calc(100% - 22px),
+      var(--border-bright) 0 4px,
+      var(--panel-sub-bg) 4px 6px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 18%) 0 1px, transparent 1px 5px), var(--panel-bg);
+  border: 1px solid var(--border-bright);
+  box-shadow:
+    inset 0 0 0 6px var(--panel-sub-bg),
+    inset 0 0 24px rgb(0 0 0 / 60%);
   font-family: var(--font-paper);
   color: var(--paper-ink);
 }
 
-.desk-map,
-.desk-ledger,
-.desk-letter,
-.desk-stamp {
+.brief-map,
+.brief-ledger,
+.brief-letter,
+.brief-stamp {
   position: absolute;
-  box-shadow: 6px 8px 0 var(--desk-shadow);
+  box-shadow: 6px 8px 0 var(--panel-sub-bg);
 }
 
-.desk-map {
+.brief-map {
   width: min(52cqw, 560px);
   left: 4%;
   top: 8%;
   transform: rotate(-3deg);
 }
 
-.desk-ledger {
+.brief-ledger {
   width: min(32cqw, 320px);
   right: 5%;
   top: 10%;
@@ -157,17 +184,17 @@ body {
   font-family: ui-monospace, "SF Mono", monospace;
 }
 
-.desk-ledger h2 {
+.brief-ledger h2 {
   margin: 0 0 10px;
   font-size: 1rem;
 }
 
-.desk-ledger p {
+.brief-ledger p {
   margin: 4px 0;
   font-size: 0.72rem;
 }
 
-.desk-letter {
+.brief-letter {
   width: min(28cqw, 280px);
   right: 9%;
   bottom: 8%;
@@ -176,13 +203,13 @@ body {
   transform: rotate(-4deg);
 }
 
-.desk-letter p {
+.brief-letter p {
   margin: 0 0 8px;
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.desk-stamp {
+.brief-stamp {
   display: grid;
   place-items: center;
   width: 70px;
@@ -195,19 +222,19 @@ body {
   box-shadow: none;
 }
 
-.desk-stamp-one {
+.brief-stamp-one {
   left: 46%;
   top: 6%;
   transform: rotate(12deg);
 }
 
-.desk-stamp-two {
+.brief-stamp-two {
   left: 8%;
   bottom: 12%;
   transform: rotate(-8deg);
 }
 
-.desk-ticket {
+.brief-ticket {
   position: relative;
   z-index: 1;
   width: min(440px, 92%);
@@ -215,8 +242,26 @@ body {
   padding: 28px;
   background: var(--paper);
   border: 3px double var(--paper-ink);
-  box-shadow: 8px 10px 0 var(--desk-shadow);
+  box-shadow: 8px 10px 0 var(--panel-sub-bg);
   text-align: center;
+}
+
+.brief-ledger::before,
+.brief-letter::before,
+.brief-ticket::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: 50%;
+  translate: -50% 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--border-bright);
+  box-shadow:
+    inset 0 0 0 3px var(--panel-sub-bg),
+    1px 1px 0 var(--panel-bg);
 }
 
 .ticket-kicker {
@@ -297,29 +342,29 @@ body {
 }
 
 @container (max-width: 620px) {
-  .desk-map,
-  .desk-ledger,
-  .desk-letter {
+  .brief-map,
+  .brief-ledger,
+  .brief-letter {
     position: static;
     width: auto;
     transform: none;
     margin: 0 auto 12px;
   }
 
-  .desk-map {
+  .brief-map {
     width: min(100%, 260px);
   }
 
-  .desk-ledger,
-  .desk-letter {
+  .brief-ledger,
+  .brief-letter {
     padding: 12px;
   }
 
-  .desk-stamp {
+  .brief-stamp {
     display: none;
   }
 
-  .desk-ticket {
+  .brief-ticket {
     margin: 16px auto 0;
     padding: 20px;
   }
