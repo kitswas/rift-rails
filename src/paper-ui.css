@@ -5,9 +5,11 @@
   --panel-bg: #efe4c8;
   --panel-sub-bg: #e6d9b8;
   --panel-sheen: #f7eed7;
-  --wood: #dfcda6;
-  --wood-line: #cbb287;
-  --wood-shadow: #9b7b4d;
+  --wood: #6b3328;
+  --wood-line: #51251d;
+  --wood-shadow: #30120e;
+  --wood-text: #f3e2bd;
+  --wood-accent: #e0ae9b;
   --text: #34281c;
   --text-muted: #6b5a44;
   --border: #b49f79;
@@ -223,16 +225,33 @@ button:hover:not(:disabled) {
 #pane-bridge .panel-card {
   background-color: var(--wood);
   background-image:
-    repeating-linear-gradient(0deg, rgb(0 0 0 / 4%) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(0deg, rgb(255 255 255 / 10%) 0 1px, transparent 1px 9px);
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 12%) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 4%) 0 1px, transparent 1px 9px);
   border: 2px solid var(--wood-shadow);
   box-shadow:
     4px 5px 0 rgb(0 0 0 / 35%),
-    inset 0 0 0 2px rgb(255 255 255 / 18%);
+    inset 0 0 0 2px rgb(255 255 255 / 8%);
+  color: var(--wood-text);
+}
+
+.panel-card h2,
+.panel-card h3,
+.panel-card h4,
+#hud-bar h2,
+#bottom-nav h2,
+#location-type {
+  color: var(--wood-text);
+}
+
+.panel-card::after {
+  border-color: var(--wood-accent);
+  color: var(--wood-accent);
+  opacity: 0.65;
 }
 
 #story-log,
 .hud-cell,
+.nav-tab,
 .manual-section,
 .settings-section,
 #action-buttons button,
@@ -245,8 +264,100 @@ button:hover:not(:disabled) {
   background-image: none;
   border: 1px solid var(--border);
   box-shadow: 2px 3px 0 rgb(0 0 0 / 25%);
+  color: var(--text);
 }
 
 #story-log {
   background-color: var(--panel-sheen);
+}
+
+/* Title board uses the same mahogany */
+#start-screen {
+  background: var(--wood);
+}
+
+.title-bulkhead {
+  background:
+    radial-gradient(
+      circle at 22px 22px,
+      var(--wood-accent) 0 4px,
+      var(--wood-shadow) 4px 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at calc(100% - 22px) 22px,
+      var(--wood-accent) 0 4px,
+      var(--wood-shadow) 4px 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at 22px calc(100% - 22px),
+      var(--wood-accent) 0 4px,
+      var(--wood-shadow) 4px 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at calc(100% - 22px) calc(100% - 22px),
+      var(--wood-accent) 0 4px,
+      var(--wood-shadow) 4px 6px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 12%) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 4%) 0 1px, transparent 1px 9px), var(--wood);
+  border-color: var(--wood-shadow);
+  box-shadow:
+    inset 0 0 0 6px var(--wood-shadow),
+    inset 0 0 24px rgb(0 0 0 / 60%);
+  color: var(--wood-text);
+}
+
+.brief-ledger,
+.brief-letter,
+.brief-ticket {
+  color: var(--paper-ink);
+}
+
+.brief-stamp {
+  border-color: var(--wood-accent);
+  color: var(--wood-accent);
+}
+
+select,
+.audio-select {
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.panel-card::before,
+.cutscene-frame::before {
+  background:
+    radial-gradient(
+        circle,
+        var(--wood-text) 0 1px,
+        var(--wood-shadow) 1.4px 2.4px,
+        transparent 2.8px
+      )
+      0 0 / 7px 7px no-repeat,
+    radial-gradient(
+        circle,
+        var(--wood-text) 0 1px,
+        var(--wood-shadow) 1.4px 2.4px,
+        transparent 2.8px
+      )
+      100% 0 / 7px 7px no-repeat,
+    radial-gradient(
+        circle,
+        var(--wood-text) 0 1px,
+        var(--wood-shadow) 1.4px 2.4px,
+        transparent 2.8px
+      )
+      0 100% / 7px 7px no-repeat,
+    radial-gradient(
+        circle,
+        var(--wood-text) 0 1px,
+        var(--wood-shadow) 1.4px 2.4px,
+        transparent 2.8px
+      )
+      100% 100% / 7px 7px no-repeat;
 }
