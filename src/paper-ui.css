@@ -160,7 +160,14 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: rgb(52 40 28 / 8%);
+  border-color: var(--border-bright);
+}
+
+#hud-bar .hud-cell:hover,
+.train-setup-grid .hud-cell:hover,
+.telemetry-grid .hud-cell:hover {
+  background-color: var(--panel-sheen);
+  border-color: var(--border-bright);
 }
 
 button:disabled {
