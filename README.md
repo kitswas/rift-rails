@@ -7,6 +7,12 @@
 
 ![Rift Rails Cover](assets/logo-cover.png)
 
+## Documentation
+
+- [Design.md](Design.md) — core UI design rules.
+- [Artwork-rules.md](Artwork-rules.md) — SVG and diorama art rules.
+- [Audio-rules.md](Audio-rules.md) — sound rules.
+
 ---
 
 ## License
