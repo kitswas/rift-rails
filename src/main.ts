@@ -15,7 +15,12 @@ import { createNav } from "./ui/nav";
 import { createMenu } from "./ui/menu";
 import { getTabs, onScrollToPane, onSyncTabs, tabIds } from "./ui/tabs";
 import { el, btn } from "./ui/dom";
-import { createTutorial, TUTORIAL_PLUGIN_ID, TUTORIAL_CHOICE_KEY } from "./game/tutorial";
+import {
+  createContextualCues,
+  createTutorial,
+  TUTORIAL_PLUGIN_ID,
+  TUTORIAL_CHOICE_KEY,
+} from "./game/tutorial";
 import { DioramaPipelineService } from "./game/art";
 import type { ArtBridgeHandle, ArtDeps } from "./game/art";
 import { TransitionFXService } from "./game/fx";
@@ -24,7 +29,8 @@ import { StorylineService } from "./game/storyline";
 import type { StoryEvent } from "./game/storyline";
 import { RiftMotionService } from "./game/motion";
 import { appendLog, renderActionButtons, renderForge, renderVitals } from "./ui/render";
-import { loadBundledPlugins, mountPluginsPanel, readEnabled, rehydratePlugins } from "./ui/panels";
+import { loadRegistryPlugins, mountPluginsPanel, readEnabled } from "./ui/panels";
+import { loadPluginRegistry } from "./game/pluginRegistry";
 
 const bus = {
   listeners: new Map<string, Set<(payload: unknown) => void>>(),
@@ -41,7 +47,6 @@ const bus = {
 let cutscene!: CutsceneEngine;
 let storylineService: StorylineService | undefined;
 let bundledPluginsReady: Promise<string[]> = Promise.resolve([]);
-let rehydratedPluginsReady: Promise<string[]> = Promise.resolve([]);
 let refreshPluginsPanel = (): void => {};
 
 function renderStoryJournal(): void {
@@ -316,6 +321,7 @@ cutscene = new CutsceneEngine({
     getActiveElement: () => document.activeElement,
   },
   formatProgress: GAME_DATA.text.formatCutsceneProgress,
+  formatChainLine: GAME_DATA.text.formatChainLine,
   tutorialHighlightClass: GAME_DATA.dom.classes.tutorialHighlight,
   logLoreClass: GAME_DATA.dom.classes.logLore,
   dialoguePhase: GAME_DATA.phases.dialogue,
@@ -454,7 +460,7 @@ const syncSettings = (): void => {
   if (ignite) {
     if (save.hasSave()) {
       const saved = save.load();
-      ignite.textContent = `Resume Journey (Waypoint ${saved ? saved.jumpCount : 1})`;
+      ignite.textContent = GAME_DATA.text.btnContinue(saved?.jumpCount ?? 1);
       const fresh = btn("btn-start-fresh");
       if (fresh) {
         fresh.textContent = GAME_DATA.text.btnNewGame;
@@ -696,6 +702,22 @@ engine.attachHooks(phaseMachine.hooks);
   };
 }
 
+const contextualCues = createContextualCues({
+  bus,
+  storage: sessionStorage,
+  schedule: (fn) => {
+    if (deps.schedule) deps.schedule(fn, 0);
+    else window.setTimeout(fn, 0);
+  },
+  cueClass: GAME_DATA.dom.classes.contextualCue ?? "contextual-cue",
+  helpClass: GAME_DATA.dom.classes.logHelp ?? "log-help",
+  log: (text, cls) => appendLog(text, cls),
+  phases: {
+    idle: GAME_DATA.phases.idle ?? "IDLE",
+    encounter: GAME_DATA.phases.encounter ?? "ENCOUNTER",
+  },
+});
+
 fx.bindCanvas(document.getElementById("fx-canvas") as HTMLCanvasElement | null);
 fx.bindArtGlyph(el("art-glyph"));
 fx.bindChrome(el("game-container"), el("bridge-scene"));
@@ -719,13 +741,17 @@ function bind(): void {
   btn("btn-desperate")?.addEventListener("click", () => engine.desperateScavenge());
   btn("btn-forge-engine")?.addEventListener("click", () => engine.forgeUpgrade("engineTier"));
   btn("btn-forge-weapon")?.addEventListener("click", () => engine.forgeUpgrade("weaponTier"));
-  btn("btn-reset-save")?.addEventListener("click", () => engine.resetGame(true));
+  btn("btn-reset-save")?.addEventListener("click", () => {
+    contextualCues.reset();
+    engine.resetGame(true);
+  });
   btn("btn-start-fresh")?.addEventListener("click", () => {
     if (!window.confirm("Purge all voyage telemetry and restart from Waypoint 1?")) return;
     const fresh = btn("btn-start-fresh");
     if (fresh) fresh.disabled = true;
     const tutorialEnabled =
       (document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ?? true;
+    contextualCues.reset();
     try {
       sessionStorage.setItem(TUTORIAL_CHOICE_KEY, String(tutorialEnabled));
     } catch {
@@ -785,8 +811,8 @@ function bind(): void {
     void (async () => {
       try {
         await bundledPluginsReady;
-        await rehydratedPluginsReady;
-        if (save.hasSave()) {
+        const hasSave = save.hasSave();
+        if (hasSave) {
           if (host.isPluginActive(TUTORIAL_PLUGIN_ID))
             await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
         } else {
@@ -800,7 +826,17 @@ function bind(): void {
             // Ignore unavailable session storage.
           }
         }
+        const tutorialOn = hasSave
+          ? host.isPluginActive(TUTORIAL_PLUGIN_ID)
+          : ((document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ??
+            true);
         engine.ignite();
+        if (tutorialOn) {
+          contextualCues.enable();
+          contextualCues.showPhase(voyage.getPhase());
+        } else {
+          contextualCues.disable();
+        }
         window.setTimeout(() => storylineService?.start(), 180);
       } catch (err) {
         const error = el("start-error");
@@ -838,20 +874,33 @@ bind();
     else t.removeAttribute("aria-current");
   });
 }
-const panel = mountPluginsPanel(host, {
-  onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
-});
-refreshPluginsPanel = panel.refresh;
-rehydratedPluginsReady = rehydratePlugins(host).then((ids) => {
-  if (ids.length) panel.refresh();
-  return ids;
-});
-bundledPluginsReady = loadBundledPlugins(host, {
-  onLog: (m) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
-}).then((ids) => {
-  if (ids.length) panel.refresh();
-  return ids;
-});
+const PLUGIN_BOOT_TIMEOUT_MS = 3000;
+const registryUrl: string = import.meta.env.VITE_PLUGIN_REGISTRY || "./plugins/registry.json";
+const logHook = {
+  onLog: (m: string) => appendLog(m, GAME_DATA.dom.classes.logSystem ?? "log-system"),
+};
+const emptyRegistry = { version: 1 as const, plugins: [] };
+refreshPluginsPanel = mountPluginsPanel(host, logHook, emptyRegistry, registryUrl).refresh;
+// Registry load runs in the background: a slow or missing registry must not block the game.
+bundledPluginsReady = Promise.race([
+  loadPluginRegistry(registryUrl)
+    .catch((err: unknown) => {
+      logHook.onLog(
+        `plugin registry unavailable: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return emptyRegistry;
+    })
+    .then(async (registry) => {
+      const panel = mountPluginsPanel(host, logHook, registry, registryUrl);
+      refreshPluginsPanel = panel.refresh;
+      const loaded = registry.plugins.length
+        ? await loadRegistryPlugins(host, logHook, registry, registryUrl)
+        : [];
+      panel.refresh();
+      return loaded;
+    }),
+  new Promise<string[]>((resolve) => setTimeout(() => resolve([]), PLUGIN_BOOT_TIMEOUT_MS)),
+]);
 engine.init();
 (globalThis as unknown as { Engine: EngineService }).Engine = engine;
 if (typeof location !== "undefined" && new URLSearchParams(location.search).has("debug")) {

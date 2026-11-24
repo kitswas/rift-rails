@@ -2,6 +2,8 @@
   "id": "rift-salvager",
   "name": "Rift Salvager",
   "version": "1.0.0",
+  "description": "Adds a Salvage Yard and a Salvage Melt action that turns fuel into flux.",
+  "defaultEnabled": true,
   "minApi": 4,
   "entry": "main.js",
   "permissions": []

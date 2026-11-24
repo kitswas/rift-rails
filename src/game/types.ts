@@ -224,7 +224,14 @@ export interface TextStrings {
   lblForge: string;
   lblNavTitle: string;
   btnIgnite: string;
+  btnContinue: (jump: number) => string;
   btnNewGame: string;
+  cueExplore: string;
+  cueScout: string;
+  cueTravel: string;
+  cueForge: string;
+  cueYard: string;
+  cueInspect: string;
   noneState: string;
   formatTier: (val: number) => string;
   formatPct: (val: number) => string;
@@ -236,6 +243,7 @@ export interface TextStrings {
   btnExploreClosed: (cost: number) => string;
   btnExploreHub: (cost: number) => string;
   formatCutsceneProgress: (beat: number, total: number) => string;
+  formatChainLine: (actor: string, verb: string, target: string, outcome: string) => string;
   btnJump: (cost: number) => string;
   btnDesperate: (cost: number, yieldAmount: number) => string;
   btnForgeEngine: (cost: number, tierMult: number, nextJumpCost: number, curFuel: number) => string;

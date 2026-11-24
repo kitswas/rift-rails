@@ -1,41 +1,27 @@
-// Plugins panel: mounts into Settings pane (pane-settings).
+// Plugins panel: mounts into Settings pane (pane-settings). Registry is the sole plugin list.
+import JSZip from "jszip";
 import type { PluginHost } from "../game/host";
+import { parseManifest } from "../game/manifest";
+import type { PluginManifest } from "../game/manifest";
+import type { PluginRegistry, PluginRegistryEntry } from "../game/pluginRegistry";
+import { downloadVerifiedPlugin, isEntryCompatible } from "../game/pluginRegistry";
 
 export const ENABLED_KEY = "rift.plugins.enabled";
-export const ZIPS_KEY = "rift.plugins.zips";
-// Prevent saved selections from reactivating retired package IDs.
-const REMOVED_BUNDLED_PLUGINS = new Set([
-  "black-market",
-  "contract-board",
-  "rift-storm",
-  "salvage-scanner",
-  "sample-plugin",
-  "warp-overcharge",
-]);
-const MAX_STORED_ZIP_BYTES = 1 * 1024 * 1024;
-const MAX_STORED_ZIPS_TOTAL = 4 * 1024 * 1024;
 
-function parseEnabled(): { ids: string[]; retiredSelection: boolean } {
+function parseEnabled(): string[] {
   try {
     const raw = localStorage.getItem(ENABLED_KEY);
-    if (!raw) return { ids: [], retiredSelection: false };
+    if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return { ids: [], retiredSelection: false };
-    const ids: string[] = [];
-    let retiredSelection = false;
-    for (const id of parsed) {
-      if (typeof id !== "string") continue;
-      if (REMOVED_BUNDLED_PLUGINS.has(id)) retiredSelection = true;
-      else ids.push(id);
-    }
-    return { ids, retiredSelection };
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === "string");
   } catch {
-    return { ids: [], retiredSelection: false };
+    return [];
   }
 }
 
 export function readEnabled(): string[] {
-  return parseEnabled().ids;
+  return parseEnabled();
 }
 
 export function writeEnabled(ids: string[]): void {
@@ -46,92 +32,6 @@ export function writeEnabled(ids: string[]): void {
   }
 }
 
-function bytesToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(b64: string): ArrayBuffer {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer as ArrayBuffer;
-}
-
-export function readStoredZips(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(ZIPS_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(parsed)) if (typeof v === "string") out[k] = v;
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-export function storeZip(id: string, buf: ArrayBuffer): boolean {
-  if (buf.byteLength > MAX_STORED_ZIP_BYTES) return false;
-  try {
-    const stored = readStoredZips();
-    stored[id] = bytesToBase64(buf);
-    const json = JSON.stringify(stored);
-    if (json.length > MAX_STORED_ZIPS_TOTAL) return false;
-    localStorage.setItem(ZIPS_KEY, json);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function getStoredZip(id: string): ArrayBuffer | null {
-  const b64 = readStoredZips()[id];
-  if (!b64) return null;
-  try {
-    const buf = base64ToBytes(b64);
-    return buf.byteLength > MAX_STORED_ZIP_BYTES ? null : buf;
-  } catch {
-    return null;
-  }
-}
-
-export async function rehydratePlugins(host: PluginHost): Promise<string[]> {
-  const loaded: string[] = [];
-  for (const id of readEnabled()) {
-    if (host.isPluginActive(id)) {
-      try {
-        await host.waitUntilReady(id);
-      } catch {
-        // Plugin failed to mount; leave it disabled.
-      }
-      continue;
-    }
-    const buf = getStoredZip(id);
-    if (!buf) continue;
-    try {
-      await host.loadZip(buf);
-      loaded.push(id);
-    } catch {
-      /* stale zip; user must reinstall */
-    }
-  }
-  return loaded;
-}
-
-// Vite copies public/ to dist/; keep bundled zips in public/plugins/ (not dist/plugins/).
-const BUNDLED_PLUGINS: readonly { id: string; url: string; defaultEnabled?: boolean }[] = [
-  { id: "rift-salvager", url: "./plugins/rift-salvager.zip" },
-  { id: "field-repair", url: "./plugins/field-repair.zip" },
-  { id: "corvus-tutorial", url: "./plugins/corvus-tutorial.zip", defaultEnabled: false },
-];
-
 function rawEnabledKey(): string | null {
   try {
     return localStorage.getItem(ENABLED_KEY);
@@ -140,50 +40,83 @@ function rawEnabledKey(): string | null {
   }
 }
 
-export async function loadBundledPlugins(host: PluginHost, hooks: PanelsHooks): Promise<string[]> {
-  const { ids: enabled, retiredSelection } = parseEnabled();
-  // Key absent = first run (defaults on); key === "[]" = user disabled everything (respect it).
-  const firstRun = rawEnabledKey() === null || retiredSelection;
-  const targets = BUNDLED_PLUGINS.filter(
-    (p) => (firstRun && p.defaultEnabled !== false) || enabled.includes(p.id),
-  );
+export interface PanelsHooks {
+  onLog: (msg: string) => void;
+}
+
+function failureMessage(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
+async function readManifest(bytes: ArrayBuffer): Promise<PluginManifest> {
+  const zip = await JSZip.loadAsync(bytes);
+  const file = zip.file("manifest.json");
+  if (!file) throw new Error("manifest.json missing from zip");
+  return parseManifest(JSON.parse(await file.async("string")) as unknown);
+}
+
+/** Download + hash-verify, then require the zip manifest to match its registry entry. */
+async function fetchVerifiedBytes(
+  entry: PluginRegistryEntry,
+  registryUrl: string,
+): Promise<ArrayBuffer> {
+  const { bytes } = await downloadVerifiedPlugin(entry, registryUrl);
+  const manifest = await readManifest(bytes);
+  if (manifest.id !== entry.id) throw new Error(`manifest id mismatch for ${entry.id}`);
+  if (manifest.minApi !== entry.minApi) throw new Error(`manifest minApi mismatch for ${entry.id}`);
+  const actual = [...manifest.permissions].sort().join(",");
+  const expected = [...entry.permissions].sort().join(",");
+  if (actual !== expected) throw new Error(`manifest permissions mismatch for ${entry.id}`);
+  return bytes;
+}
+
+async function loadEntry(
+  host: PluginHost,
+  entry: PluginRegistryEntry,
+  registryUrl: string,
+): Promise<string> {
+  if (host.isPluginActive(entry.id)) {
+    await host.waitUntilReady(entry.id);
+    return entry.id;
+  }
+  await host.loadZip(await fetchVerifiedBytes(entry, registryUrl));
+  return entry.id;
+}
+
+/** First run enables compatible defaults; later runs use stored ids. Rejections stay disabled. */
+export async function loadRegistryPlugins(
+  host: PluginHost,
+  hooks: PanelsHooks,
+  registry: PluginRegistry,
+  registryUrl: string,
+): Promise<string[]> {
+  const enabled = readEnabled();
+  const firstRun = rawEnabledKey() === null;
+  const targets = firstRun
+    ? registry.plugins.filter((entry) => entry.defaultEnabled && isEntryCompatible(entry))
+    : registry.plugins.filter((entry) => enabled.includes(entry.id));
   const results = await Promise.allSettled(
-    targets.map(async (p) => {
-      if (host.isPluginActive(p.id)) {
-        await host.waitUntilReady(p.id);
-        return p.id;
-      }
-      const res = await fetch(p.url);
-      if (res.status === 404) return null; // missing zip: ignore silently
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const manifest = await host.loadZip(await res.arrayBuffer());
-      return manifest.id;
-    }),
+    targets.map((entry) => loadEntry(host, entry, registryUrl)),
   );
   const loaded: string[] = [];
-  results.forEach((r, i) => {
-    if (r.status === "fulfilled") {
-      if (r.value) loaded.push(r.value);
+  results.forEach((result, i) => {
+    const entry = targets[i];
+    if (result.status === "fulfilled") {
+      loaded.push(result.value);
     } else {
-      hooks.onLog(
-        `bundled plugin failed: ${targets[i]?.id ?? "?"}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`,
-      );
+      hooks.onLog(`registry plugin failed: ${entry?.id ?? "?"}: ${failureMessage(result.reason)}`);
     }
   });
   if (firstRun) writeEnabled([...new Set([...enabled, ...loaded])]);
   return loaded;
 }
 
-export interface PanelsHooks {
-  onLog: (msg: string) => void;
-}
-
-/**
- * Mounts the Plugins panel inside the Settings pane.
- * File picker (.zip) → host.loadZip → enable/disable toggles persisted
- * in localStorage; errors shown in #plugin-error.
- */
-export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refresh: () => void } {
+export function mountPluginsPanel(
+  host: PluginHost,
+  hooks: PanelsHooks,
+  registry: PluginRegistry,
+  registryUrl: string,
+): { refresh: () => void } {
   const pane = document.getElementById("pane-settings");
   if (!pane) {
     hooks.onLog("plugins panel: #pane-settings missing; panel not mounted");
@@ -196,28 +129,32 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
   const section = document.createElement("section");
   section.className = "settings-section";
   section.id = "plugins-panel";
-  section.innerHTML = `<h3 style="color: var(--info); letter-spacing: 1px">[ PLUGINS // LEYRIG ]</h3><p id="plugin-status" aria-live="polite"></p><div class="audio-control-row"><label for="plugin-file">Install .zip</label><input id="plugin-file" type="file" class="audio-select" accept=".zip" /></div><p id="plugin-error" role="alert"></p><div id="plugin-list"></div>`;
+  section.innerHTML = `<h3 style="color: var(--info); letter-spacing: 1px">[ PLUGINS // LEYRIG ]</h3><p id="plugin-status" aria-live="polite"></p><p id="plugin-error" role="alert"></p><div id="plugin-list"></div>`;
 
   parent.appendChild(section);
 
   const errorEl = section.querySelector<HTMLParagraphElement>("#plugin-error");
   const statusEl = section.querySelector<HTMLParagraphElement>("#plugin-status");
   const listEl = section.querySelector<HTMLDivElement>("#plugin-list");
-  const fileInput = section.querySelector<HTMLInputElement>("#plugin-file");
 
   const setError = (msg: string): void => {
     if (errorEl) errorEl.textContent = msg;
   };
+  const verified = new Set<string>();
+  const failed = new Map<string, string>();
   const enabledSet = new Set(readEnabled());
 
-  const buffers = new Map<string, ArrayBuffer>();
+  const statusOf = (entry: PluginRegistryEntry): string => {
+    if (failed.has(entry.id)) return "failed";
+    if (!isEntryCompatible(entry)) return "incompatible";
+    return host.isPluginActive(entry.id) || verified.has(entry.id) ? "verified" : "unverified";
+  };
 
   const refresh = (): void => {
     if (!listEl) return;
     enabledSet.clear();
-    for (const id of readEnabled()) enabledSet.add(id); // reflect bundled first-run enable
-    const plugins = host.listPlugins();
-    const activeCount = plugins.filter((p) => p.active).length;
+    for (const id of readEnabled()) enabledSet.add(id); // reflect first-run defaults
+    const activeCount = registry.plugins.filter((entry) => host.isPluginActive(entry.id)).length;
     if (statusEl) statusEl.textContent = `${activeCount} active`;
     // Keep keyboard focus on the same plugin's toggle across the rebuild.
     const focusedId =
@@ -225,22 +162,21 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
         ? document.activeElement.dataset.pluginId
         : undefined;
     listEl.replaceChildren();
-    for (const p of plugins) {
+    for (const entry of registry.plugins) {
+      const active = host.isPluginActive(entry.id);
       const row = document.createElement("div");
       row.className = "audio-control-row plugin-row";
+      row.dataset.pluginId = entry.id;
       const label = document.createElement("span");
-      label.textContent = `${p.name} v${p.version}${p.active ? "" : " (disabled)"}`;
+      label.textContent = `${entry.name} v${entry.version}${active ? "" : " (disabled)"} — ${entry.description} — ${statusOf(entry)}`;
       const toggle = document.createElement("input");
       toggle.type = "checkbox";
-      toggle.checked = enabledSet.has(p.id) && p.active;
-      toggle.dataset.pluginId = p.id;
-      toggle.setAttribute("aria-label", `Toggle plugin ${p.name}`);
+      toggle.checked = enabledSet.has(entry.id) && active;
+      toggle.dataset.pluginId = entry.id;
+      toggle.setAttribute("aria-label", `Toggle plugin ${entry.name}`);
       toggle.addEventListener("change", () => {
-        if (toggle.checked) {
-          void enable(p.id);
-        } else {
-          disable(p.id);
-        }
+        if (toggle.checked) void enable(entry);
+        else disable(entry);
       });
       row.append(label, toggle);
       listEl.appendChild(row);
@@ -255,67 +191,38 @@ export function mountPluginsPanel(host: PluginHost, hooks: PanelsHooks): { refre
 
   const persist = (): void => writeEnabled([...enabledSet]);
 
-  const disable = (id: string): void => {
-    host.disable(id, "user-disabled");
-    enabledSet.delete(id);
+  const disable = (entry: PluginRegistryEntry): void => {
+    host.disable(entry.id, "user-disabled");
+    enabledSet.delete(entry.id);
     persist();
+    setError("");
     refresh();
-    hooks.onLog(`Plugin disabled: ${id}`);
+    hooks.onLog(`Plugin disabled: ${entry.id}`);
   };
 
-  const enable = async (id: string): Promise<void> => {
-    const buf = buffers.get(id) ?? getStoredZip(id);
-    if (!buf) {
-      // Not persisting: a plugin we cannot load must not stay "enabled" forever.
-      setError(`Plugin "${id}" is not available; reinstall its .zip to re-enable.`);
-      refresh();
-      return;
-    }
+  const enable = async (entry: PluginRegistryEntry): Promise<void> => {
     try {
-      const m = await host.loadZip(buf);
-      enabledSet.add(m.id);
+      if (!isEntryCompatible(entry)) throw new Error(`plugin ${entry.id} is incompatible`);
+      await host.waitUntilStopped(entry.id);
+      const bytes = await fetchVerifiedBytes(entry, registryUrl);
+      await host.loadZip(bytes);
+      verified.add(entry.id);
+      failed.delete(entry.id);
+      enabledSet.add(entry.id);
       persist();
       setError("");
       refresh();
-      hooks.onLog(`Plugin enabled: ${m.id}`);
+      hooks.onLog(`Plugin enabled: ${entry.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = failureMessage(err);
+      enabledSet.delete(entry.id);
+      failed.set(entry.id, msg);
+      setError(msg);
       refresh();
+      hooks.onLog(`Plugin enable failed: ${entry.id}: ${msg}`);
     }
   };
 
-  let installing = false;
-  if (fileInput) {
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files?.[0];
-      if (!file || installing) return;
-      installing = true;
-      fileInput.disabled = true;
-      void (async () => {
-        try {
-          const buf = await file.arrayBuffer();
-          const manifest = await host.loadZip(buf);
-          buffers.set(manifest.id, buf);
-          if (!storeZip(manifest.id, buf)) {
-            hooks.onLog(`Plugin ${manifest.id} zip not stored (size cap); reinstall after reload`);
-          }
-          enabledSet.add(manifest.id);
-          persist();
-          setError("");
-          refresh();
-          hooks.onLog(`Plugin loaded: ${manifest.id} (${manifest.name} ${manifest.version})`);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : String(err));
-        } finally {
-          installing = false;
-          fileInput.disabled = false;
-          fileInput.value = "";
-        }
-      })();
-    });
-  }
-
-  // Caller drives rehydration (main.ts calls rehydratePlugins once at boot); do not double-mount here.
   refresh();
   return { refresh };
 }

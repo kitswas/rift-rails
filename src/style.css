@@ -12,7 +12,8 @@
   --warning: #f59e0b;
   --success: #10b981;
   --energy: #a855f7;
-  --action: #f59e0b;
+  --action-rgb: 245 158 11;
+  --action: rgb(var(--action-rgb));
   --info: #38bdf8;
   --help: #f1f5f9;
 
@@ -108,8 +109,9 @@ body {
   position: fixed;
   inset: 0;
   z-index: var(--layer-start-screen);
-  background: var(--bg);
-  padding: 20px;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(var(--action-rgb) / 0.07), transparent 55%), var(--bg);
+  padding: 24px 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -118,28 +120,123 @@ body {
 }
 
 .start-card {
-  max-width: 520px;
+  width: min(100%, 760px);
   background: var(--panel-bg);
   border: 1px solid var(--border-bright);
-  border-radius: var(--radius);
-  padding: 24px;
+  padding: 28px;
+}
+
+.start-hero {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 96px;
+  margin-bottom: 14px;
+}
+
+.start-hero-rail {
+  fill: none;
+  stroke: var(--border-bright);
+  stroke-width: 3;
+}
+
+.start-hero-tie {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.start-hero-rift {
+  fill: var(--panel-sub-bg);
+  stroke: var(--border-bright);
+  stroke-width: 1;
+}
+
+.start-hero-spark {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.start-header {
+  text-align: center;
+  border-bottom: 1px dashed var(--border-bright);
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+
+.start-eyebrow {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 0.7em;
+  letter-spacing: 2px;
 }
 
 .start-card h1 {
   color: var(--action);
-  font-size: 1.35em;
-  margin-top: 0;
-  text-align: center;
-  border-bottom: 1px dashed var(--border-bright);
-  padding-bottom: 12px;
-  letter-spacing: 1px;
+  font-size: 1.8em;
+  letter-spacing: 4px;
+  margin: 0;
 }
 
-.start-card p {
+.start-tagline {
   line-height: 1.55;
+  color: var(--text-muted);
+  margin: 8px 0 0;
+  font-size: 0.88em;
+}
+
+.start-tagline strong {
   color: var(--text);
-  margin-bottom: 12px;
-  font-size: 0.9em;
+}
+
+.briefing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.briefing-card {
+  position: relative;
+  background: var(--panel-sub-bg);
+  border: 1px solid var(--border);
+  padding: 12px 12px 12px 52px;
+  min-height: 84px;
+}
+
+.briefing-num {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  color: var(--border-bright);
+  font-size: 1.4em;
+  font-weight: 800;
+  opacity: 0.7;
+}
+
+.briefing-card h2 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 0.86em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.briefing-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78em;
+  line-height: 1.45;
+}
+
+.start-hint {
+  color: var(--text-muted);
+  font-size: 0.78em;
+  line-height: 1.5;
+  text-align: center;
+  margin: 0 0 12px;
 }
 
 .start-option {
@@ -163,18 +260,15 @@ body {
   font-size: 0.8em !important;
 }
 
-.briefing-box {
-  background: var(--panel-sub-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
-  margin: 14px 0;
-  font-size: 0.85em;
-  line-height: 1.6;
+.start-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.briefing-box b {
-  color: var(--info);
+#start-screen :focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 3px;
 }
 
 /* ================= TOP PERSISTENT HUD ================= */
@@ -379,40 +473,16 @@ body {
   pointer-events: none;
   z-index: 1;
   background:
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       0 0 / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       100% 0 / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       0 100% / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       100% 100% / 7px 7px no-repeat,
-    repeating-linear-gradient(
-        45deg,
-        var(--border-bright) 0 1px,
-        transparent 1px 5px
-      )
-      0 0 / 100% 4px no-repeat;
+    repeating-linear-gradient(45deg, var(--border-bright) 0 1px, transparent 1px 5px) 0 0 / 100% 4px
+      no-repeat;
 }
 
 .hud-cell {
@@ -610,7 +680,7 @@ h2 {
   border-radius: 5px;
   background: rgba(9, 13, 21, 0.92);
   box-shadow:
-    inset 0 0 22px rgba(245, 158, 11, 0.08),
+    inset 0 0 22px rgb(var(--action-rgb) / 0.08),
     0 8px 28px rgba(0, 0, 0, 0.62);
 }
 
@@ -670,6 +740,19 @@ h2 {
   white-space: nowrap;
 }
 
+.cutscene-chain {
+  width: 72%;
+  margin: 0 0 8px;
+  color: var(--info);
+  font-size: 0.74em;
+  letter-spacing: 0.4px;
+  line-height: 1.4;
+}
+
+.cutscene-chain[hidden] {
+  display: none;
+}
+
 .cutscene-text {
   width: 72%;
   min-height: 2.8em;
@@ -690,8 +773,8 @@ h2 {
 }
 
 .btn-cutscene-choice {
-  background: rgba(245, 158, 11, 0.06);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgb(var(--action-rgb) / 0.06);
+  border: 1px solid rgb(var(--action-rgb) / 0.4);
   color: var(--text);
   text-align: left;
   padding: 9px 12px;
@@ -705,19 +788,20 @@ h2 {
 
 .btn-cutscene-choice:hover,
 .btn-cutscene-choice:focus-visible {
-  background: rgba(245, 158, 11, 0.16);
+  background: rgb(var(--action-rgb) / 0.16);
   border-color: var(--action);
   color: #fff;
   transform: translateX(2px);
-  outline: 2px solid rgba(245, 158, 11, 0.45);
+  outline: 2px solid rgb(var(--action-rgb) / 0.45);
   outline-offset: 2px;
 }
 
-#btn-explore.tutorial-highlight {
-  border-color: var(--action);
+.tutorial-highlight,
+.contextual-cue {
+  border-color: var(--action) !important;
   box-shadow:
-    0 0 0 2px rgba(245, 158, 11, 0.35),
-    0 0 18px rgba(245, 158, 11, 0.28);
+    0 0 0 2px rgb(var(--action-rgb) / 0.35),
+    0 0 18px rgb(var(--action-rgb) / 0.28) !important;
 }
 
 /* ================= BUTTONS & CONTROLS ================= */
@@ -772,7 +856,7 @@ button:disabled {
   padding: 12px;
   margin-top: 10px;
   border: none;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 12px rgb(var(--action-rgb) / 0.3);
 }
 
 .btn-new-game {
@@ -792,7 +876,7 @@ button:disabled {
 .btn-action {
   border-color: var(--action);
   color: var(--action);
-  background: rgba(245, 158, 11, 0.08);
+  background: rgb(var(--action-rgb) / 0.08);
 }
 
 .btn-desperate {
@@ -1161,33 +1245,13 @@ button:disabled {
   pointer-events: none;
   z-index: 2;
   background:
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       0 0 / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       100% 0 / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       0 100% / 7px 7px no-repeat,
-    radial-gradient(
-        circle,
-        var(--panel-bg) 0 1px,
-        var(--text-muted) 1.4px 2.4px,
-        transparent 2.8px
-      )
+    radial-gradient(circle, var(--panel-bg) 0 1px, var(--text-muted) 1.4px 2.4px, transparent 2.8px)
       100% 100% / 7px 7px no-repeat;
 }
 
@@ -1221,7 +1285,7 @@ button:disabled {
   transform: translateY(-4px);
   border-color: var(--action);
   background: var(--action);
-  box-shadow: 4px 6px 0 rgba(245, 158, 11, 0.22);
+  box-shadow: 4px 6px 0 rgb(var(--action-rgb) / 0.22);
 }
 
 #nav-choices .nav-carriage[data-arm="true"] .carriage-head,
@@ -1264,12 +1328,8 @@ button:disabled {
   padding: 6px 8px 5px;
   border-bottom: 1px solid var(--border);
   background:
-    repeating-linear-gradient(
-        45deg,
-        var(--border-bright) 0 1px,
-        transparent 1px 5px
-      )
-      0 0 / 100% 4px no-repeat,
+    repeating-linear-gradient(45deg, var(--border-bright) 0 1px, transparent 1px 5px) 0 0 / 100% 4px
+      no-repeat,
     var(--panel-sub-bg);
 }
 
@@ -1364,12 +1424,8 @@ button:disabled {
   padding: 6px 8px 5px;
   border-bottom: 1px solid var(--border-bright);
   background:
-    repeating-linear-gradient(
-        45deg,
-        var(--border-bright) 0 1px,
-        transparent 1px 5px
-      )
-      0 0 / 100% 4px no-repeat,
+    repeating-linear-gradient(45deg, var(--border-bright) 0 1px, transparent 1px 5px) 0 0 / 100% 4px
+      no-repeat,
     var(--panel-sub-bg);
 }
 
@@ -1519,6 +1575,14 @@ button:disabled {
 }
 
 @media (max-width: 600px) {
+  .start-card {
+    padding: 18px;
+  }
+
+  .briefing-grid {
+    grid-template-columns: 1fr;
+  }
+
   #cutscene-overlay {
     padding-right: 8px;
     padding-left: 8px;
@@ -1692,7 +1756,7 @@ button:disabled {
 .audio-select[type="file"]:focus-visible,
 #plugins-panel input[type="file"]::file-selector-button:focus-visible,
 .audio-select[type="file"]::file-selector-button:focus-visible {
-  outline: 2px solid rgba(245, 158, 11, 0.45);
+  outline: 2px solid rgb(var(--action-rgb) / 0.45);
   outline-offset: 2px;
 }
 

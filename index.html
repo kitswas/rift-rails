@@ -72,21 +72,46 @@
     <div id="bridge-scene" aria-hidden="true"></div>
 
     <div id="start-screen">
-      <div class="start-card">
-        <h1>RIFT RAILS</h1>
-        <p>
-          Command the <strong>Aethelgard Express</strong> across the infinite
-          Ley-Rails. Keep the train fueled and intact.
-        </p>
-        <div class="briefing-box">
-          <b>HOW TO PLAY:</b><br />
-          [1] <b>EXPLORE:</b> Spend Energy to reveal actions.<br />
-          [2] <b>GATHER:</b> Collect Fuel and Flux.<br />
-          [3] <b>UPGRADE:</b> Spend Flux in the Workshop.<br />
-          [4] <b>RIFT JUMP:</b> Spend Fuel to reach the next realm and restore
-          Energy.
-        </div>
-        <p style="font-size: 0.82em; color: var(--text-muted)">
+      <section class="start-card" aria-labelledby="start-title">
+        <svg class="start-hero" viewBox="0 0 480 96" aria-hidden="true" focusable="false">
+          <path class="start-hero-rift" d="M234 8h12l8 30h-28z" />
+          <path class="start-hero-rail" d="M168 26H312" />
+          <path class="start-hero-rail" d="M32 88H448" />
+          <path class="start-hero-tie" d="M180 26 70 88M300 26 410 88" />
+          <path class="start-hero-tie" d="M198 26 130 88M282 26 350 88" />
+          <path class="start-hero-spark" d="M240 20V8m-8 8-6-6m22 6 6-6" />
+        </svg>
+        <header class="start-header">
+          <p class="start-eyebrow">AETHELGARD TRANSIT AUTHORITY // CREW BRIEFING</p>
+          <h1 id="start-title">RIFT RAILS</h1>
+          <p class="start-tagline">
+            Command the <strong>Aethelgard Express</strong> across the infinite
+            Ley-Rails. Keep the train fueled and intact.
+          </p>
+        </header>
+        <section class="briefing-grid" aria-label="Operations briefing">
+          <article class="briefing-card">
+            <span class="briefing-num" aria-hidden="true">01</span>
+            <h2>Explore</h2>
+            <p>Spend Energy to reveal actions in the local realm.</p>
+          </article>
+          <article class="briefing-card">
+            <span class="briefing-num" aria-hidden="true">02</span>
+            <h2>Gather</h2>
+            <p>Collect Fuel and Flux from revealed actions.</p>
+          </article>
+          <article class="briefing-card">
+            <span class="briefing-num" aria-hidden="true">03</span>
+            <h2>Upgrade</h2>
+            <p>Spend Flux in the Workshop to strengthen the train.</p>
+          </article>
+          <article class="briefing-card">
+            <span class="briefing-num" aria-hidden="true">04</span>
+            <h2>Rift Jump</h2>
+            <p>Spend Fuel to reach the next realm and restore Energy.</p>
+          </article>
+        </section>
+        <p class="start-hint">
           Select a HUD stat for help. Progress auto-saves after each Rift Jump.
         </p>
         <label class="start-option" for="enable-tutorial">
@@ -94,13 +119,16 @@
           Enable Corvus tutorial for new games
         </label>
         <p id="start-error" class="start-error" role="alert"></p>
-        <button class="btn-start" id="btn-ignite"></button>
-        <button
-          id="btn-start-fresh"
-          class="btn-new-game"
-          style="display: none"
-        ></button>
-      </div>
+        <div class="start-actions">
+          <button class="btn-start" id="btn-ignite" type="button"></button>
+          <button
+            id="btn-start-fresh"
+            class="btn-new-game"
+            style="display: none"
+            type="button"
+          ></button>
+        </div>
+      </section>
     </div>
 
     <div id="nav-screen">
@@ -488,6 +516,7 @@
           </span>
           <span id="cutscene-progress" class="cutscene-pips"></span>
         </div>
+        <p id="cutscene-chain" class="cutscene-chain" hidden></p>
         <div id="cutscene-body" class="cutscene-text" aria-live="polite"></div>
         <div id="cutscene-choices" class="cutscene-options">
           <button

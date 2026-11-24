@@ -17,6 +17,7 @@ export interface CutsceneDeps {
   sound: Pick<SoundFXService, "playDialogueChime">;
   refs: CutsceneRefGetter;
   formatProgress?: (beat: number, total: number) => string;
+  formatChainLine?: (actor: string, verb: string, target: string, outcome: string) => string;
   tutorialHighlightClass?: string;
   logLoreClass?: string;
   dialoguePhase?: Phase;
@@ -31,18 +32,22 @@ export interface CutsceneDeps {
  */
 const WAYPOINT_ID_PREFIX = "corvus-tutorial:wp";
 
+interface QueuedScene {
+  cutscene: Cutscene;
+  speaker: string;
+  onChoice?: (choiceIndex: number) => void;
+  pluginId?: string;
+  chain?: string;
+}
+
 export class CutsceneEngine {
   activeCutscene: Cutscene | null = null;
   beatIndex = 0;
   returnFocus: Element | null = null;
-  private readonly pending: {
-    cutscene: Cutscene;
-    speaker: string;
-    onChoice?: (choiceIndex: number) => void;
-    pluginId?: string;
-  }[] = [];
+  private readonly pending: QueuedScene[] = [];
   private activeChoice: ((choiceIndex: number) => void) | null = null;
   private activeSpeaker = "MASTER CORVUS // VEILED SCHOLAR";
+  private activeChain: string | null = null;
   private activeStory = false;
   private activePluginId: string | null = null;
   private interruptedPhase: Phase | null = null;
@@ -54,6 +59,12 @@ export class CutsceneEngine {
   private readonly sound: Pick<SoundFXService, "playDialogueChime">;
   private readonly refs: CutsceneRefGetter;
   private readonly formatProgress: (beat: number, total: number) => string;
+  private readonly formatChainLine: (
+    actor: string,
+    verb: string,
+    target: string,
+    outcome: string,
+  ) => string;
   private readonly tutorialHighlightClass: string;
   private readonly logLoreClass: string;
   private readonly dialoguePhase: Phase;
@@ -69,6 +80,9 @@ export class CutsceneEngine {
     this.refs = deps.refs;
     this.formatProgress =
       deps.formatProgress ?? ((beat: number, total: number) => `Beat ${beat} of ${total}`);
+    this.formatChainLine =
+      deps.formatChainLine ??
+      ((actor, verb, target, outcome) => `${actor} ${verb} ${target}: ${outcome}`);
     this.tutorialHighlightClass = deps.tutorialHighlightClass ?? "tutorial-highlight";
     this.logLoreClass = deps.logLoreClass ?? "log-lore";
     this.dialoguePhase = deps.dialoguePhase ?? "DIALOGUE";
@@ -154,7 +168,9 @@ export class CutsceneEngine {
 
   playStory(scene: StoryScene, onChoice: (choiceIndex: number) => void): void {
     const choices = scene.node.choices;
+    const { actor, verb, target, outcome } = scene.node;
     this.enqueue({
+      chain: this.formatChainLine(actor, verb, target, outcome),
       cutscene: {
         id: `story:${scene.pluginId}:${scene.storyId}:${scene.node.id}`,
         beats: [
@@ -181,12 +197,7 @@ export class CutsceneEngine {
     }
   }
 
-  private enqueue(scene: {
-    cutscene: Cutscene;
-    speaker: string;
-    onChoice?: (choiceIndex: number) => void;
-    pluginId?: string;
-  }): void {
+  private enqueue(scene: QueuedScene): void {
     if (this.activeCutscene) {
       this.pending.push(scene);
       return;
@@ -194,13 +205,8 @@ export class CutsceneEngine {
     this.start(scene);
   }
 
-  private start(scene: {
-    cutscene: Cutscene;
-    speaker: string;
-    onChoice?: (choiceIndex: number) => void;
-    pluginId?: string;
-  }): void {
-    const { cutscene, speaker, onChoice } = scene;
+  private start(scene: QueuedScene): void {
+    const { cutscene, speaker, onChoice, chain } = scene;
     // Abort rather than soft-lock the game behind an overlay if the phase machine refuses DIALOGUE.
     const phaseBefore = this.voyage.getPhase?.() as Phase | undefined;
     if (!this.transitionTo(this.dialoguePhase)) {
@@ -213,8 +219,10 @@ export class CutsceneEngine {
     this.returnFocus = this.refs.getActiveElement?.() ?? null;
     this.activeChoice = onChoice ?? null;
     this.activeSpeaker = speaker;
+    this.activeChain = chain ?? null;
     this.activeStory = !!onChoice;
     this.activePluginId = scene.pluginId ?? null;
+    if (chain) this.log(chain, this.logLoreClass);
     if (!this.activeStory) this.voyage.markCutsceneSeen(cutscene.id);
     const game = this.el("gameContainer");
     if (game) (game as HTMLElement & { inert: boolean }).inert = true;
@@ -245,6 +253,11 @@ export class CutsceneEngine {
     if (portrait) portrait.hidden = this.activeStory;
     const body = this.el("cutsceneBody");
     if (body) body.innerText = beat.text;
+    const chain = this.el("cutsceneChain");
+    if (chain) {
+      chain.textContent = this.activeChain ?? "";
+      chain.hidden = !this.activeChain;
+    }
     const btnA = this.el("cutsceneBtnA");
     if (btnA) btnA.innerText = `[A] "${beat.choiceA}"`;
     const btnB = this.el("cutsceneBtnB");
@@ -279,6 +292,11 @@ export class CutsceneEngine {
     const cutscene = this.activeCutscene;
     const overlay = this.el("cutsceneOverlay");
     if (overlay) overlay.hidden = true;
+    const chainEl = this.el("cutsceneChain");
+    if (chainEl) {
+      chainEl.textContent = "";
+      chainEl.hidden = true;
+    }
     const game = this.el("gameContainer");
     if (game) (game as HTMLElement & { inert: boolean }).inert = false;
     if (cutscene?.logSummary) {
@@ -287,6 +305,7 @@ export class CutsceneEngine {
     this.activeCutscene = null;
     this.beatIndex = 0;
     this.activeChoice = null;
+    this.activeChain = null;
     this.activeStory = false;
     this.activePluginId = null;
     if (cutscene?.id === this.firstCutscene()) this.showExploreHint();

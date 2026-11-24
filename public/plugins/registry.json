@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "id": "rift-salvager",
+      "name": "Rift Salvager",
+      "version": "1.0.0",
+      "description": "Adds a Salvage Yard and a Salvage Melt action that turns fuel into flux.",
+      "defaultEnabled": true,
+      "source": "./rift-salvager.zip",
+      "sha256": "a9e7035389091a5ba72a053238769d82189f804350bf32f4ab615f511e5e30d9",
+      "minApi": 4,
+      "permissions": []
+    },
+    {
+      "id": "field-repair",
+      "name": "Field Repair",
+      "version": "1.0.0",
+      "description": "Deploys a single-use emergency hull stabilizer when hull is critical.",
+      "defaultEnabled": true,
+      "source": "./field-repair.zip",
+      "sha256": "56ae8a21b6dda7d636daa886365410728818936f9af48b8a7b46afd6cbac5d19",
+      "minApi": 4,
+      "permissions": [
+        "voyage:adjustResource"
+      ]
+    },
+    {
+      "id": "corvus-tutorial",
+      "name": "Corvus Tutorial",
+      "version": "1.0.0",
+      "description": "Narrative cutscenes with Corvus that teach the game's early mechanics.",
+      "defaultEnabled": false,
+      "source": "./corvus-tutorial.zip",
+      "sha256": "49a1d1b6dd22de88d6347d52ba0bd3af026edd8c34bba01aaea7b6e6ae68e5f9",
+      "minApi": 4,
+      "permissions": []
+    },
+    {
+      "id": "rail-keeper",
+      "name": "Rail Keeper",
+      "version": "1.0.0",
+      "description": "Narrative storyline about Keeper Halden and the damaged rail line.",
+      "defaultEnabled": false,
+      "source": "./rail-keeper.zip",
+      "sha256": "ecb59af94ea4c18863ad0262eeec88f7e3ec471c717019a00de660cd7de9b367",
+      "minApi": 4,
+      "permissions": []
+    },
+    {
+      "id": "glass-courier",
+      "name": "Glass Courier",
+      "version": "1.0.0",
+      "description": "Narrative storyline about Courier Sable and an unclaimed depot crate.",
+      "defaultEnabled": false,
+      "source": "./glass-courier.zip",
+      "sha256": "cda76d7a3c7b0a16ef21c812bcb66cd6d9e35c8b74bf9d20a0da1ef881bb2ec8",
+      "minApi": 4,
+      "permissions": []
+    }
+  ]
+}

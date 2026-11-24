@@ -15,6 +15,13 @@
 
 ---
 
+## Documentation
+
+- [Storyline plugins](docs/STORYLINE-PLUGINS.md) — author branching `actor verb target` stories as opt-in plugins.
+- [Plugin registry](docs/PLUGIN-REGISTRY.md) — registry schema, verification, and opt-in behavior.
+
+---
+
 ## License
 
 This project is licensed under a dual-licensing scheme (see [LICENSE](LICENSE) for full legal text):

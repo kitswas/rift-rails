@@ -1,0 +1,10 @@
+{
+  "id": "rail-keeper",
+  "name": "Rail Keeper",
+  "version": "1.0.0",
+  "description": "Narrative storyline about Keeper Halden and the damaged rail line.",
+  "defaultEnabled": false,
+  "minApi": 4,
+  "entry": "main.js",
+  "permissions": []
+}

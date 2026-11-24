@@ -2,6 +2,8 @@
   "id": "field-repair",
   "name": "Field Repair",
   "version": "1.0.0",
+  "description": "Deploys a single-use emergency hull stabilizer when hull is critical.",
+  "defaultEnabled": true,
   "minApi": 4,
   "entry": "main.js",
   "permissions": ["voyage:adjustResource"]

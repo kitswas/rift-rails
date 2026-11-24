@@ -269,6 +269,7 @@ interface PluginRecord {
   active: boolean;
   ready: boolean;
   stopping: boolean;
+  stoppedWaiters: Array<() => void>;
   shutdownTimer: ReturnType<typeof setTimeout> | null;
   unloadAfterShutdown: boolean;
 }
@@ -703,6 +704,7 @@ export class PluginHost {
       active: true,
       ready: false,
       stopping: false,
+      stoppedWaiters: [],
       shutdownTimer: null,
       unloadAfterShutdown: false,
     };
@@ -785,6 +787,9 @@ export class PluginHost {
     if (record.shutdownTimer !== null) clearTimeout(record.shutdownTimer);
     record.shutdownTimer = null;
     record.stopping = false;
+    const waiters = record.stoppedWaiters;
+    record.stoppedWaiters = [];
+    for (const resolve of waiters) resolve();
     record.worker.terminate();
     if (typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(record.blobUrl);
     if (error) this.deps.log(`plugin unmount incomplete: ${id} (${error})`);
@@ -823,6 +828,13 @@ export class PluginHost {
       waiters.push({ resolve, reject });
       this.readyWaiters.set(id, waiters);
     });
+  }
+
+  /** Resolves when a disabled plugin has fully shut down, so it can be reloaded safely. */
+  waitUntilStopped(id: string): Promise<void> {
+    const record = this.plugins.get(id);
+    if (!record || !record.stopping) return Promise.resolve();
+    return new Promise((resolve) => record.stoppedWaiters.push(resolve));
   }
 
   listPlugins(): PluginInfo[] {

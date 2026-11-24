@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createTutorial, TUTORIAL_PLUGIN_ID } from "../src/game/tutorial";
-import type { TutorialDeps } from "../src/game/tutorial";
+import { createContextualCues, createTutorial, TUTORIAL_PLUGIN_ID } from "../src/game/tutorial";
+import type { ContextualCueDeps, TutorialDeps } from "../src/game/tutorial";
 import { ENABLED_KEY } from "../src/ui/panels";
 
 function makeDeps(overrides: Partial<TutorialDeps> = {}) {
@@ -67,5 +67,60 @@ describe("createTutorial", () => {
     await expect(tutorial.setTutorialForNewGame(true)).rejects.toThrow(
       "invalid tutorial plugin package",
     );
+  });
+});
+
+describe("createContextualCues", () => {
+  function makeCueDeps() {
+    document.body.innerHTML = `
+      <button id="btn-explore"></button>
+      <button id="tab-sensors"></button>
+      <button id="btn-travel"></button>
+      <button id="tab-forge"></button>
+      <div id="encounter-choices"><button>Yard Master</button></div>
+      <button data-inspect="hull"></button>
+    `;
+    const listeners = new Map<string, (payload: unknown) => void>();
+    const logs: string[] = [];
+    const store = new Map<string, string>();
+    const deps: ContextualCueDeps = {
+      bus: { on: (event, cb) => listeners.set(event, cb) },
+      storage: {
+        getItem: (key) => store.get(key) ?? null,
+        setItem: (key, value) => void store.set(key, value),
+        removeItem: (key) => void store.delete(key),
+      },
+      schedule: (fn) => fn(),
+      cueClass: "contextual-cue",
+      helpClass: "log-help",
+      log: (text) => logs.push(text),
+      phases: { idle: "IDLE", encounter: "ENCOUNTER" },
+    };
+    return { cues: createContextualCues(deps), listeners, logs };
+  }
+
+  it("shows one cue at a time and advances on the next phase entry", () => {
+    const { cues, listeners, logs } = makeCueDeps();
+    cues.enable();
+
+    listeners.get("onEnter")?.({ phase: "IDLE" });
+    expect(document.querySelectorAll(".contextual-cue")).toHaveLength(1);
+    expect(document.getElementById("btn-explore")?.classList.contains("contextual-cue")).toBe(true);
+    expect(logs).toEqual(["EXPLORE: Spend Energy on the Bridge to reveal local actions."]);
+
+    listeners.get("onEnter")?.({ phase: "IDLE" });
+    expect(document.querySelectorAll(".contextual-cue")).toHaveLength(1);
+    expect(document.getElementById("btn-explore")?.classList.contains("contextual-cue")).toBe(true);
+    expect(logs).toHaveLength(1);
+
+    document.getElementById("btn-explore")?.click();
+    expect(document.querySelectorAll(".contextual-cue")).toHaveLength(0);
+
+    listeners.get("onEnter")?.({ phase: "IDLE" });
+    expect(document.getElementById("tab-sensors")?.classList.contains("contextual-cue")).toBe(true);
+    expect(logs).toHaveLength(2);
+
+    cues.disable();
+    expect(document.querySelectorAll(".contextual-cue")).toHaveLength(0);
   });
 });

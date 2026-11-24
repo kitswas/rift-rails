@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PluginHost, PLUGIN_SHUTDOWN_TIMEOUT_MS } from "../src/game/host";
 import { isCompatible, ManifestError, parseManifest } from "../src/game/manifest";
 import { Registry } from "../src/game/registry";
-import { HOST_API_VERSION, MAX_GRANT_AMOUNT } from "../src/game/workerProtocol";
+import { HOST_API_VERSION, MAX_GRANT_AMOUNT, WORKER_MSG } from "../src/game/workerProtocol";
 import type {
   GrantOp,
   HostDeps,
@@ -165,6 +165,7 @@ function makeHost(permissions: string[], ready = true) {
     active: true,
     ready,
     stopping: false,
+    stoppedWaiters: [],
     shutdownTimer: null,
     unloadAfterShutdown: false,
   });
@@ -198,6 +199,23 @@ function makeHost(permissions: string[], ready = true) {
 }
 
 describe("plugin registration", () => {
+  it("resolves waitUntilStopped after unmount", async () => {
+    const { host, fakeWorker } = makeHost([]);
+    host.disable("test-plugin", "test");
+    let done = false;
+    const waiting = host.waitUntilStopped("test-plugin").then(() => {
+      done = true;
+    });
+    expect(done).toBe(false);
+    (host as unknown as { handleMessage(id: string, msg: { type: string }): void }).handleMessage(
+      "test-plugin",
+      { type: WORKER_MSG.unmounted },
+    );
+    await waiting;
+    expect(done).toBe(true);
+    expect(fakeWorker.terminate).toHaveBeenCalledTimes(1);
+  });
+
   it("waits for mount readiness", async () => {
     const { host } = makeHost([], false);
     const ready = host.waitUntilReady("test-plugin");

@@ -9,7 +9,6 @@ test.describe("optional Corvus tutorial", () => {
     await expect(page.locator("#cutscene-overlay")).toBeVisible();
     await expect(page.locator("#cutscene-speaker")).toHaveText("MASTER CORVUS // VEILED SCHOLAR");
     await expect(page.locator("#cutscene-body")).toContainText("Crucible fire drinks refined fuel");
-    await expect(page.locator("#tutorial-cue")).toBeHidden();
     const active = await page.evaluate(() => {
       const app = (
         window as Window & { __rift?: { host?: { isPluginActive(id: string): boolean } } }
@@ -24,8 +23,20 @@ test.describe("optional Corvus tutorial", () => {
       await page.locator("#cutscene-btn-a").click();
     }
     await expect(page.locator("#cutscene-overlay")).toBeHidden();
-    await expect(page.locator("#btn-explore")).toHaveClass(/tutorial-highlight/);
-    await expect(page.locator("#tutorial-cue")).toBeHidden();
+
+    // One contextual cue at a time, on a real control, logged once as help.
+    await expect(page.locator(".contextual-cue")).toHaveCount(1);
+    await expect(page.locator("#btn-explore")).toHaveClass(/contextual-cue/);
+    await expect(page.locator("#story-log")).toContainText("EXPLORE: Spend Energy");
+    await expect(page.locator("#story-log")).not.toContainText("SCOUT: Open Sensors");
+    await expect(page.locator("#story-log")).not.toContainText("TRAVEL: Spend Fuel");
+    await expect(page.locator("#story-log")).not.toContainText("FORGE: Spend Flux");
+    await expect(page.locator("#story-log")).not.toContainText("INSPECT: Select a HUD stat");
+
+    // Clicking the cued control clears it; the next phase may show one new cue.
+    await page.locator("#btn-explore").click();
+    await expect(page.locator("#btn-explore")).not.toHaveClass(/contextual-cue/);
+    expect(await page.locator(".contextual-cue").count()).toBeLessThanOrEqual(1);
   });
 
   test("does not start Corvus dialogue when unchecked for a new game", async ({ page }) => {
@@ -42,6 +53,8 @@ test.describe("optional Corvus tutorial", () => {
     });
     expect(active).toBe(false);
     await expect(page.locator("#cutscene-overlay")).toBeHidden();
+    await expect(page.locator("#story-log .log-help")).toHaveCount(0);
+    await expect(page.locator(".contextual-cue")).toHaveCount(0);
   });
 
   test("keeps the new-game checkbox choice through the fresh-game reload", async ({ page }) => {
@@ -73,5 +86,6 @@ test.describe("optional Corvus tutorial", () => {
     });
     expect(active).toBe(false);
     await expect(page.locator("#cutscene-overlay")).toBeHidden();
+    await expect(page.locator("#story-log .log-help")).toHaveCount(0);
   });
 });

@@ -48,10 +48,12 @@ function makeEngine(
     return true;
   },
   firstCutsceneId?: CutsceneId,
+  logs: { text: string; cls?: string }[] = [],
 ): CutsceneEngine {
   const ids = {
     gameContainer: "game-container",
     cutsceneOverlay: "cutscene-overlay",
+    cutsceneChain: "cutscene-chain",
     cutsceneProgress: "cutscene-progress",
     cutsceneBody: "cutscene-body",
     cutsceneSpeaker: "cutscene-speaker",
@@ -78,7 +80,7 @@ function makeEngine(
     registry,
     voyage,
     transitionTo,
-    log: () => {},
+    log: (text, cls) => logs.push({ text, cls }),
     sound: { playDialogueChime: () => {} },
     refs: {
       get: (key) => document.getElementById(ids[key as keyof typeof ids] ?? ""),
@@ -105,12 +107,7 @@ describe("firstCutscene", () => {
       ...WP3,
       id: "other-plugin:scene",
     });
-    const engine = makeEngine(
-      makeVoyage(),
-      registry,
-      undefined,
-      "corvus-tutorial:wp1",
-    );
+    const engine = makeEngine(makeVoyage(), registry, undefined, "corvus-tutorial:wp1");
 
     expect(engine.firstCutscene()).toBeNull();
   });
@@ -206,6 +203,33 @@ describe("interactive story dialogue", () => {
     const engine = makeEngine(makeVoyage());
     engine.playStory(makeScene(1), () => {});
     expect((document.getElementById("cutscene-btn-b") as HTMLButtonElement).hidden).toBe(true);
+  });
+
+  it("renders the actor-verb-target chain line and logs it as backlog", () => {
+    const logs: { text: string; cls?: string }[] = [];
+    const engine = makeEngine(makeVoyage(), new Registry(), undefined, undefined, logs);
+    engine.playStory(makeScene(), () => {});
+
+    const chain = document.getElementById("cutscene-chain") as HTMLElement;
+    expect(chain.textContent).toBe("Rail Signal calls the locomotive: the Conductor chooses");
+    expect(chain.hidden).toBe(false);
+    expect(logs).toContainEqual({
+      text: "Rail Signal calls the locomotive: the Conductor chooses",
+      cls: "log-lore",
+    });
+    expect(document.querySelectorAll("button")).toHaveLength(2);
+
+    engine.advance(0);
+    expect(chain.hidden).toBe(true);
+  });
+
+  it("keeps the chain line hidden for non-story cutscenes", () => {
+    const engine = makeEngine(
+      makeVoyage(),
+      makeRegistryWith("test:scene", { ...WP3, id: "test:scene" }),
+    );
+    engine.play("test:scene");
+    expect((document.getElementById("cutscene-chain") as HTMLElement).hidden).toBe(true);
   });
 
   it("dismisses active plugin dialogue without applying a stale choice", () => {

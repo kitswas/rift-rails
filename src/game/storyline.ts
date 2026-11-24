@@ -1,3 +1,4 @@
+import { GAME_DATA } from "./data";
 import type { StoryTraceEntry } from "./types";
 import type { Voyage } from "./voyage";
 
@@ -344,7 +345,9 @@ export class StorylineService {
         title: definition.title,
         description: definition.description,
         status: progress?.status === "complete" ? "complete" : progress ? "active" : "waiting",
-        step: node ? `${node.actor} ${node.verb} ${node.target}: ${node.outcome}` : null,
+        step: node
+          ? GAME_DATA.text.formatChainLine(node.actor, node.verb, node.target, node.outcome)
+          : null,
         trace,
       };
     });

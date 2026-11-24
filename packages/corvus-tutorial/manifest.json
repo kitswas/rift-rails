@@ -2,6 +2,8 @@
   "id": "corvus-tutorial",
   "name": "Corvus Tutorial",
   "version": "1.0.0",
+  "description": "Narrative cutscenes with Corvus that teach the game's early mechanics.",
+  "defaultEnabled": false,
   "minApi": 4,
   "entry": "main.js",
   "permissions": []
