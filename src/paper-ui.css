@@ -5,6 +5,9 @@
   --panel-bg: #efe4c8;
   --panel-sub-bg: #e6d9b8;
   --panel-sheen: #f7eed7;
+  --wood: #dfcda6;
+  --wood-line: #cbb287;
+  --wood-shadow: #9b7b4d;
   --text: #34281c;
   --text-muted: #6b5a44;
   --border: #b49f79;
@@ -211,4 +214,39 @@ button:hover:not(:disabled) {
 .contextual-cue {
   border-color: var(--action) !important;
   box-shadow: 0 0 0 2px rgb(140 59 50 / 35%) !important;
+}
+
+/* Wood substrate, paper notes pinned on top */
+#hud-bar,
+#bottom-nav,
+.panel-card,
+#pane-bridge .panel-card {
+  background-color: var(--wood);
+  background-image:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 4%) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 10%) 0 1px, transparent 1px 9px);
+  border: 2px solid var(--wood-shadow);
+  box-shadow:
+    4px 5px 0 rgb(0 0 0 / 35%),
+    inset 0 0 0 2px rgb(255 255 255 / 18%);
+}
+
+#story-log,
+.hud-cell,
+.manual-section,
+.settings-section,
+#action-buttons button,
+#encounter-choices button,
+#btn-desperate,
+#btn-forge-engine,
+#btn-forge-weapon,
+.cutscene-frame {
+  background-color: var(--panel-bg);
+  background-image: none;
+  border: 1px solid var(--border);
+  box-shadow: 2px 3px 0 rgb(0 0 0 / 25%);
+}
+
+#story-log {
+  background-color: var(--panel-sheen);
 }
