@@ -134,11 +134,9 @@ function makeHost(permissions: string[], ready = true) {
     getAction: (id) => actions.get(id),
     removePlugin: (pluginId) => {
       registryRemovals.push(pluginId);
-      for (const key of [...actions.keys()])
-        if (key.startsWith(`${pluginId}:`)) actions.delete(key);
-      for (const key of [...nodes.keys()]) if (key.startsWith(`${pluginId}:`)) nodes.delete(key);
-      for (const key of [...cutscenes.keys()])
-        if (key.startsWith(`${pluginId}:`)) cutscenes.delete(key);
+      for (const key of actions.keys()) if (key.startsWith(`${pluginId}:`)) actions.delete(key);
+      for (const key of nodes.keys()) if (key.startsWith(`${pluginId}:`)) nodes.delete(key);
+      for (const key of cutscenes.keys()) if (key.startsWith(`${pluginId}:`)) cutscenes.delete(key);
     },
   };
   const deps: HostDeps = {

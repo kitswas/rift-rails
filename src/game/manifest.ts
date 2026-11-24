@@ -44,7 +44,10 @@ export function isCompatible(manifest: Pick<PluginManifest, "minApi">): boolean 
 /** True when path stays inside the zip (no traversal, no absolute paths). */
 export function isSafeZipPath(p: string): boolean {
   if (typeof p !== "string" || p.length === 0 || p.length > MAX_PATH_CHARS) return false;
-  if (/[\x00-\x1F\x7F]/.test(p)) return false;
+  for (let i = 0; i < p.length; i++) {
+    const code = p.charCodeAt(i);
+    if (code <= 0x1f || code === 0x7f) return false;
+  }
   if (p.startsWith("/") || p.startsWith("\\") || /^[a-z]:/i.test(p)) return false;
   return p
     .split(/[\\/]/)

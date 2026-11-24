@@ -87,9 +87,9 @@ export class PhaseMachine {
   private readonly classes: PhaseClasses;
 
   constructor(deps: PhaseMachineDeps) {
-    this.phases = { ...DEFAULT_PHASES, ...(deps.phases ?? {}) };
-    this.resources = { ...DEFAULT_RESOURCES, ...(deps.resources ?? {}) };
-    this.classes = { ...DEFAULT_CLASSES, ...(deps.classes ?? {}) };
+    this.phases = { ...DEFAULT_PHASES, ...deps.phases };
+    this.resources = { ...DEFAULT_RESOURCES, ...deps.resources };
+    this.classes = { ...DEFAULT_CLASSES, ...deps.classes };
     const text = deps.text;
     const phases = this.phases;
     const resources = this.resources;

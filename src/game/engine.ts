@@ -143,7 +143,7 @@ export class EngineService {
     this.glossary = deps.glossary;
     this.transitions = deps.transitions ?? DEFAULT_TRANSITIONS;
     this.phases = deps.phases ?? DEFAULT_PHASES;
-    this.logClasses = { ...DEFAULT_LOG_CLASSES, ...(deps.logClasses ?? {}) };
+    this.logClasses = { ...DEFAULT_LOG_CLASSES, ...deps.logClasses };
   }
 
   logClass(name: keyof LogClasses): string {
