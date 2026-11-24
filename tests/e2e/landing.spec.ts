@@ -70,4 +70,20 @@ test.describe("redesigned landing page", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     expect((await columns()).split(" ").length).toBe(1);
   });
+
+  test("captures visual proof at both sizes and reduced motion", async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.goto("/");
+    await expect(page.locator("#start-screen")).toBeVisible();
+    await page.screenshot({ path: "artifacts/ui-proof/landing-desktop.png", fullPage: true });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "artifacts/ui-proof/landing-mobile.png", fullPage: true });
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.screenshot({
+      path: "artifacts/ui-proof/landing-reduced-motion.png",
+      fullPage: true,
+    });
+  });
 });

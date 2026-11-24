@@ -27,7 +27,13 @@ const FILES = [
 
 for (const file of FILES) {
   const dest = join(OUT, file);
-  if (await stat(dest).then(() => true, () => false)) continue;
+  if (
+    await stat(dest).then(
+      () => true,
+      () => false,
+    )
+  )
+    continue;
   const response = await fetch(`${ORIGIN}/${file}`);
   if (!response.ok) throw new Error(`${file}: ${response.status} ${response.statusText}`);
   const bytes = Buffer.from(await response.arrayBuffer());

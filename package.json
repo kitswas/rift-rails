@@ -17,7 +17,8 @@
     "format:check": "oxfmt --check src tests scripts vite.config.ts playwright.config.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "check:docs": "node scripts/check-docs.mjs"
   },
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"

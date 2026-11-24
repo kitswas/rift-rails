@@ -19,3 +19,4 @@
 17. Large model (main thread) orchestrates. Subagents are smaller models that carry out well-defined tasks. To avoid concurrent edits to a shared resource, we can have n read-only subagents in parallel or 1 write-capable subagent per resource (like a git worktree, database, directory-tree). Subagent types - investigator (findings with citations), builder (implements a plan), reviewer (cross-checks), and general-purpose. Subagents are not allowed to spawn other subagents. Use subagents to avoid filling up the context window with irrelevant information.
 18. Follow the design guidelines for SVGs in Artwork-rules.md.
 19. Do not dump documentation in the Readme.md. Use a separate documentation file for each topic and link to it from the README.md.
+20. Before any HTML/CSS/UI edit: load `modern-web-guidance`, read `Design.md`; if missing, stop and ask.

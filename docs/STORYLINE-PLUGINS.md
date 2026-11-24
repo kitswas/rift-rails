@@ -74,7 +74,9 @@ Example (`rail-keeper`):
 
 1. Create `packages/<id>/manifest.json`:
    `{ "id": "<id>", "name": "...", "version": "1.0.0", "minApi": 4,
-   "entry": "main.js", "permissions": [] }`.
+   "entry": "main.js", "permissions": [], "description": "...",
+   "defaultEnabled": false }`. `pnpm plugins:build` copies these fields into
+   the registry and computes the zip's SHA-256.
 2. Create `packages/<id>/main.ts`: import the `PluginLifecycle` type, declare a
    top-level `const plugin`, call `api.registerStoryline(...)` exactly once in
    `mount`, add the narrative `afterAction` listener, export the plugin as
@@ -82,16 +84,16 @@ Example (`rail-keeper`):
    the top-level `plugin` binding is required.
 3. Add `<id>` to `PLUGINS` in `scripts/build-plugins.mjs` and run
    `pnpm plugins:build`. The build is deterministic (fixed entry order, fixed
-   timestamps); commit the new `public/plugins/<id>.zip`.
-4. Add `{ id: "<id>", url: "./plugins/<id>.zip", defaultEnabled: false }` to
-   `BUNDLED_PLUGINS` in `src/ui/panels.ts`.
-5. Add `tests/<id>.test.ts`: import the real lifecycle and manifest, assert the
+   timestamps) and regenerates `public/plugins/registry.json`. Commit the new
+   zip and registry. The registry is the only plugin source; there is no
+   manual install list in `src/ui/panels.ts`.
+4. Add `tests/<id>.test.ts`: import the real lifecycle and manifest, assert the
    captured definition passes `validateStoryline`, check every trigger action
    is real and distinct, drive `StorylineService` with `afterAction` events to
    prove both branches resolve, and check log deduplication. Avoid brittle
    snapshots.
-6. Run `pnpm plugins:build`, targeted `oxfmt`, `pnpm typecheck`, `pnpm lint`,
-   and `pnpm test`.
+5. Run `pnpm plugins:build`, then `pnpm format:check`, `pnpm typecheck`,
+   `pnpm lint`, `pnpm check:docs` and `pnpm test`.
 
 ## How opt-in works
 

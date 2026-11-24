@@ -29,18 +29,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Lint
         run: pnpm lint
 
+      - name: Check docs
+        run: pnpm check:docs
+
       - name: Check plugin bundles are up to date
         run: |
           pnpm plugins:build
           git diff --exit-code public/plugins/
 
-      - name: Run tests
+      - name: Run unit tests
         run: pnpm test
 
       - name: Build production bundle
@@ -72,3 +78,10 @@ jobs:
 
       - name: Run e2e tests
         run: pnpm test:e2e
+
+      - name: Upload UI proof screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-proof
+          path: artifacts/ui-proof/
+          if-no-files-found: error

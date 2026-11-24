@@ -9,16 +9,12 @@
 
 ## Documentation
 
-- [Design.md](Design.md) — core UI design rules.
-- [Artwork-rules.md](Artwork-rules.md) — SVG and diorama art rules.
-- [Audio-rules.md](Audio-rules.md) — sound rules.
-
----
-
-## Documentation
-
-- [Storyline plugins](docs/STORYLINE-PLUGINS.md) — author branching `actor verb target` stories as opt-in plugins.
-- [Plugin registry](docs/PLUGIN-REGISTRY.md) — registry schema, verification, and opt-in behavior.
+- [Design.md](Design.md) - core UI design rules.
+- [Artwork-rules.md](Artwork-rules.md) - SVG and diorama art rules.
+- [Audio-rules.md](Audio-rules.md) - sound rules.
+- [Storyline plugins](docs/STORYLINE-PLUGINS.md) - author branching `actor verb target` stories as opt-in plugins.
+- [Plugin registry](docs/PLUGIN-REGISTRY.md) - registry schema, verification, and opt-in behavior.
+- [Coding standards](CODING_STANDARDS.md) - review-time rules for judgement calls.
 
 ---
 

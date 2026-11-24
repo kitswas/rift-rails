@@ -45,4 +45,4 @@ UI rules for Rift Rails. Art follows `Artwork-rules.md`; sound follows `Audio-ru
     No new layer, wrapper, setting, or abstraction without a proven need. The smallest design that fully works wins. Fix root causes instead of adding workarounds.
 
 15. **Proof Before Done**
-    Compare the result to these rules, verify at both sizes, check reduced motion, then run the repo's type, lint, format, and test checks. Unverified design is unfinished design.
+    Compare the result to these rules, capture a rendered screenshot at ≥601px and ≤600px plus the reduced-motion state, then run `pnpm format:check`, `pnpm typecheck`, `pnpm lint`, `pnpm check:docs` and `pnpm test` after the last edit. DOM assertions alone are not visual proof; unverified design is unfinished design.

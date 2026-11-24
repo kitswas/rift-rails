@@ -98,7 +98,10 @@ export class SonicPiAudio {
         });
       })();
       const timeout = new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error("Sonic Pi engine boot timed out")), BOOT_TIMEOUT_MS);
+        window.setTimeout(
+          () => reject(new Error("Sonic Pi engine boot timed out")),
+          BOOT_TIMEOUT_MS,
+        );
       });
       this.boot = Promise.race([boot, timeout]);
     }
