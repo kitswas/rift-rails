@@ -12,16 +12,24 @@ function seedDom(): void {
   document.body.innerHTML = `
     <div id="nav-screen"></div>
     <div id="nav-choices"></div>
-    <div id="nav-vector"><div id="rift-vector-scale"></div></div>
-    <div id="nav-vector-status">Vector idle</div>
-    <div id="vector-slot-0"></div>
-    <div id="vector-slot-1"></div>
+    <div id="nav-vector">
+      <div class="dial-face"></div>
+      <span id="nav-vector-status">Vector idle</span>
+    </div>
     <svg id="rift-vector-needle"></svg>
   `;
 }
 
 function makeDeps(overrides: Partial<NavDeps> = {}) {
-  const motion = { set: vi.fn() };
+  const motion = {
+    set: vi.fn((entry, target) => {
+      if (!entry) return;
+      entry.value = target;
+      entry.target = target;
+      entry.velocity = 0;
+      entry.update?.(target, 1);
+    }),
+  };
   const conduit = {
     commitTrajectory: vi.fn(() => ({ dimId: "committed-id", dimName: "Committed Dim" })),
   };
@@ -62,39 +70,37 @@ describe("createNav", () => {
     seedDom();
   });
 
-  it("renders one carriage button per choice", () => {
+  it("renders one compass node per choice", () => {
     const deps = makeDeps();
     const nav = createNav(deps);
     nav.setChoices(CHOICES);
-    const carriages = document.querySelectorAll(".nav-carriage");
-    expect(carriages).toHaveLength(2);
-    expect((carriages[0] as HTMLElement).dataset.slot).toBe("0");
+    nav.bindDial(document.getElementById("nav-vector")!);
+    const nodes = document.querySelectorAll(".compass-node");
+    expect(nodes).toHaveLength(2);
+    expect((nodes[0] as SVGGElement).dataset.slot).toBe("0");
   });
 
-  it("arms on first tap and confirms on second", () => {
+  it("commits a jump when the needle reaches the selected node", () => {
     const deps = makeDeps();
     const nav = createNav(deps);
     nav.setChoices(CHOICES);
-    const buttons = document.querySelectorAll<HTMLButtonElement>(".nav-carriage");
-    buttons[0]!.click();
-    expect(buttons[0]!.getAttribute("aria-pressed")).toBe("true");
-    expect(deps.conduit.commitTrajectory).not.toHaveBeenCalled();
-    buttons[0]!.click();
+    nav.bindDial(document.getElementById("nav-vector")!);
+    const nodes = document.querySelectorAll<SVGGElement>(".compass-node");
+    nodes[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(nodes[0]!.getAttribute("aria-pressed")).toBe("true");
     expect(deps.conduit.commitTrajectory).toHaveBeenCalledTimes(1);
     expect(deps.finalizeJump).toHaveBeenCalledWith("committed-id", "Committed Dim");
     expect(document.getElementById("nav-vector-status")!.textContent).toBe("Vector breaching");
   });
 
-  it("cannot confirm or commit while locked, even after arming elsewhere", () => {
+  it("cannot commit twice while locked", () => {
     const deps = makeDeps();
     const nav = createNav(deps);
     nav.setChoices(CHOICES);
-    const buttons = document.querySelectorAll<HTMLButtonElement>(".nav-carriage");
-    buttons[0]!.click();
-    buttons[0]!.click();
-    expect(deps.conduit.commitTrajectory).toHaveBeenCalledTimes(1);
-    buttons[1]!.click();
-    buttons[1]!.click();
+    nav.bindDial(document.getElementById("nav-vector")!);
+    const nodes = document.querySelectorAll<SVGGElement>(".compass-node");
+    nodes[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    nodes[1]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(deps.conduit.commitTrajectory).toHaveBeenCalledTimes(1);
     expect(deps.finalizeJump).toHaveBeenCalledTimes(1);
   });
@@ -103,16 +109,19 @@ describe("createNav", () => {
     const deps = makeDeps();
     const nav = createNav(deps);
     nav.setChoices(CHOICES);
+    nav.bindDial(document.getElementById("nav-vector")!);
     nav.resetNav();
-    expect(document.getElementById("nav-choices")!.innerHTML).toBe("");
+    expect(document.querySelectorAll(".compass-node")).toHaveLength(0);
     expect(document.getElementById("nav-vector-status")!.textContent).toBe("Vector idle");
   });
 
-  it("marks a single choice as solo", () => {
+  it("accepts keyboard activation on a compass node", () => {
     const deps = makeDeps();
     const nav = createNav(deps);
     nav.setChoices([CHOICES[0]!]);
-    const b = document.querySelector<HTMLButtonElement>(".nav-carriage")!;
-    expect(b.dataset.single).toBe("true");
+    nav.bindDial(document.getElementById("nav-vector")!);
+    const node = document.querySelector<SVGGElement>(".compass-node")!;
+    node.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(deps.conduit.commitTrajectory).toHaveBeenCalledTimes(1);
   });
 });
