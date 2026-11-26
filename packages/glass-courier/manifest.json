@@ -1,0 +1,10 @@
+{
+  "id": "glass-courier",
+  "name": "Glass Courier",
+  "version": "1.0.0",
+  "description": "Narrative storyline about Courier Sable and an unclaimed depot crate.",
+  "defaultEnabled": false,
+  "minApi": 4,
+  "entry": "main.js",
+  "permissions": []
+}

@@ -1,0 +1,91 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("optional Corvus tutorial", () => {
+  test("starts enabled by default and registers its dialogue from the plugin", async ({ page }) => {
+    await page.goto("/?debug");
+    await expect(page.locator("#enable-tutorial")).toBeChecked();
+    await page.locator("#btn-ignite").click();
+
+    await expect(page.locator("#cutscene-overlay")).toBeVisible();
+    await expect(page.locator("#cutscene-speaker")).toHaveText("MASTER CORVUS // VEILED SCHOLAR");
+    await expect(page.locator("#cutscene-body")).toContainText("Crucible fire drinks refined fuel");
+    const active = await page.evaluate(() => {
+      const app = (
+        window as Window & { __rift?: { host?: { isPluginActive(id: string): boolean } } }
+      ).__rift;
+      return app?.host?.isPluginActive("corvus-tutorial") ?? false;
+    });
+    expect(active).toBe(true);
+    // Click through wp1 beats until the cutscene overlay closes itself;
+    // capped so a broken plugin fails the test instead of hanging it.
+    for (let beat = 0; beat < 10; beat++) {
+      if (!(await page.locator("#cutscene-overlay").isVisible())) break;
+      await page.locator("#cutscene-btn-a").click();
+    }
+    await expect(page.locator("#cutscene-overlay")).toBeHidden();
+
+    // One contextual cue at a time, on a real control, logged once as help.
+    await expect(page.locator(".contextual-cue")).toHaveCount(1);
+    await expect(page.locator("#btn-explore")).toHaveClass(/contextual-cue/);
+    await expect(page.locator("#story-log")).toContainText("EXPLORE: Spend Energy");
+    await expect(page.locator("#story-log")).not.toContainText("SCOUT: Open Sensors");
+    await expect(page.locator("#story-log")).not.toContainText("TRAVEL: Spend Fuel");
+    await expect(page.locator("#story-log")).not.toContainText("FORGE: Spend Flux");
+    await expect(page.locator("#story-log")).not.toContainText("INSPECT: Select a HUD stat");
+
+    // Clicking the cued control clears it; the next phase may show one new cue.
+    await page.locator("#btn-explore").click();
+    await expect(page.locator("#btn-explore")).not.toHaveClass(/contextual-cue/);
+    expect(await page.locator(".contextual-cue").count()).toBeLessThanOrEqual(1);
+  });
+
+  test("does not start Corvus dialogue when unchecked for a new game", async ({ page }) => {
+    await page.goto("/?debug");
+    await page.locator("#enable-tutorial").uncheck();
+    await page.locator("#btn-ignite").click();
+    await expect(page.locator("#game-container")).toBeVisible();
+
+    const active = await page.evaluate(() => {
+      const app = (
+        window as Window & { __rift?: { host?: { isPluginActive(id: string): boolean } } }
+      ).__rift;
+      return app?.host?.isPluginActive("corvus-tutorial") ?? true;
+    });
+    expect(active).toBe(false);
+    await expect(page.locator("#cutscene-overlay")).toBeHidden();
+    await expect(page.locator("#story-log .log-help")).toHaveCount(0);
+    await expect(page.locator(".contextual-cue")).toHaveCount(0);
+  });
+
+  test("keeps the new-game checkbox choice through the fresh-game reload", async ({ page }) => {
+    page.on("dialog", (dialog) => dialog.accept());
+    await page.goto("/?debug");
+    await page.evaluate(async () => {
+      const app = (window as Window & { __rift?: { save?: { saveAsync(): Promise<void> } } })
+        .__rift;
+      await app?.save?.saveAsync();
+    });
+    await page.reload();
+    await expect(page.locator("#btn-start-fresh")).toBeVisible();
+    await page.locator("#enable-tutorial").uncheck();
+    // The fresh-game button performs a full window.location.reload() to the
+    // same URL; wait for the reload's load event. page.waitForURL() cannot
+    // express a same-URL reload (it short-circuits to waitForLoadState() when
+    // the current URL already matches and would resolve before the reload
+    // even starts).
+    await Promise.all([page.waitForEvent("load"), page.locator("#btn-start-fresh").click()]);
+
+    await expect(page.locator("#enable-tutorial")).not.toBeChecked();
+    await page.locator("#btn-ignite").click();
+    await expect(page.locator("#game-container")).toBeVisible();
+    const active = await page.evaluate(() => {
+      const app = (
+        window as Window & { __rift?: { host?: { isPluginActive(id: string): boolean } } }
+      ).__rift;
+      return app?.host?.isPluginActive("corvus-tutorial") ?? true;
+    });
+    expect(active).toBe(false);
+    await expect(page.locator("#cutscene-overlay")).toBeHidden();
+    await expect(page.locator("#story-log .log-help")).toHaveCount(0);
+  });
+});

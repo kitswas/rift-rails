@@ -38,17 +38,41 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare build directory
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1 # Matches packageManager in package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24 # jsdom 31 / undici 8 require >=22.22.2
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        run: pnpm test:e2e
+
+      - name: Build production bundle
+        run: pnpm build
+
+      - name: Package dist directory
         run: |
-          mkdir -p dist
-          cp index.html dist/
-          cp artwork-browser.html dist/
-          if [ -d "assets" ]; then
-            cp -r assets dist/
-          fi
-          if [ -f "LICENSE" ]; then
-            cp LICENSE dist/
-          fi
+          cp LICENSE dist/
           echo "Listing dist package contents:"
           ls -la dist/
 

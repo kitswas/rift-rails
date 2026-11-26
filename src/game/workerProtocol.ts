@@ -1,0 +1,231 @@
+// Worker <-> host wire protocol. Types here are structural mirrors of the
+// core game types (SaveState, GameAction, NodeDefinition) so this file
+// stays independent of the core module layout; keep in sync manually.
+
+export const HOST_API_VERSION = 4;
+export const MIN_SUPPORTED_API_VERSION = 4;
+
+/**
+ * Wire message types, both directions. Single source: the host switches on
+ * these and the in-blob worker bootstrap interpolates them, so the two
+ * sides cannot drift.
+ */
+export const WORKER_MSG = {
+  // worker -> host
+  ready: "ready",
+  unmounted: "unmounted",
+  unmountError: "unmount-error",
+  fatal: "fatal",
+  apiCall: "api-call",
+  log: "log",
+  registerAction: "register-action",
+  registerNode: "register-node",
+  registerStoryline: "register-storyline",
+  registerCutscene: "register-cutscene",
+  grant: "grant",
+  storageGet: "storage-get",
+  storageSet: "storage-set",
+  eventSettled: "event-settled",
+  // host -> worker
+  init: "init",
+  event: "event",
+  grantResult: "grant-result",
+  storageResult: "storage-result",
+  shutdown: "shutdown",
+} as const;
+
+/** api-call trace phases. */
+export const API_CALL_PHASE = {
+  call: "call",
+  result: "result",
+  event: "event",
+} as const;
+
+/** Frozen game-state snapshot (SaveState shape, JSON-only). */
+export type StateSnapshot = {
+  phase: string;
+  jumpCount: number;
+  dimId: string;
+  dimName: string;
+  hull: number;
+  fuel: number;
+  flux: number;
+  rep: number;
+  energy: number;
+  engineTier: number;
+  weaponTier: number;
+  module: string;
+  carriage: string;
+  crew: string;
+  isSurveyed: boolean;
+  seenCutscenes: string[];
+};
+
+export type PluginEventName =
+  | "onEnter"
+  | `onEnter:${string}`
+  | "beforeAction"
+  | "afterAction"
+  | "afterJump"
+  | "onDeath"
+  | "onSave";
+
+export const KNOWN_EVENTS: ReadonlySet<string> = new Set([
+  "beforeAction",
+  "afterAction",
+  "afterJump",
+  "onDeath",
+  "onSave",
+]);
+
+/** Mutation requests a plugin may make through api.grant(). Closed set. */
+export type GrantOp =
+  | { kind: "adjustResource"; resource: string; amount: number }
+  | { kind: "executeAction"; actionId: string }
+  | { kind: "explore" }
+  | { kind: "desperateScavenge" };
+
+/** Permission string each GrantOp kind requires (or "*"). */
+export const GRANT_PERMISSIONS: Record<GrantOp["kind"], string> = {
+  adjustResource: "voyage:adjustResource",
+  executeAction: "voyage:executeAction",
+  explore: "voyage:explore",
+  desperateScavenge: "voyage:desperate",
+};
+
+export const ADJUSTABLE_RESOURCES: ReadonlySet<string> = new Set([
+  "hull",
+  "fuel",
+  "energy",
+  "flux",
+  "rep",
+]);
+
+export const MAX_GRANT_AMOUNT = 1_000_000;
+
+export interface RegisteredAction {
+  id: string;
+  label: string;
+  [key: string]: unknown;
+}
+
+export interface RegisteredNode {
+  id: string;
+  label: string;
+  desc?: string;
+  [key: string]: unknown;
+}
+
+export interface RegisteredStoryline {
+  id: string;
+  [key: string]: unknown;
+}
+
+export interface RegisteredCutscene {
+  id: string;
+  beats: { text: string; choiceA: string; choiceB: string }[];
+  logSummary?: string;
+}
+
+/** Worker-facing plugin API (implemented by the in-blob bridge). */
+export interface PluginApi {
+  on(event: PluginEventName, fn: (payload: unknown) => void): void;
+  registerAction(def: RegisteredAction): void;
+  registerNode(def: RegisteredNode): void;
+  registerStoryline(def: RegisteredStoryline): void;
+  registerCutscene(def: RegisteredCutscene): void;
+  grant(op: GrantOp): Promise<{ ok: boolean; reason?: string }>;
+  /** Frozen snapshot of the latest known state (cached from host pushes). */
+  state(): Readonly<StateSnapshot>;
+  log(msg: unknown): void;
+  storage: {
+    get(key: string): Promise<unknown>;
+    set(key: string, value: unknown): Promise<boolean>;
+  };
+}
+
+export interface PluginLifecycle {
+  mount(api: PluginApi): void | Promise<void>;
+  unmount(): void | Promise<void>;
+}
+
+// ---- Messages (worker -> host) --------------------------------------------
+
+export type WorkerMessage =
+  | { type: "ready" }
+  | { type: "unmounted" }
+  | { type: "unmount-error"; message: string }
+  | { type: "fatal"; message: string }
+  | { type: "api-call"; method: string; args?: unknown; phase?: "call" | "result" | "event" }
+  | { type: "log"; msg: string }
+  | { type: "register-action"; def: RegisteredAction }
+  | { type: "register-node"; def: RegisteredNode }
+  | { type: "register-storyline"; def: RegisteredStoryline }
+  | { type: "register-cutscene"; def: RegisteredCutscene }
+  | { type: "grant"; reqId: number; op: GrantOp }
+  | { type: "storage-get"; reqId: number; key: string }
+  | { type: "storage-set"; reqId: number; key: string; value: unknown }
+  | { type: "event-settled"; event: string };
+
+// ---- Messages (host -> worker) --------------------------------------------
+
+export type HostMessage =
+  | { type: "init"; pluginId: string; permissions: string[]; snapshot: StateSnapshot }
+  | { type: "event"; event: PluginEventName; payload: unknown; snapshot: StateSnapshot }
+  | { type: "grant-result"; reqId: number; ok: boolean; reason?: string }
+  | { type: "storage-result"; reqId: number; value: unknown }
+  | { type: "shutdown" };
+
+// ---- Host-side injected deps ----------------------------------------------
+
+/** Minimal Voyage surface the host needs (structural; matches Voyage). */
+export interface VoyageLike {
+  getSnapshot(): StateSnapshot;
+  executeAction(actionId: string): unknown;
+  exploreNode(): boolean;
+  desperateScavenge(): boolean;
+  /** Apply a validated numeric resource delta (optional; see host fallback). */
+  adjustResource?(resource: string, amount: number): void;
+  /** Live state bag, used as fallback when adjustResource is absent. */
+  state?: StateSnapshot;
+  enforceStateBounds?(): void;
+  /** Affordability check for plugin-granted actions (optional; host falls back to numeric check). */
+  canAffordAction?(action: unknown): boolean;
+  /** Legacy public registry handle, used as fallback action lookup when the registry does not expose getAction. */
+  registry?: { getAction?: (id: string) => unknown };
+}
+
+export interface RegistryLike {
+  registerAction(pluginId: string, def: RegisteredAction): void;
+  registerNode(pluginId: string, def: RegisteredNode): void;
+  registerCutscene(pluginId: string, def: RegisteredCutscene): void;
+  removePlugin(pluginId: string): void;
+  /** Optional action lookup, used to validate and price plugin executeAction grants. */
+  getAction?(id: string): unknown;
+}
+
+export interface StorylineRegistryLike {
+  register(pluginId: string, def: unknown): void;
+  removePlugin(pluginId: string): void;
+}
+
+export interface GameEventSource {
+  on(event: string, cb: (payload: unknown) => void): void;
+}
+
+/** Engine surface grants may use, so plugin actions get full UI/survival handling. */
+export interface EngineLike {
+  executeActionResult(actionId: string): { isMenu: boolean; success: boolean };
+  exploreNode(): boolean;
+  desperateScavenge(): boolean;
+  notePluginMutation(): void;
+}
+
+export interface HostDeps {
+  voyage: VoyageLike;
+  registry: RegistryLike;
+  storylines?: StorylineRegistryLike;
+  log: (msg: string) => void;
+  events: GameEventSource;
+  engine?: EngineLike;
+}

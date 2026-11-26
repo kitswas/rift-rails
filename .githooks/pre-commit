@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+echo "check: format"
+pnpm format:check
+echo "check: types"
+pnpm typecheck
+echo "check: lint"
+pnpm lint
+echo "check: docs"
+pnpm check:docs
+echo "check: unit tests"
+pnpm test
