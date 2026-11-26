@@ -4,4 +4,3 @@ dist/
 .vite/
 coverage/
 test-results/
-public/sonic-pi/

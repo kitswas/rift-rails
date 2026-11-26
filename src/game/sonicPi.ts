@@ -1,6 +1,6 @@
 // Sonic Pi web runtime. Programs live as standalone .rb files in ./audio so they can be
 // pasted into the Sonic Pi editor and back. The game prepends a level line before running.
-// Runtime assets live in public/sonic-pi (`pnpm audio:sonic-pi`).
+// Runtime assets are vendored in public/sonic-pi (see docs/SONIC-PI-RUNTIME.md).
 
 import railsSource from "./audio/rails.rb?raw";
 import telemetrySource from "./audio/telemetry.rb?raw";

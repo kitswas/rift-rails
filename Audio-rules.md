@@ -33,5 +33,5 @@ Mute, volume, and ducking behave the same way for music and for effects. The pla
 11. **The Game API Is a Contract**
 Game code asks for named sounds, never for synth parameters. Changing the engine must not change its callers.
 
-12. **Generated Assets Are Not Source**
-Engine binaries and sample libraries are fetched, not committed. The repository holds only what we author.
+12. **The Runtime Is Pinned**
+The Sonic Pi web runtime in `public/sonic-pi/` is vendored with a SHA-256 manifest and checked in CI, so builds need no network. `pnpm audio:sonic-pi` refreshes it manually. The sound engine and samples still come from the CDN at runtime.

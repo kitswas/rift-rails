@@ -1,8 +1,8 @@
 name: CI
 
 on:
-  push:
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -17,8 +17,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 12.16.1 # Matches packageManager in package.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -28,6 +26,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify vendored Sonic Pi runtime
+        run: pnpm check:sonic-pi
 
       - name: Check formatting
         run: pnpm format:check
@@ -52,6 +53,13 @@ jobs:
       - name: Build production bundle
         run: pnpm build
 
+      - name: Upload production bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
   e2e:
     name: End-to-End Tests (Playwright)
     runs-on: ubuntu-latest
@@ -61,8 +69,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 12.16.1 # Matches packageManager in package.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

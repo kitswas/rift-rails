@@ -5,9 +5,8 @@
   "scripts": {
     "plugins:build": "node scripts/build-plugins.mjs",
     "audio:sonic-pi": "node scripts/fetch-sonic-pi.mjs",
-    "predev": "node scripts/fetch-sonic-pi.mjs",
+    "check:sonic-pi": "node scripts/fetch-sonic-pi.mjs --dry-run",
     "dev": "vite",
-    "prebuild": "node scripts/fetch-sonic-pi.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 8000",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 8100",
@@ -17,7 +16,6 @@
     "format:check": "oxfmt --check src tests scripts vite.config.ts playwright.config.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "verify": "node scripts/verify.mjs",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "engines": {

@@ -43,7 +43,7 @@
       "description": "Narrative storyline about Keeper Halden and the damaged rail line.",
       "defaultEnabled": false,
       "source": "./rail-keeper.zip",
-      "sha256": "ecb59af94ea4c18863ad0262eeec88f7e3ec471c717019a00de660cd7de9b367",
+      "sha256": "6a6405609700fbffee5ef38761f5065cdfb466ffb56ed155d9d69d6cdd34b95e",
       "minApi": 4,
       "permissions": []
     },
@@ -54,7 +54,7 @@
       "description": "Narrative storyline about Courier Sable and an unclaimed depot crate.",
       "defaultEnabled": false,
       "source": "./glass-courier.zip",
-      "sha256": "cda76d7a3c7b0a16ef21c812bcb66cd6d9e35c8b74bf9d20a0da1ef881bb2ec8",
+      "sha256": "6a6c3ec4f6e0b826f420669984d0e72da9f203125f4ec76dcdda00943ede5405",
       "minApi": 4,
       "permissions": []
     }

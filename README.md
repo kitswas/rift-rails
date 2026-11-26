@@ -15,6 +15,23 @@
 - [Storyline plugins](docs/STORYLINE-PLUGINS.md) - author branching `actor verb target` stories as opt-in plugins.
 - [Plugin registry](docs/PLUGIN-REGISTRY.md) - registry schema, verification, and opt-in behavior.
 - [Coding standards](CODING_STANDARDS.md) - review-time rules for judgement calls.
+- [Sonic Pi runtime](docs/SONIC-PI-RUNTIME.md) - the vendored offline runtime and how to update it.
+
+---
+
+## Development
+
+```sh
+pnpm install
+pnpm dev          # no network needed; Sonic Pi runtime is vendored
+pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:docs
+pnpm test && pnpm test:e2e
+pnpm build        # output in dist/
+```
+
+`pnpm audio:sonic-pi` refreshes the vendored runtime manually; see
+[Sonic Pi runtime](docs/SONIC-PI-RUNTIME.md). CI verifies its hashes with
+`pnpm check:sonic-pi`.
 
 ---
 
@@ -22,8 +39,12 @@
 
 This project is licensed under a dual-licensing scheme (see [LICENSE](LICENSE) for full legal text):
 
-1. **Software & Algorithms:** All source code (`index.html`, `artwork-browser.html`, procedural generators, shaders, logic) is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0).
+1. **Software & Algorithms:** All source code (`index.html`, `artwork-browser.html`, procedural generators, shaders, logic) is licensed under the [GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)](https://www.gnu.org/licenses/agpl-3.0).
 2. **Artwork, Graphics & Lore:** All assets (`assets/`), game lore, narrative, and aesthetic guidelines (`Artwork-rules.md`) are licensed under [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+Third-party components in `public/sonic-pi/` are **not** covered by this dual
+scheme. They keep their own AGPL-3.0-or-later, GPL-3.0 and MIT licenses; see
+[Third-Party Notices](public/THIRD-PARTY-NOTICES.md).
 
 ## Contributing
 

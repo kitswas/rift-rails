@@ -2,6 +2,10 @@
 
 This repository uses a dual-licensing model to distinguish between open-source code/algorithms and game assets/intellectual property:
 
+Third-party components vendored in `public/sonic-pi/` are excluded from this
+scheme. They retain their upstream AGPL-3.0-or-later, GPL-3.0 and MIT licenses;
+see [Third-Party Notices](public/THIRD-PARTY-NOTICES.md).
+
 ---
 
 ## 1. Source Code & Algorithms: GNU AGPLv3
