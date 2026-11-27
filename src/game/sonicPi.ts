@@ -10,7 +10,8 @@ import eventHorizonSource from "./audio/event-horizon.rb?raw";
 import sfxSource from "./audio/sfx.rb?raw";
 import type { AmbientMode } from "./types";
 
-const BASE = "/sonic-pi/";
+// Page-relative: itch.io mounts the game under /html/<id>/, not the host root.
+const BASE = new URL("./sonic-pi/", document.baseURI).href;
 const BOOT_TIMEOUT_MS = 20000;
 const AMBIENT_GROUP = 1;
 const SFX_GROUP = 2;

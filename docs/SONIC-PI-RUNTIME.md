@@ -1,6 +1,6 @@
 # Sonic Pi Runtime
 
-The game boots its audio runtime from `/sonic-pi/` in `src/game/sonicPi.ts`.
+The game boots its audio runtime from `sonic-pi/` beside the page in `src/game/sonicPi.ts`.
 Those files are vendored in `public/sonic-pi/` so `pnpm build`, CI and the e2e
 web server need no network. A missing or changed file is a build/CI failure;
 the game itself degrades to silence if the runtime cannot boot.
