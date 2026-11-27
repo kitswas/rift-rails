@@ -456,6 +456,18 @@ function parseNodeDef(def: unknown): RegisteredNode | null {
   return normalized as unknown as RegisteredNode;
 }
 
+/** Reject non-zip responses before JSZip emits its opaque "end of central directory" error. */
+export function assertZipBytes(buf: ArrayBuffer): void {
+  const head = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+  const valid =
+    head.length === 4 &&
+    head[0] === 0x50 &&
+    head[1] === 0x4b &&
+    [3, 5, 7].includes(head[2]!) &&
+    [4, 6, 8].includes(head[3]!);
+  if (!valid) throw new Error("plugin response is not a zip archive");
+}
+
 function zipFileSize(file: JSZip.JSZipObject | null): number | null {
   if (!file) return null;
   const data = (file as unknown as { _data?: { uncompressedSize?: unknown } })._data;
@@ -644,6 +656,7 @@ export class PluginHost {
     if (buf.byteLength > MAX_ZIP_BYTES) {
       throw new Error(`plugin zip too large (${buf.byteLength} bytes)`);
     }
+    assertZipBytes(buf);
 
     const zip = await JSZip.loadAsync(buf);
     const allFiles = Object.values(zip.files).filter((f) => !f.dir);

@@ -758,6 +758,9 @@ function bind(): void {
       // Continue this new-game reset; checkbox state may not survive reload.
     }
     void setTutorialForNewGame(tutorialEnabled)
+      .catch((err: unknown) => {
+        logHook.onLog(`tutorial unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      })
       .then(() => engine.resetGame(false))
       .catch((err: unknown) => {
         const error = el("start-error");
@@ -812,24 +815,36 @@ function bind(): void {
       try {
         await bundledPluginsReady;
         const hasSave = save.hasSave();
+        let tutorialOn = hasSave
+          ? host.isPluginActive(TUTORIAL_PLUGIN_ID)
+          : ((document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ??
+            true);
         if (hasSave) {
-          if (host.isPluginActive(TUTORIAL_PLUGIN_ID))
-            await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
+          if (tutorialOn) {
+            try {
+              await host.waitUntilReady(TUTORIAL_PLUGIN_ID);
+            } catch (err) {
+              logHook.onLog(
+                `tutorial unavailable: ${err instanceof Error ? err.message : String(err)}`,
+              );
+              tutorialOn = false;
+            }
+          }
         } else {
-          await setTutorialForNewGame(
-            (document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ??
-              true,
-          );
+          try {
+            await setTutorialForNewGame(tutorialOn);
+          } catch (err) {
+            logHook.onLog(
+              `tutorial unavailable: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            tutorialOn = false;
+          }
           try {
             sessionStorage.removeItem(TUTORIAL_CHOICE_KEY);
           } catch {
             // Ignore unavailable session storage.
           }
         }
-        const tutorialOn = hasSave
-          ? host.isPluginActive(TUTORIAL_PLUGIN_ID)
-          : ((document.getElementById("enable-tutorial") as HTMLInputElement | null)?.checked ??
-            true);
         engine.ignite();
         if (tutorialOn) {
           contextualCues.enable();
